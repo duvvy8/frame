@@ -18,6 +18,8 @@ set(FRAME_SRCS
   frame_app.h
   main_window.cc
   main_window.h
+  frame_scheme.cc
+  frame_scheme.h
   corner_mask.cc
   corner_mask.h
   page_client.cc

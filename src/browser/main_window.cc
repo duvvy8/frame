@@ -34,6 +34,8 @@ const wchar_t kWindowTitle[] = L"Frame";
 const COLORREF kShellBackground = RGB(0x0b, 0x0b, 0x0d);
 const COLORREF kViewportPlaceholder = RGB(0x00, 0x00, 0x00);
 
+// A new tab opens on Frame's own page, not a blank one.
+const char kNewTabPage[] = "frame://newtab";
 const char kBlankPage[] = "about:blank";
 
 int MouseModifiers(WPARAM wparam) {
@@ -121,7 +123,8 @@ std::string NormalizeUrl(const std::string& raw) {
   }
   if (StartsWith(input, "http://") || StartsWith(input, "https://") ||
       StartsWith(input, "file://") || StartsWith(input, "about:") ||
-      StartsWith(input, "data:") || StartsWith(input, "chrome:")) {
+      StartsWith(input, "data:") || StartsWith(input, "chrome:") ||
+      StartsWith(input, "frame:")) {
     return input;
   }
   if (input == "localhost" || StartsWith(input, "localhost:")) {
@@ -320,7 +323,7 @@ CefRefPtr<CefBrowser> MainWindow::ActiveBrowser() {
 int MainWindow::CreateTab(const std::string& url, bool activate) {
   Tab tab;
   tab.id = next_tab_id_++;
-  tab.url = url.empty() ? kBlankPage : url;
+  tab.url = url.empty() ? kNewTabPage : url;
   tab.title = "New Tab";
   tab.loading = true;
   tabs_.push_back(tab);

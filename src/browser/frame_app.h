@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "include/cef_app.h"
+#include "include/cef_scheme.h"
 #include "include/wrapper/cef_message_router.h"
 
 namespace frame {
@@ -22,6 +23,7 @@ class FrameApp : public CefApp,
   ~FrameApp() override;
 
   // CefApp
+  void OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) override;
   CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override {
     return this;
   }

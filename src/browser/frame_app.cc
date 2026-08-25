@@ -6,6 +6,7 @@
 #include <string>
 
 #include "browser/chrome_surface.h"
+#include "browser/frame_scheme.h"
 #include "browser/main_window.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
@@ -67,7 +68,16 @@ void CreateSurface(MainWindow* window, SurfaceId id, const wchar_t* file_name) {
 FrameApp::FrameApp() = default;
 FrameApp::~FrameApp() = default;
 
+void FrameApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) {
+  // Runs in EVERY process, before CEF starts. A renderer that has not been
+  // told about the scheme will not treat frame:// pages as a real origin.
+  RegisterFrameScheme(registrar);
+}
+
 void FrameApp::OnContextInitialized() {
+  // The factory can only be installed once CEF is up.
+  InstallFrameSchemeHandler();
+
   CefRefPtr<CefCommandLine> cmd = CefCommandLine::GetGlobalCommandLine();
 
   MainWindow::Options options;
@@ -91,11 +101,10 @@ void FrameApp::OnContextInitialized() {
   CreateSurface(main_window_.get(), SurfaceId::kTopbar, L"topbar.html");
   CreateSurface(main_window_.get(), SurfaceId::kSidebar, L"sidebar.html");
 
-  // Open on a real page. frame://newtab replaces this default once the scheme
-  // handler and internal pages land.
+  // Frame's own start page, served over frame:// from the flat allowlist.
   const std::string start_url = cmd->HasSwitch("url")
                                     ? cmd->GetSwitchValue("url").ToString()
-                                    : "https://www.google.com";
+                                    : "frame://newtab";
   main_window_->CreateTab(start_url, /*activate=*/true);
 }
 

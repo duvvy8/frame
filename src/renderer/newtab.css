@@ -1,0 +1,118 @@
+/* Frame — the new tab page.
+ *
+ * Served over frame:// from the flat allowlist, so it shares shell.css with
+ * the chrome surfaces and inherits the same tokens, font stack and motion
+ * rather than restating any of them.
+ */
+
+.newtab {
+  /* A page rather than a chrome surface, so the shell gradient anchors to the
+   * page itself: --shell-x/y stay 0 and the light sits in the top-left corner
+   * of the viewport, continuing the shell rather than restarting a new one. */
+  --win-w: 100vw;
+  --win-h: 100vh;
+  user-select: none;
+}
+
+.stage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  /* Sits a little above centre; dead-centre reads as low once the search pill
+   * is under it. */
+  padding-bottom: 8vh;
+}
+
+/* --- wordmark ----------------------------------------------------------- */
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  user-select: none;
+}
+
+.wordmark-mark {
+  display: block;
+  filter: drop-shadow(0 0 16px rgba(98, 168, 255, .34));
+}
+
+.wordmark-text {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 600;
+  /* Wide tracking to match the mark's geometry — the letterforms need air to
+   * sit beside a shape that open. */
+  letter-spacing: .20em;
+  /* Indent by one tracking step so the optical centre lands correctly: the
+   * trailing letter-space would otherwise push the word left of the mark. */
+  text-indent: .20em;
+  line-height: 1;
+  background: linear-gradient(100deg, #ffffff 0%, #cfe6ff 42%, #7fb2f0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- search ------------------------------------------------------------- */
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(680px, 78vw);
+  height: 52px;
+  padding: 0 8px 0 18px;
+  border-radius: 26px;
+  color: var(--text-dim);
+}
+
+.search-icon {
+  flex: 0 0 auto;
+}
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  user-select: text;
+  cursor: text;
+}
+
+.search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.search-go {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 20px;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 19px;
+  background: var(--glass-fill);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease);
+}
+
+.search-go:hover {
+  background: var(--glass-fill-hover);
+  border-color: rgba(98, 168, 255, .45);
+}
+
+.search-go:active {
+  background: rgba(0, 0, 0, .22);
+}
