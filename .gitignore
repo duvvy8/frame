@@ -18,3 +18,6 @@ third_party/cef/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# CEF archive (large, re-downloadable via scripts/get-cef.ps1)
+third_party/*.tar.bz2
