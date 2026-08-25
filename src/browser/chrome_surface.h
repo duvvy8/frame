@@ -5,6 +5,7 @@
 
 #include "include/cef_client.h"
 #include "include/cef_display_handler.h"
+#include "include/cef_keyboard_handler.h"
 #include "include/cef_life_span_handler.h"
 #include "include/cef_render_handler.h"
 #include "include/wrapper/cef_message_router.h"
@@ -30,7 +31,8 @@ enum class SurfaceId {
 class ChromeSurface : public CefClient,
                       public CefRenderHandler,
                       public CefLifeSpanHandler,
-                      public CefDisplayHandler {
+                      public CefDisplayHandler,
+                      public CefKeyboardHandler {
  public:
   ChromeSurface(MainWindow* window, SurfaceId id);
 
@@ -38,6 +40,20 @@ class ChromeSurface : public CefClient,
   CefRefPtr<CefRenderHandler> GetRenderHandler() override { return this; }
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
   CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
+  CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override { return this; }
+
+  // CefKeyboardHandler
+  //
+  // Shortcuts pressed while the address field has the caret, plus the clipboard
+  // and undo group — which this surface DOES handle, unlike a page. An
+  // off-screen browser receives its keys through SendKeyEvent rather than from
+  // a focused native window, and Blink's editing shortcuts do not fire reliably
+  // for synthesised events, so Ctrl+C in the address bar has to be routed to
+  // CefFrame explicitly or it silently does nothing.
+  bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                     const CefKeyEvent& event,
+                     CefEventHandle os_event,
+                     bool* is_keyboard_shortcut) override;
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                 CefRefPtr<CefFrame> frame,
                                 CefProcessId source_process,

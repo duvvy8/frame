@@ -56,8 +56,8 @@ class FrameApp : public CefApp,
   // renderer process.
   CefRefPtr<CefMessageRouterRendererSide> renderer_router_;
 
-  // Browser-process only.
-  std::unique_ptr<MainWindow> main_window_;
+  // Windows are owned by browser/window_list.h, not by the application: they
+  // outlive nothing here, and there can be more than one of them.
 
   IMPLEMENT_REFCOUNTING(FrameApp);
   DISALLOW_COPY_AND_ASSIGN(FrameApp);

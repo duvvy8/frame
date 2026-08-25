@@ -89,6 +89,7 @@
 
         px('--topbar-height', layout.topbarHeight);
         px('--sidebar-width', layout.sidebarWidth);
+        px('--shell-inset', layout.shellInset);
         px('--viewport-radius', layout.viewportRadius);
         px('--tab-min-width', layout.tabMinWidth);
         px('--tab-max-width', layout.tabMaxWidth);
@@ -131,10 +132,14 @@
     return query(CHANNEL.dragRegions + parts.join(';'));
   }
 
-  // Both of these are overwritten by whichever surface cares. The browser
-  // process calls them directly — surfaces never poll for state.
+  // All three are overwritten by whichever surface cares. The browser process
+  // calls them directly — surfaces never poll for state.
   function onWindowState() {}
   function onBrowserState() {}
+  // Ctrl+L and friends, implemented by the sidebar. A no-op here so the
+  // browser process can call it unconditionally without knowing which surface
+  // owns the address field.
+  function onFocusAddress() {}
 
   // Fire-and-forget command. Nothing useful comes back from these beyond
   // acknowledgement, and a failed command should not break the surface.
@@ -151,6 +156,7 @@
     send: send,
     onShellMetrics: onShellMetrics,
     onWindowState: onWindowState,
-    onBrowserState: onBrowserState
+    onBrowserState: onBrowserState,
+    onFocusAddress: onFocusAddress
   };
 })(window);

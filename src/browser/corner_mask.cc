@@ -145,22 +145,25 @@ void CornerMask::Paint(Corner corner, int radius, COLORREF shell_color) {
 }
 
 void CornerMask::Layout(const layout::ViewportRect& viewport,
-                        COLORREF shell_color) {
+                        const COLORREF (&corner_colors)[kCornerCount]) {
   const int radius = viewport.radius;
   if (viewport.width <= 0 || viewport.height <= 0 || radius <= 0) {
     Hide();
     return;
   }
 
-  // Repainting is only needed when the mask's own appearance changes; moving
-  // it is just a SetWindowPos.
-  if (radius != painted_radius_ || shell_color != painted_color_) {
-    for (int i = 0; i < kCount; ++i) {
-      Paint(static_cast<Corner>(i), radius, shell_color);
+  // Repainting is only needed when a mask's own appearance changes; moving it
+  // is just a SetWindowPos. Tracked per corner, so a gradient shifting under
+  // one of them does not cost a repaint of the other three.
+  const bool radius_changed = radius != painted_radius_;
+  for (int i = 0; i < kCount; ++i) {
+    if (!radius_changed && corner_colors[i] == painted_colors_[i]) {
+      continue;
     }
-    painted_radius_ = radius;
-    painted_color_ = shell_color;
+    Paint(static_cast<Corner>(i), radius, corner_colors[i]);
+    painted_colors_[i] = corner_colors[i];
   }
+  painted_radius_ = radius;
 
   const int left = viewport.x;
   const int top = viewport.y;

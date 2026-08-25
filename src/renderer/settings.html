@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Settings</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="internal.css">
+</head>
+<body class="internal">
+  <main class="sheet">
+    <p class="sheet-eyebrow">Frame</p>
+    <h1 class="sheet-title">Settings</h1>
+    <p class="sheet-lede">
+      Nothing here is configurable yet. What the browser already does, it does
+      because the code says so — these are the switches that will expose it.
+    </p>
+
+    <ul class="sheet-list">
+      <li><b>Telemetry</b> Already off, and never initialised rather than
+        disabled after the fact. This page will show exactly which Chromium
+        switches are applied.</li>
+      <li><b>Safe Browsing</b> Off. Its real-time mode sends visited URLs to
+        Google, so it will be an explicit opt-in with the tradeoff spelled
+        out — not a default.</li>
+      <li><b>Search engine</b> Google, hardcoded in the omnibox rule.</li>
+      <li><b>Tracker blocking</b> Part of the privacy layer, not yet built.</li>
+      <li><b>Request contexts</b> Per-tab isolation, not yet built. Incognito
+        windows already get their own in-memory context.</li>
+    </ul>
+
+    <p class="sheet-note">
+      Ctrl+I or Ctrl+Comma opens this page.
+    </p>
+  </main>
+</body>
+</html>

@@ -6,6 +6,7 @@
 
 #include "include/cef_client.h"
 #include "include/cef_display_handler.h"
+#include "include/cef_keyboard_handler.h"
 #include "include/cef_life_span_handler.h"
 #include "include/cef_load_handler.h"
 
@@ -23,7 +24,8 @@ class MainWindow;
 class PageClient : public CefClient,
                    public CefLifeSpanHandler,
                    public CefLoadHandler,
-                   public CefDisplayHandler {
+                   public CefDisplayHandler,
+                   public CefKeyboardHandler {
  public:
   PageClient(MainWindow* window, int tab_id);
 
@@ -31,6 +33,17 @@ class PageClient : public CefClient,
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
   CefRefPtr<CefLoadHandler> GetLoadHandler() override { return this; }
   CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
+  CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override { return this; }
+
+  // CefKeyboardHandler
+  //
+  // The page is a native child window, so its keys never reach Frame's own
+  // message loop — this is the only place a shortcut pressed while browsing
+  // can be seen at all.
+  bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                     const CefKeyEvent& event,
+                     CefEventHandle os_event,
+                     bool* is_keyboard_shortcut) override;
 
   // CefLifeSpanHandler
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;

@@ -5,22 +5,158 @@
  * rather than restating any of them.
  */
 
+/* Where this page sits inside the window.
+ *
+ * The page is a surface like any other now, so the shell field is anchored to
+ * the WINDOW here exactly as it is in the topbar and the sidebar. That single
+ * change is what removes the seam down the left of the viewport: the sidebar's
+ * last column of pixels and the page's first are now the same point in the same
+ * gradient, instead of the end of one gradient against the start of another.
+ *
+ * Unlike a chrome surface, this page has no bridge to ask C++ for its offset —
+ * and it does not need one. It knows its own viewport, and the chrome around it
+ * is made of constants, so the window's size is simply the sum. Deriving it
+ * costs nothing, survives a resize with no message at all, and is right on the
+ * very first frame instead of after a round trip.
+ *
+ * The one thing it cannot derive is the sidebar collapsing, which changes
+ * --shell-x from the full width to the rail. The browser process pushes that
+ * one value as an inline style, which outranks these and feeds straight back
+ * into the calc() below. */
+:root {
+  --shell-x: var(--sidebar-width);
+  --shell-y: var(--topbar-height);
+  --win-w: calc(100vw + var(--shell-x) + var(--shell-inset));
+  --win-h: calc(100vh + var(--shell-y) + var(--shell-inset));
+}
+
 .newtab {
-  /* A page rather than a chrome surface, so the shell gradient anchors to the
-   * page itself: --shell-x/y stay 0 and the light sits in the top-left corner
-   * of the viewport, continuing the shell rather than restarting a new one. */
-  --win-w: 100vw;
-  --win-h: 100vh;
   user-select: none;
 }
 
+/* --- aurora ------------------------------------------------------------- */
+
+/* The moving light.
+ *
+ * shell.css paints the field, which is static and covers the whole window.
+ * This is the part that drifts, and it lives only on this page: animating the
+ * chrome would mean re-rasterising two off-screen surfaces and blitting them
+ * sixty times a second forever, which is a real cost to pay for motion nobody
+ * is looking at while they read a web page.
+ *
+ * Which raises the obvious problem — if the page moves and the chrome does
+ * not, the seam comes straight back the moment the animation starts. The mask
+ * is the answer: it falls to zero at every edge of the viewport, so the moving
+ * layer contributes exactly nothing at the boundary. At the seam there is only
+ * the static field, which both sides share. The motion lives in the middle,
+ * where there is no seam to give away.
+ *
+ * The mask geometry is deliberate rather than eyeballed. The ellipse is sized
+ * 100% 100%, so the distance from the centre to any edge midpoint is exactly
+ * 0.5 of its radius — which is where the transparent stop sits. Zero at the
+ * edges is therefore a property of the numbers, not something that happens to
+ * look right at one window size. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  /* Under the grain and under the UI, above the field. */
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image:
+      radial-gradient(100% 100% at 50% 50%, #000 4%, transparent 50%);
+  mask-image:
+      radial-gradient(100% 100% at 50% 50%, #000 4%, transparent 50%);
+}
+
+.aurora-veil {
+  position: absolute;
+  border-radius: 50%;
+  /* Transform only. Animating position or size would relayout the page on
+   * every frame; a composited transform does not touch layout at all. */
+  will-change: transform;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  /* Symmetric ease, because the animation reverses rather than looping — an
+   * asymmetric curve would make the turn at each end visible as a lurch. */
+  animation-timing-function: cubic-bezier(.45, 0, .55, 1);
+}
+
+/* Minutes, not seconds.
+ *
+ * The reference for this is monopo.vn, whose canvas gradient turns over in
+ * about ten seconds. That reads as motion — which is right for a studio's
+ * front page and wrong for a surface that opens every time you press Ctrl+T.
+ * At this speed nothing ever appears to be moving; the page is simply not
+ * quite the same when you come back to it.
+ *
+ * The three durations share no small common multiple, so the veils drift out
+ * of phase and never return to the same arrangement. One duration for all
+ * three would loop visibly every cycle. */
+.aurora-veil-a {
+  left: -14%;
+  top: -22%;
+  width: 82%;
+  height: 104%;
+  background:
+      radial-gradient(closest-side,
+                      rgba(66, 128, 255, .38),
+                      rgba(66, 128, 255, 0) 100%);
+  animation-name: veil-a;
+  animation-duration: 68s;
+}
+
+.aurora-veil-b {
+  right: -18%;
+  top: -10%;
+  width: 74%;
+  height: 92%;
+  background:
+      radial-gradient(closest-side,
+                      rgba(74, 206, 226, .20),
+                      rgba(74, 206, 226, 0) 100%);
+  animation-name: veil-b;
+  animation-duration: 92s;
+}
+
+.aurora-veil-c {
+  left: 16%;
+  bottom: -34%;
+  width: 88%;
+  height: 96%;
+  background:
+      radial-gradient(closest-side,
+                      rgba(112, 78, 232, .30),
+                      rgba(112, 78, 232, 0) 100%);
+  animation-name: veil-c;
+  animation-duration: 116s;
+}
+
+@keyframes veil-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(11%, 7%, 0) scale(1.16); }
+}
+
+@keyframes veil-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to   { transform: translate3d(-9%, 12%, 0) scale(.94); }
+}
+
+@keyframes veil-c {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-13%, -9%, 0) scale(1.12); }
+}
+
+/* --- stage -------------------------------------------------------------- */
+
 .stage {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 34px;
+  gap: 40px;
   /* Sits a little above centre; dead-centre reads as low once the search pill
    * is under it. */
   padding-bottom: 8vh;
@@ -31,27 +167,36 @@
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: clamp(14px, 1.6vw, 26px);
   user-select: none;
 }
 
 .wordmark-mark {
   display: block;
-  filter: drop-shadow(0 0 16px rgba(98, 168, 255, .34));
+  /* Tracks the wordmark so the pair stays in proportion at any window size,
+   * rather than the mark shrinking against the text on a large display. */
+  width: clamp(38px, 4.4vw, 62px);
+  height: auto;
+  filter: drop-shadow(0 0 22px rgba(98, 168, 255, .30));
 }
 
 .wordmark-text {
-  font-family: var(--font-display);
-  font-size: 46px;
-  font-weight: 600;
-  /* Wide tracking to match the mark's geometry — the letterforms need air to
-   * sit beside a shape that open. */
-  letter-spacing: .20em;
-  /* Indent by one tracking step so the optical centre lands correctly: the
+  font-family: var(--font-brand);
+  font-size: clamp(34px, 4.6vw, 66px);
+  /* Light, not semibold.
+   *
+   * Space Grotesk carries its character in the letter SHAPES — the flat-sided
+   * G, the straight-legged R, the narrow apertures — and weight only muddies
+   * them at display size. Every reference this was drawn from does the same
+   * thing: large, light, and generously tracked. */
+  font-weight: 300;
+  letter-spacing: .26em;
+  /* One tracking step of indent, so the optical centre lands correctly: the
    * trailing letter-space would otherwise push the word left of the mark. */
-  text-indent: .20em;
+  text-indent: .26em;
   line-height: 1;
-  background: linear-gradient(100deg, #ffffff 0%, #cfe6ff 42%, #7fb2f0 100%);
+  white-space: nowrap;
+  background: linear-gradient(104deg, #ffffff 0%, #d8e9ff 44%, #86b6f2 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -63,11 +208,22 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(680px, 78vw);
-  height: 52px;
-  padding: 0 8px 0 18px;
-  border-radius: 26px;
+  width: min(660px, 76vw);
+  height: 56px;
+  padding: 0 8px 0 20px;
+  border-radius: 28px;
   color: var(--text-dim);
+  transition: box-shadow var(--dur-3) var(--ease);
+}
+
+/* The rim already lights the pill; focus adds the accent, so the state is
+ * legible without a second ring fighting the glass. */
+.search:focus-within {
+  box-shadow:
+      var(--lg-shadow-sm),
+      var(--lg-lens-rim),
+      0 0 0 1px rgba(98, 168, 255, .34),
+      0 0 34px rgba(98, 168, 255, .16);
 }
 
 .search-icon {
@@ -82,26 +238,31 @@
   outline: none;
   background: transparent;
   color: var(--text);
-  font: inherit;
+  font-family: var(--font-brand);
   font-size: 15px;
+  font-weight: 400;
+  letter-spacing: .01em;
   user-select: text;
   cursor: text;
 }
 
 .search-input::placeholder {
   color: var(--text-faint);
+  letter-spacing: .02em;
 }
 
 .search-go {
   flex: 0 0 auto;
-  height: 38px;
-  padding: 0 20px;
+  height: 40px;
+  padding: 0 22px;
   border: 1px solid var(--glass-hairline);
-  border-radius: 19px;
+  border-radius: 20px;
   background: var(--glass-fill);
   color: var(--text);
+  font-family: var(--font-brand);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: .04em;
   cursor: default;
   transition:
     background var(--dur-1) var(--ease),
@@ -115,4 +276,40 @@
 
 .search-go:active {
   background: rgba(0, 0, 0, .22);
+}
+
+/* --- entrance ----------------------------------------------------------- */
+
+/* Decelerating and short, matching the rest of the shell. The search pill
+ * follows the wordmark by a beat so the eye lands on the brand first and is
+ * already looking at the right place when the input arrives. */
+.wordmark,
+.search {
+  animation: rise var(--dur-3) var(--ease) both;
+}
+
+.search {
+  animation-duration: 420ms;
+  animation-delay: 90ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Motion here is atmosphere, never information, so there is nothing to lose by
+ * removing it — the field, the composition and the type are unchanged. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-veil,
+  .wordmark,
+  .search {
+    animation: none;
+  }
 }

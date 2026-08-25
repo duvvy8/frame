@@ -18,6 +18,7 @@
    * here are only a pre-bridge fallback. */
   --topbar-height: 32px;
   --sidebar-width: 168px;
+  --shell-inset: 8px;
   --viewport-radius: 12px;
   --tab-min-width: 95px;
   --tab-max-width: 190px;
@@ -36,12 +37,28 @@
   --text-dim: #8e8e99;
   --text-faint: #5f5f6b;
 
-  /* Ambient shell light. Cool, to sit with the glass mark in the corner.
-   * For the warmer look, these two are the only lines to change:
-   *   --ambient-a: rgba(255, 122, 26, .20);
-   *   --ambient-b: rgba(255, 80, 20, .12); */
-  --ambient-a: rgba(74, 140, 255, .26);
-  --ambient-b: rgba(64, 96, 220, .16);
+  /* The SAME colour at zero alpha, for gradient stops.
+   *
+   * Never write `transparent` in a gradient that ends on --bg: the keyword is
+   * transparent BLACK, and interpolating a coloured stop towards it drags the
+   * midpoint through grey. On a large dark field that shows up as a dirty band
+   * exactly where the gradient is supposed to disappear. */
+  --bg-fade: rgba(11, 11, 13, 0);
+
+  /* Ambient shell light — the aurora.
+   *
+   * Four wide, low-alpha washes laid across the whole window rather than one
+   * glow in a corner. Low alpha and low saturation are what keep it reading as
+   * atmosphere behind glass instead of as a coloured background: past roughly
+   * .32 any one of these stops being light and starts being paint.
+   *
+   * Hue order matters more than the individual values — blue into cyan into
+   * violet is what gives it depth. For a warmer palette, rotate all four
+   * together; changing one leaves the field muddy where they overlap. */
+  --ambient-a: rgba(58, 118, 255, .30);   /* blue, upper left */
+  --ambient-b: rgba(104, 74, 226, .22);   /* violet, lower middle */
+  --ambient-c: rgba(72, 200, 224, .13);   /* cyan, upper right */
+  --ambient-deep: rgba(20, 34, 78, .55);  /* navy wash under all of it */
 
   /* Accent — state only. */
   --accent: #62a8ff;
@@ -129,6 +146,36 @@ body {
   --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI",
           system-ui, Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+
+  /* Frame's own voice, for the few places that are branding rather than UI:
+   * the new tab wordmark and search, and the unreachable page's headline. The
+   * chrome itself deliberately stays on the system face — Segoe UI Variable is
+   * optically sized for small UI text and stays crisp at 11px in a way a
+   * display grotesque does not. */
+  --font-brand: "Space Grotesk", "Segoe UI Variable Display", "Segoe UI",
+          system-ui, Helvetica, Arial, sans-serif;
+}
+
+/* Bundled, never fetched.
+ *
+ * The obvious way to get this font is a <link> to fonts.googleapis.com, which
+ * would make Frame's own new tab page contact a third party every time it
+ * opens — the precise behaviour the rest of this codebase goes out of its way
+ * to prevent. So the file is served over frame:// from the same flat allowlist
+ * as every other internal asset, and the browser talks to nobody.
+ *
+ * Space Grotesk by Florian Karsten, SIL OFL 1.1. The licence ships alongside
+ * it as space-grotesk-OFL.txt. Variable weight axis, 300-700.
+ *
+ * font-display: block, not swap — the file is local and resolves in
+ * microseconds, so there is nothing to swap in and a swap would only introduce
+ * a visible reflow of the wordmark. */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("space-grotesk.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: block;
 }
 
 body {
@@ -159,7 +206,18 @@ select {
  * Anchored to the WINDOW, not to this surface: each surface offsets the layer
  * by its own origin so the gradient continues across the seam between them.
  * Painted per-surface but sampled from one shared coordinate space, which is
- * why the topbar and sidebar look like one piece of glass rather than two. */
+ * why the topbar, the sidebar and the page look like one piece of glass rather
+ * than three.
+ *
+ * The page is included in that "every surface" now, and it is the whole reason
+ * the seam down the left of the viewport is gone. It used to anchor the
+ * gradient to ITSELF, so the field restarted at the page's own origin and the
+ * step between the sidebar's last column of pixels and the page's first was
+ * plainly visible. Same coordinate space, no step.
+ *
+ * Percentages, not pixels: the field is sized to the window, so it stays one
+ * composition at 1280x800 and at 3840x2160 instead of becoming a small glow in
+ * the corner of a large display. */
 body::before {
   content: "";
   position: fixed;
@@ -169,11 +227,71 @@ body::before {
   height: var(--win-h);
   pointer-events: none;
   background:
-    radial-gradient(1000px 460px at 0% 0%, var(--ambient-a), transparent 68%),
-    radial-gradient(760px 520px at 2% 100%, var(--ambient-b), transparent 70%);
+    /* Listed first, so painted on top: the field settles back to exactly --bg
+     * along the right and bottom edges of the WINDOW. Those eight pixels are
+     * painted by the window itself with a solid GDI brush and can never hold a
+     * gradient, so instead the gradient is made to agree with them. That strip
+     * used to read as a hard black bar under the page.
+     *
+     * Measured from the edge in PIXELS, not in percent. The whole point is to
+     * land on --bg a few pixels BEFORE the shell inset begins, and the inset is
+     * a fixed 8px whatever the window size — as a percentage it would overshoot
+     * on a small window and fall short on a large one, which is the difference
+     * between an invisible join and a visible line. */
+    linear-gradient(to bottom,
+                    var(--bg-fade) calc(100% - 96px),
+                    var(--bg) calc(100% - 10px)),
+    linear-gradient(to right,
+                    var(--bg-fade) calc(100% - 112px),
+                    var(--bg) calc(100% - 10px)),
+
+    /* The field: a diagonal sweep across the whole window. */
+    radial-gradient(78% 62% at 8% -6%, var(--ambient-a), var(--bg-fade) 64%),
+    radial-gradient(64% 54% at 96% 12%, var(--ambient-c), var(--bg-fade) 68%),
+    radial-gradient(86% 66% at 58% 104%, var(--ambient-b), var(--bg-fade) 70%),
+    radial-gradient(130% 100% at 44% 46%, var(--ambient-deep), var(--bg-fade) 72%);
 }
 
-/* Everything a surface draws sits above the shell material. */
+/* Grain.
+ *
+ * Not decoration — this is what stops a large, dark, low-contrast gradient
+ * banding into visible steps. Eight bits per channel cannot express a smooth
+ * ramp across two thousand pixels of near-black, and the eye reads the
+ * rounding as contour lines. A few percent of noise dithers the boundary away.
+ *
+ * In window space like the field above, so the grain is continuous across the
+ * seams too rather than restarting per surface. Static, so an off-screen
+ * surface rasterises it once and never again. */
+body::after {
+  content: "";
+  position: fixed;
+  left: calc(-1 * var(--shell-x));
+  top: calc(-1 * var(--shell-y));
+  width: var(--win-w);
+  height: var(--win-h);
+  pointer-events: none;
+  opacity: .04;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+
+  /* Faded out over exactly the same two edges as the field's settle above, and
+   * for exactly the same reason.
+   *
+   * Noise averages to mid-grey, so at 4% it lifts near-black by about five
+   * levels. That is invisible in open space and glaring against a strip of
+   * GDI-painted #0b0b0d that has no grain on it — which is precisely the seam
+   * being closed here. Settling the field to --bg is not enough on its own if
+   * the grain keeps sitting on top of it. */
+  mask-image:
+    linear-gradient(to bottom, #000 calc(100% - 96px), transparent calc(100% - 10px)),
+    linear-gradient(to right, #000 calc(100% - 112px), transparent calc(100% - 10px));
+  mask-composite: intersect;
+}
+
+/* Everything a surface draws sits above the shell material.
+ *
+ * The pseudo-elements are z-index auto, so this one rule lifts real content
+ * above both of them — the field, then the grain, then the UI. */
 body > * {
   position: relative;
   z-index: 1;

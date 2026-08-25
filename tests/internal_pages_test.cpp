@@ -72,9 +72,22 @@ TEST_CASE("Traversal cannot be expressed", "[scheme][security]") {
 
 TEST_CASE("Anything not named is refused", "[scheme][security]") {
   SECTION("an unknown host has no page") {
-    CHECK(Lookup("settings", "") == nullptr);
-    CHECK(Lookup("history", "") == nullptr);
+    // settings and history used to stand here, as hosts that did not exist
+    // yet. They do now, so they prove nothing about refusal — these do.
+    CHECK(Lookup("bookmarks", "") == nullptr);
+    CHECK(Lookup("extensions", "") == nullptr);
+    CHECK(Lookup("flags", "") == nullptr);
     CHECK(Lookup("", "") == nullptr);
+  }
+
+  SECTION("the hosts that were added since do resolve") {
+    // The other half of the same claim: the allowlist refuses what is not on
+    // it, and serves what is. A test that only ever checked the first half
+    // would still pass if the table were empty.
+    CHECK(Lookup("settings", "") != nullptr);
+    CHECK(Lookup("history", "") != nullptr);
+    CHECK(Lookup("downloads", "") != nullptr);
+    CHECK(Lookup("newtab", "") != nullptr);
   }
 
   SECTION("a real file that is simply not on the list") {

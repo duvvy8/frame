@@ -75,6 +75,16 @@
         }
       });
 
+      // Ctrl+L, Alt+D and F6. The browser process has already given this
+      // surface the keyboard by the time it calls this; all that is left is
+      // putting the caret somewhere useful. Selecting rather than just focusing
+      // is what makes the shortcut worth pressing — the next thing typed
+      // replaces the URL instead of being appended to it.
+      FrameShell.onFocusAddress = function () {
+        address.focus();
+        address.select();
+      };
+
       document.getElementById('copy').addEventListener('click', function () {
         address.select();
         // execCommand rather than the async clipboard API: this surface is a

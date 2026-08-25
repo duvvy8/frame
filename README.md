@@ -61,6 +61,41 @@ foregrounding. Any future GUI helper should preserve that behaviour — the
 primary display is often in full-screen use while builds run, and synthetic
 input is avoided entirely.
 
+## Keyboard
+
+The chord-to-command table is `src/shared/shortcuts.h` — framework-free and
+unit-tested, so a binding can be checked without starting a browser.
+
+| | |
+|---|---|
+| `Ctrl+T` / `Ctrl+W` / `Ctrl+Shift+T` | new tab / close tab / reopen closed tab |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | next / previous tab (wraps) |
+| `Ctrl+1`…`Ctrl+8` / `Ctrl+9` | tab by position / last tab |
+| `Ctrl+N` / `Ctrl+Shift+N` / `Ctrl+Shift+W` | new window / new private window / close window |
+| `Alt+←` / `Alt+→` / `Alt+Home` | back / forward / new tab page |
+| `Ctrl+R`, `F5` / `Ctrl+Shift+R`, `Ctrl+F5` / `Esc` | reload / reload ignoring cache / stop |
+| `Ctrl+L`, `Alt+D`, `F6` | focus the address field and select it |
+| `Ctrl+B` / `Ctrl+D` | toggle sidebar / bookmark this page |
+| `Ctrl+J` / `Ctrl+H` / `Ctrl+I`, `Ctrl+,` | downloads / history / settings |
+| `Ctrl+0` / `Ctrl+±` | reset / adjust zoom |
+| `F11` / `F12`, `Ctrl+Shift+I` / `Ctrl+P` | fullscreen / DevTools / print |
+| `Ctrl+C/X/V/A/Z/Y` | the editing group — see below |
+
+A shortcut has to work wherever the keyboard happens to be, and in Frame that
+is three different places: the page is a native child window, the topbar and
+sidebar are off-screen browsers fed synthesised key events, and the window
+itself gets the keys when neither holds focus. All three route to one
+`MainWindow::ExecuteCommand`, so a binding cannot work in one place and not
+another.
+
+The editing group is the exception, and is deliberately handled differently in
+each: on a page Chromium already implements it correctly and is left alone, while
+an off-screen surface routes it to `CefFrame` explicitly, because Blink's editing
+shortcuts do not fire reliably for synthesised events.
+
+Not yet bound: find-in-page and save-page, neither of which has anything behind
+it yet. Binding a key to a no-op is worse than leaving it free.
+
 ## Status
 
 Migration sequencing follows the project spec.
@@ -70,7 +105,8 @@ Migration sequencing follows the project spec.
 - [x] **3. First OSR chrome surface** — 32px topbar rendering off-screen, driven by a message-router bridge
 - [x] **4. Sidebar and corner masks** — glass shell, antialiased viewport corners
 - [x] **5. Real `CefBrowser` per tab** — tabs, navigation, reordering
-- [x] **6. `frame://` scheme handler** — newtab and unreachable; settings/history still to come
+- [x] **6. `frame://` scheme handler** — newtab, unreachable, and settings/history/downloads as pages awaiting their features
+- [x] **6a. Keyboard commands** — the full shortcut table, multi-window, incognito
 - [ ] 7. Privacy layer
 - [ ] 8. Floating overlays
 - [ ] 9. Extensions

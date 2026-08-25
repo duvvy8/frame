@@ -12,7 +12,9 @@
 #include "browser/corner_mask.h"
 #include "browser/favorites.h"
 #include "include/cef_browser.h"
+#include "include/cef_request_context.h"
 #include "shared/chrome_layout.h"
+#include "shared/shortcuts.h"
 
 namespace frame {
 
@@ -39,6 +41,11 @@ class MainWindow {
     int height = 800;
     bool no_activate = false;
     bool system_titlebar = false;
+    // An incognito window gets its own in-memory CefRequestContext, so its
+    // cookies, cache and storage never touch the profile on disk and are gone
+    // when the window closes. This is the isolation itself, not a flag that
+    // asks someone else to provide it.
+    bool incognito = false;
   };
 
   // One browser tab and the state the chrome needs to draw it.
@@ -64,6 +71,8 @@ class MainWindow {
   int client_width() const { return client_width_; }
   int client_height() const { return client_height_; }
   bool sidebar_open() const { return sidebar_open_; }
+  bool incognito() const { return options_.incognito; }
+  bool fullscreen() const { return fullscreen_; }
 
   // Where a surface sits, in PHYSICAL pixels — for blitting and positioning.
   CefRect SurfaceBounds(SurfaceId id) const;
@@ -86,11 +95,23 @@ class MainWindow {
   void Minimize();
   void ToggleMaximize();
   void CloseWindow();
+  void ToggleFullscreen();
   bool IsWindowMaximized() const;
   void SetDragExclusions(std::vector<layout::IntRect> regions);
 
   // --- chrome commands ---
   void ToggleSidebar();
+
+  // Runs one keyboard command against this window.
+  //
+  // The single entry point for every shortcut, wherever the key was observed:
+  // the page's native child window, an off-screen chrome surface, or this
+  // window's own message loop. Three input paths, one implementation — so a
+  // shortcut cannot work in one place and not another.
+  //
+  // Returns true if the command was consumed, which is what the caller passes
+  // back to CEF to stop the key reaching web content.
+  bool ExecuteCommand(shortcuts::Command command);
 
   // --- tabs ---
   int CreateTab(const std::string& url, bool activate);
@@ -100,12 +121,23 @@ class MainWindow {
   // the chrome draws, so this is the only place it changes.
   void ReorderTab(int tab_id, int new_index);
 
+  // Strip-relative selection, which is what the keyboard works in: the user
+  // presses Ctrl+2 for "the second tab", not for a tab id.
+  void SelectTabByIndex(int index);
+  void SelectAdjacentTab(int delta);
+  void CloseActiveTab();
+  void ReopenClosedTab();
+
   // --- navigation, applied to the active tab ---
   void Navigate(const std::string& input);
   void GoBack();
   void GoForward();
   void Reload();
+  void ReloadIgnoringCache();
   void StopLoad();
+  void Print();
+  void ShowDevTools();
+  void AdjustZoom(double steps);  // 0 resets
 
   // --- callbacks from PageClient ---
   void OnPageCreated(int tab_id, CefRefPtr<CefBrowser> browser);
@@ -130,6 +162,14 @@ class MainWindow {
   // unless it is told it has focus.
   void FocusSurface(SurfaceId id);
 
+  // Ctrl+L and friends. Gives the sidebar the keyboard, then asks it to put the
+  // caret in the address field and select what is there.
+  void FocusAddressBar();
+
+  // Bookmarks the active tab. Separate from AddFavorite() because the keyboard
+  // has no url to pass — it means "this page, whatever it is".
+  void BookmarkActiveTab();
+
   // The same payload that gets pushed, so a surface can ask for it on load
   // instead of waiting for a push that may already have happened.
   std::string BrowserStateJson() const { return BuildBrowserStateJson(); }
@@ -151,6 +191,7 @@ class MainWindow {
   void ApplyRoundedCorners();
   void PushWindowState();
   void PushShellMetrics();
+  void PushPageShellMetrics();
   void PushBrowserState();
   std::string BuildBrowserStateJson() const;
 
@@ -165,11 +206,23 @@ class MainWindow {
                           bool up);
   void ForwardMouseWheel(int screen_x, int screen_y, int delta, WPARAM wparam);
   void ForwardKeyEvent(UINT message, WPARAM wparam, LPARAM lparam);
+  bool TryNativeShortcut(WPARAM wparam);
   void SendMouseLeaveToAll();
   bool SurfaceAt(int x, int y, SurfaceId* id, int* local_x, int* local_y) const;
 
   // Page placement.
   void LayoutPages();
+  void UpdateCornerMasks();
+
+  // Reads one pixel out of a chrome surface's last rendered bitmap. The shell
+  // field is defined in CSS and nowhere else, so the only way for the browser
+  // process to learn a colour from it is to look at what was drawn.
+  bool SampleSurfacePixel(SurfaceId id,
+                          int local_dip_x,
+                          int local_dip_y,
+                          COLORREF* out) const;
+  void ShellCornerColors(const layout::ViewportRect& dip,
+                         COLORREF (&out)[CornerMask::kCornerCount]) const;
 
   int ToPhysical(int dip) const;
   int ToDip(int physical) const;
@@ -192,6 +245,22 @@ class MainWindow {
   bool sidebar_open_ = true;
   bool tracking_mouse_ = false;
   bool tracking_nc_mouse_ = false;
+
+  // Fullscreen is a window state, not a layout constant, so it lives here
+  // rather than in the shared geometry: chrome_layout.h describes the chrome
+  // Frame has, and in fullscreen there is none to describe.
+  bool fullscreen_ = false;
+  WINDOWPLACEMENT saved_placement_ = {};
+  LONG_PTR saved_style_ = 0;
+
+  // Non-null only for an incognito window. Pages created here are handed this
+  // context instead of the global one, which is what keeps their cookies and
+  // cache in memory and unshared.
+  CefRefPtr<CefRequestContext> request_context_;
+
+  // Ctrl+Shift+T, most recent first. Bounded, because an unbounded undo stack
+  // for tabs is a slow leak of every URL the user has ever closed.
+  std::vector<std::string> closed_urls_;
 
   // Physical dots per inch for the monitor this window is on. CEF makes the
   // process PER_MONITOR_AWARE, so Windows does not scale anything for us and

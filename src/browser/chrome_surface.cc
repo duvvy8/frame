@@ -14,6 +14,7 @@
 
 #include "browser/main_window.h"
 #include "shared/chrome_layout.h"
+#include "shared/shortcuts.h"
 
 namespace frame {
 namespace {
@@ -96,6 +97,7 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       json << "{\"topbarHeight\":" << layout::kTopbarHeight
            << ",\"sidebarWidth\":" << layout::kSidebarWidth
            << ",\"collapsedRailWidth\":" << layout::kCollapsedRailWidth
+           << ",\"shellInset\":" << layout::kShellInset
            << ",\"viewportRadius\":" << layout::kViewportRadius
            << ",\"bookmarksHeight\":" << layout::kBookmarksHeight
            << ",\"tabMinWidth\":" << layout::kTabMinWidth
@@ -272,6 +274,66 @@ ChromeSurface::ChromeSurface(MainWindow* window, SurfaceId id)
   router_ = CefMessageRouterBrowserSide::Create(config);
   query_handler_.reset(new SurfaceQueryHandler(window, id));
   router_->AddHandler(query_handler_.get(), /*first=*/false);
+}
+
+bool ChromeSurface::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                                  const CefKeyEvent& event,
+                                  CefEventHandle os_event,
+                                  bool* is_keyboard_shortcut) {
+  // RAWKEYDOWN only — see the matching comment in PageClient. One press
+  // arrives three times.
+  if (event.type != KEYEVENT_RAWKEYDOWN) {
+    return false;
+  }
+
+  shortcuts::Chord chord;
+  chord.key = event.windows_key_code;
+  chord.ctrl = (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0;
+  chord.shift = (event.modifiers & EVENTFLAG_SHIFT_DOWN) != 0;
+  chord.alt = (event.modifiers & EVENTFLAG_ALT_DOWN) != 0;
+
+  const shortcuts::Command command = shortcuts::Match(chord);
+  if (command == shortcuts::Command::kNone) {
+    return false;
+  }
+
+  if (shortcuts::IsEditCommand(command)) {
+    CefRefPtr<CefFrame> frame = browser ? browser->GetFocusedFrame() : nullptr;
+    if (!frame) {
+      return false;
+    }
+    switch (command) {
+      case shortcuts::Command::kCopy:
+        frame->Copy();
+        return true;
+      case shortcuts::Command::kCut:
+        frame->Cut();
+        return true;
+      case shortcuts::Command::kPaste:
+        frame->Paste();
+        return true;
+      case shortcuts::Command::kSelectAll:
+        frame->SelectAll();
+        return true;
+      case shortcuts::Command::kUndo:
+        frame->Undo();
+        return true;
+      case shortcuts::Command::kRedo:
+        frame->Redo();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  // Escape while typing in the address bar belongs to the surface, which uses
+  // it to abandon the edit and restore the real URL. Only the surface knows
+  // whether an edit is in progress, so the window never gets a look at it.
+  if (command == shortcuts::Command::kStop && id_ == SurfaceId::kSidebar) {
+    return false;
+  }
+
+  return window_ && window_->ExecuteCommand(command);
 }
 
 bool ChromeSurface::GetScreenInfo(CefRefPtr<CefBrowser> browser,

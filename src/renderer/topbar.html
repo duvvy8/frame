@@ -54,6 +54,21 @@
       </button>
     </div>
 
+    <!-- Shown only in an incognito window. A private window that looks exactly
+         like an ordinary one is worse than no private window at all: the whole
+         value of it depends on knowing which one you are typing into. Hidden
+         entirely otherwise, so it costs an ordinary window no space. -->
+    <div class="private-badge" id="private-badge" hidden>
+      <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+        <path d="M8 2.6 C5.4 2.6 3.2 4.7 2 8 c1.2 3.3 3.4 5.4 6 5.4
+                 s4.8-2.1 6-5.4 c-1.2-3.3-3.4-5.4-6-5.4 Z"
+              fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M3 13 L13 3" stroke="currentColor" stroke-width="1.2"
+              stroke-linecap="round"/>
+      </svg>
+      <span>Private</span>
+    </div>
+
     <!-- Tabs are rendered from the state the browser process pushes. This
          markup is never the source of truth for what is open. -->
     <div class="tabs" id="tabs">
@@ -322,6 +337,11 @@
       }
 
       FrameShell.onBrowserState = function (state) {
+        // Never changes for the life of a window, but it rides along with the
+        // state push rather than needing a channel of its own — and applying it
+        // here means it is correct from the first push, before any tab exists.
+        document.getElementById('private-badge').hidden = !state.incognito;
+
         // Rebuilding the strip mid-drag would destroy the element being
         // dragged. A page finishing its load during a drag is entirely
         // normal, so hold the update until the drag ends.

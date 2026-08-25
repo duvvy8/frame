@@ -7,6 +7,15 @@
   <link rel="stylesheet" href="newtab.css">
 </head>
 <body class="newtab">
+  <!-- The drifting light. Purely atmospheric, and masked to zero before it
+       reaches any edge of the viewport, so it can never disagree with the
+       static field the chrome shares. See newtab.css. -->
+  <div class="aurora" aria-hidden="true">
+    <span class="aurora-veil aurora-veil-a"></span>
+    <span class="aurora-veil aurora-veil-b"></span>
+    <span class="aurora-veil aurora-veil-c"></span>
+  </div>
+
   <main class="stage">
     <div class="wordmark">
       <img class="wordmark-mark" src="logo.svg" width="52" height="52" alt="">

@@ -8,10 +8,13 @@
 #include <sstream>
 #include <string>
 
+#include "browser/frame_scheme.h"
 #include "browser/page_client.h"
+#include "browser/window_list.h"
 #include "include/cef_app.h"
 #include "include/cef_task.h"
 #include "shared/chrome_layout.h"
+#include "shared/shortcuts.h"
 #include "shared/url_util.h"
 
 // Present in the Windows 11 SDK, defined defensively so the build does not
@@ -143,6 +146,19 @@ bool MainWindow::Create(HINSTANCE instance) {
   ApplyRoundedCorners();
   corner_mask_.Create(hwnd_, instance);
 
+  if (options_.incognito) {
+    // An empty cache_path is what makes the context in-memory. Nothing this
+    // window loads is written to the profile, and the whole context is
+    // discarded when the last reference to it goes with the window.
+    CefRequestContextSettings context_settings;
+    // The handler is what teaches this context about frame://. Without it the
+    // window opens on ERR_UNKNOWN_URL_SCHEME instead of the new tab page,
+    // because scheme handler factories are per-context and the one installed at
+    // startup belongs to the global context only.
+    request_context_ = CefRequestContext::CreateContext(
+        context_settings, CreateSchemeContextHandler());
+  }
+
   const std::string profile = ProfileDir();
   favorites_.reset(new FavoritesStore(profile + "\\favorites.txt"));
   favorites_->Load();
@@ -225,6 +241,13 @@ void MainWindow::UpdateDpi() {
 }
 
 layout::ViewportRect MainWindow::ViewportDip() const {
+  if (fullscreen_) {
+    // The whole client area, square-cornered. Not expressed through
+    // ViewportBounds(): that function is a verified 1:1 port of the Electron
+    // build's geometry, and fullscreen is a state the original never had.
+    // Teaching it a new case would break the parity it exists to guarantee.
+    return {0, 0, ClientWidthDip(), ClientHeightDip(), 0};
+  }
   // Computed in DIPs so the ported geometry stays exactly the function that
   // was verified against the original, rather than a scaled variant of it.
   return layout::ViewportBounds({static_cast<double>(ClientWidthDip()),
@@ -293,9 +316,230 @@ void MainWindow::ToggleSidebar() {
   // The sidebar's own width changed, and the viewport moved with it.
   NotifySurfacesResized();
   PushShellMetrics();
+  PushPageShellMetrics();
   LayoutPages();
   ::InvalidateRect(hwnd_, nullptr, FALSE);
   PushBrowserState();
+}
+
+void MainWindow::ToggleFullscreen() {
+  if (!hwnd_) {
+    return;
+  }
+
+  if (!fullscreen_) {
+    // Remember enough to put the window back exactly where it was — the style
+    // as well as the placement, or restoring lands a styleless window at the
+    // right coordinates.
+    saved_placement_.length = sizeof(saved_placement_);
+    ::GetWindowPlacement(hwnd_, &saved_placement_);
+    saved_style_ = ::GetWindowLongPtr(hwnd_, GWL_STYLE);
+
+    MONITORINFO monitor = {sizeof(monitor)};
+    if (!::GetMonitorInfo(::MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST),
+                          &monitor)) {
+      return;
+    }
+
+    fullscreen_ = true;
+    // rcMonitor, not rcWork: fullscreen covers the taskbar too.
+    ::SetWindowLongPtr(hwnd_, GWL_STYLE, saved_style_ & ~WS_OVERLAPPEDWINDOW);
+    ::SetWindowPos(hwnd_, HWND_TOP, monitor.rcMonitor.left, monitor.rcMonitor.top,
+                   monitor.rcMonitor.right - monitor.rcMonitor.left,
+                   monitor.rcMonitor.bottom - monitor.rcMonitor.top,
+                   SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+  } else {
+    fullscreen_ = false;
+    ::SetWindowLongPtr(hwnd_, GWL_STYLE, saved_style_);
+    ::SetWindowPlacement(hwnd_, &saved_placement_);
+    ::SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER |
+                       SWP_FRAMECHANGED | SWP_NOACTIVATE);
+  }
+
+  // The chrome does not shrink — it stops being drawn and stops being hit-
+  // tested, and the page takes the whole client area. Keeping the surfaces at
+  // their real size means leaving fullscreen needs no re-render, so there is no
+  // blank flash on the way back out.
+  NotifySurfacesResized();
+  PushShellMetrics();
+  LayoutPages();
+  ::InvalidateRect(hwnd_, nullptr, FALSE);
+}
+
+void MainWindow::FocusAddressBar() {
+  if (fullscreen_) {
+    // There is no address bar on screen to focus.
+    return;
+  }
+  if (!sidebar_open_) {
+    ToggleSidebar();
+  }
+  FocusSurface(SurfaceId::kSidebar);
+
+  Layer& sidebar = layer(SurfaceId::kSidebar);
+  if (!sidebar.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = sidebar.browser->GetMainFrame();
+  if (main_frame) {
+    main_frame->ExecuteJavaScript(
+        "window.FrameShell && FrameShell.onFocusAddress();",
+        main_frame->GetURL(), 0);
+  }
+}
+
+void MainWindow::BookmarkActiveTab() {
+  const Tab* active = FindTab(active_tab_id_);
+  if (!active || active->url.empty() ||
+      frame::url::StartsWith(active->url, "frame://")) {
+    // Frame's own pages are always reachable; pinning one is clutter.
+    return;
+  }
+  AddFavorite(active->url, active->title);
+}
+
+bool MainWindow::ExecuteCommand(shortcuts::Command command) {
+  using Command = shortcuts::Command;
+
+  const int tab_index = shortcuts::SelectedTabIndex(command);
+  if (tab_index >= 0) {
+    SelectTabByIndex(tab_index);
+    return true;
+  }
+
+  switch (command) {
+    case Command::kNone:
+      return false;
+
+    // --- tabs ---
+    case Command::kNewTab:
+      CreateTab(std::string(), /*activate=*/true);
+      return true;
+    case Command::kCloseTab:
+      CloseActiveTab();
+      return true;
+    case Command::kReopenTab:
+      ReopenClosedTab();
+      return true;
+    case Command::kNextTab:
+      SelectAdjacentTab(1);
+      return true;
+    case Command::kPrevTab:
+      SelectAdjacentTab(-1);
+      return true;
+    case Command::kSelectLastTab:
+      SelectTabByIndex(static_cast<int>(tabs_.size()) - 1);
+      return true;
+
+    // --- windows ---
+    case Command::kNewWindow:
+    case Command::kNewIncognitoWindow: {
+      Options fresh;
+      fresh.incognito = command == Command::kNewIncognitoWindow;
+      // Offset from this window so the new one does not land exactly on top of
+      // it and look like nothing happened.
+      RECT bounds = {};
+      if (::GetWindowRect(hwnd_, &bounds)) {
+        fresh.x = bounds.left + ToPhysical(28);
+        fresh.y = bounds.top + ToPhysical(28);
+        fresh.width = bounds.right - bounds.left;
+        fresh.height = bounds.bottom - bounds.top;
+      }
+      fresh.system_titlebar = options_.system_titlebar;
+      if (MainWindow* opened = windows::Open(fresh)) {
+        opened->CreateTab(frame::url::kNewTabPage, /*activate=*/true);
+      }
+      return true;
+    }
+    case Command::kCloseWindow:
+      CloseWindow();
+      return true;
+    case Command::kToggleFullscreen:
+      ToggleFullscreen();
+      return true;
+
+    // --- navigation ---
+    case Command::kBack:
+      GoBack();
+      return true;
+    case Command::kForward:
+      GoForward();
+      return true;
+    case Command::kReload:
+      Reload();
+      return true;
+    case Command::kReloadHard:
+      ReloadIgnoringCache();
+      return true;
+    case Command::kStop:
+      // Escape is only ours while something is actually loading. Otherwise it
+      // belongs to the page, which uses it to dismiss its own dialogs.
+      if (const Tab* active = FindTab(active_tab_id_)) {
+        if (active->loading) {
+          StopLoad();
+          return true;
+        }
+      }
+      return false;
+    case Command::kHomePage:
+      Navigate(frame::url::kNewTabPage);
+      return true;
+
+    // --- chrome ---
+    case Command::kFocusAddress:
+      FocusAddressBar();
+      return true;
+    case Command::kToggleSidebar:
+      ToggleSidebar();
+      return true;
+    case Command::kBookmarkPage:
+      BookmarkActiveTab();
+      return true;
+    case Command::kOpenDownloads:
+      CreateTab("frame://downloads", /*activate=*/true);
+      return true;
+    case Command::kOpenHistory:
+      CreateTab("frame://history", /*activate=*/true);
+      return true;
+    case Command::kOpenSettings:
+      CreateTab("frame://settings", /*activate=*/true);
+      return true;
+    case Command::kDevTools:
+      ShowDevTools();
+      return true;
+    case Command::kPrint:
+      Print();
+      return true;
+
+    // --- zoom ---
+    case Command::kZoomIn:
+      AdjustZoom(1.0);
+      return true;
+    case Command::kZoomOut:
+      AdjustZoom(-1.0);
+      return true;
+    case Command::kZoomReset:
+      AdjustZoom(0.0);
+      return true;
+
+    // --- editing ---
+    //
+    // Never handled here. On a page Chromium already implements all of these
+    // natively, and the off-screen chrome surfaces route them straight to
+    // CefFrame in ChromeSurface::OnPreKeyEvent, where the target frame is
+    // known. Claiming them at window level would break both.
+    case Command::kCopy:
+    case Command::kCut:
+    case Command::kPaste:
+    case Command::kSelectAll:
+    case Command::kUndo:
+    case Command::kRedo:
+      return false;
+
+    default:
+      return false;
+  }
 }
 
 // --- tabs -----------------------------------------------------------------
@@ -354,8 +598,10 @@ int MainWindow::CreateTab(const std::string& url, bool activate) {
   settings.background_color = CefColorSetARGB(255, 0, 0, 0);
 
   CefRefPtr<PageClient> client(new PageClient(this, tab.id));
+  // request_context_ is null for an ordinary window, which means the global
+  // context — exactly the behaviour before incognito existed.
   CefBrowserHost::CreateBrowser(window_info, client, NormalizeUrl(tab.url),
-                                settings, nullptr, nullptr);
+                                settings, nullptr, request_context_);
 
   PushBrowserState();
   return tab.id;
@@ -366,6 +612,30 @@ void MainWindow::CloseTab(int tab_id) {
   if (!tab) {
     return;
   }
+
+  // Remembered here rather than in OnPageClosed, which also runs when the whole
+  // window is being torn down — reopening tabs into a window that is going away
+  // is not something to offer. An incognito window remembers nothing at all:
+  // that is the entire point of it.
+  //
+  // StartsWith, not equality. A loaded page reports its URL back through
+  // OnAddressChange in Chromium's normalised form, which for a standard scheme
+  // means a trailing slash — so the tab's url is "frame://newtab/" and never
+  // equals the "frame://newtab" constant it was opened with. Comparing them
+  // directly silently recorded every new tab page, and Ctrl+Shift+T reopened
+  // blank tabs while pushing the URLs actually worth restoring off the stack.
+  const bool is_throwaway =
+      frame::url::StartsWith(tab->url, frame::url::kNewTabPage) ||
+      frame::url::StartsWith(tab->url, frame::url::kBlankPage);
+
+  if (!options_.incognito && !tab->url.empty() && !is_throwaway) {
+    closed_urls_.insert(closed_urls_.begin(), tab->url);
+    constexpr size_t kMaxClosedUrls = 16;
+    if (closed_urls_.size() > kMaxClosedUrls) {
+      closed_urls_.resize(kMaxClosedUrls);
+    }
+  }
+
   if (tab->browser) {
     // OnPageClosed finishes the bookkeeping once CEF has actually torn it down.
     tab->browser->GetHost()->CloseBrowser(/*force_close=*/true);
@@ -388,6 +658,52 @@ void MainWindow::SelectTab(int tab_id) {
   if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
     browser->GetHost()->SetFocus(true);
   }
+}
+
+void MainWindow::SelectTabByIndex(int index) {
+  // Silently ignored when the strip is shorter than the number pressed, which
+  // is what every other browser does: Ctrl+6 with four tabs open is a
+  // near-miss, not a request to do something else.
+  if (index < 0 || static_cast<size_t>(index) >= tabs_.size()) {
+    return;
+  }
+  SelectTab(tabs_[static_cast<size_t>(index)].id);
+}
+
+void MainWindow::SelectAdjacentTab(int delta) {
+  if (tabs_.size() < 2) {
+    return;
+  }
+  size_t current = 0;
+  for (size_t i = 0; i < tabs_.size(); ++i) {
+    if (tabs_[i].id == active_tab_id_) {
+      current = i;
+      break;
+    }
+  }
+  // Wraps in both directions. Ctrl+Tab on the last tab returning to the first
+  // is the behaviour everywhere else, and stopping at the end feels broken.
+  const int count = static_cast<int>(tabs_.size());
+  int next = (static_cast<int>(current) + delta) % count;
+  if (next < 0) {
+    next += count;
+  }
+  SelectTab(tabs_[static_cast<size_t>(next)].id);
+}
+
+void MainWindow::CloseActiveTab() {
+  if (active_tab_id_ != 0) {
+    CloseTab(active_tab_id_);
+  }
+}
+
+void MainWindow::ReopenClosedTab() {
+  if (closed_urls_.empty()) {
+    return;
+  }
+  const std::string url = closed_urls_.front();
+  closed_urls_.erase(closed_urls_.begin());
+  CreateTab(url, /*activate=*/true);
 }
 
 void MainWindow::ReorderTab(int tab_id, int new_index) {
@@ -444,15 +760,101 @@ void MainWindow::LayoutPages() {
   // The page keeps its square corners and the masks cover them. Clipping the
   // page with SetWindowRgn instead produced a visibly stair-stepped curve,
   // because an HRGN is a binary mask with no antialiasing.
-  if (ActiveBrowser()) {
-    corner_mask_.Layout(viewport, kShellBackground);
-    if (Tab* active = ActiveTab()) {
-      if (active->browser) {
-        corner_mask_.RaiseAbove(active->browser->GetHost()->GetWindowHandle());
-      }
-    }
-  } else {
+  //
+  // In fullscreen there is no rounding to fake, and a mask left on screen would
+  // be four grey blocks over the corners of the video.
+  UpdateCornerMasks();
+}
+
+void MainWindow::UpdateCornerMasks() {
+  if (fullscreen_ || !ActiveBrowser()) {
     corner_mask_.Hide();
+    return;
+  }
+
+  const layout::ViewportRect dip = ViewportDip();
+  const layout::ViewportRect viewport = {
+      ToPhysical(dip.x), ToPhysical(dip.y), ToPhysical(dip.width),
+      ToPhysical(dip.height), ToPhysical(dip.radius)};
+
+  COLORREF corner_colors[CornerMask::kCornerCount];
+  ShellCornerColors(dip, corner_colors);
+  corner_mask_.Layout(viewport, corner_colors);
+
+  if (Tab* active = ActiveTab()) {
+    if (active->browser) {
+      corner_mask_.RaiseAbove(active->browser->GetHost()->GetWindowHandle());
+    }
+  }
+}
+
+bool MainWindow::SampleSurfacePixel(SurfaceId id,
+                                    int local_dip_x,
+                                    int local_dip_y,
+                                    COLORREF* out) const {
+  const Layer& source = layer(id);
+  if (source.pixels.empty() || source.width <= 0 || source.height <= 0) {
+    return false;
+  }
+  // The stored bitmap is in physical pixels; the caller is working in DIPs,
+  // like the rest of the layout code.
+  const float scale = DeviceScale();
+  const int x = static_cast<int>(local_dip_x * scale);
+  const int y = static_cast<int>(local_dip_y * scale);
+  if (x < 0 || y < 0 || x >= source.width || y >= source.height) {
+    return false;
+  }
+  const size_t index =
+      (static_cast<size_t>(y) * static_cast<size_t>(source.width) +
+       static_cast<size_t>(x)) * 4;
+  if (index + 3 >= source.pixels.size()) {
+    return false;
+  }
+  // BGRA, as OnPaint delivers it.
+  *out = RGB(source.pixels[index + 2], source.pixels[index + 1],
+             source.pixels[index]);
+  return true;
+}
+
+void MainWindow::ShellCornerColors(
+    const layout::ViewportRect& dip,
+    COLORREF (&out)[CornerMask::kCornerCount]) const {
+  // kShellBackground is the right answer for three of the four corners, and it
+  // is right by construction rather than by luck: shell.css settles the field
+  // back to exactly --bg along the window's right and bottom edges, because the
+  // eight-pixel margin the window paints there with a GDI brush cannot hold a
+  // gradient. Every corner touching those edges is therefore already flat.
+  for (COLORREF& color : out) {
+    color = kShellBackground;
+  }
+
+  // The top-left corner is the exception, and the only one that ever showed a
+  // black wedge: it sits inland, in the brightest part of the field.
+  //
+  // The colour is READ from the sidebar's rendered pixels rather than computed
+  // here. The field is defined once, in CSS, and re-deriving it in C++ would
+  // make this the second place that decides what the shell looks like — so the
+  // two would drift the first time a colour changed. Sampling cannot drift.
+  //
+  // The probe sits in the sidebar's right margin, a few pixels in from its edge
+  // and clear of the address pill and the favourites, so what comes back is the
+  // field and not a control that happens to be in the way.
+  const CefRect sidebar = SurfaceBoundsDip(SurfaceId::kSidebar);
+  if (sidebar.width < 6 || sidebar.height < 12) {
+    return;
+  }
+  constexpr int kProbeInset = 4;
+  const int probe_x = sidebar.width - kProbeInset;
+
+  COLORREF sampled = 0;
+  if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
+                         (dip.y - sidebar.y) + kProbeInset, &sampled)) {
+    out[0] = sampled;  // CornerMask::kTopLeft
+  }
+  if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
+                         (dip.y + dip.height - sidebar.y) - kProbeInset,
+                         &sampled)) {
+    out[2] = sampled;  // CornerMask::kBottomLeft
   }
 }
 
@@ -486,10 +888,55 @@ void MainWindow::Reload() {
   }
 }
 
+void MainWindow::ReloadIgnoringCache() {
+  if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
+    browser->ReloadIgnoreCache();
+  }
+}
+
 void MainWindow::StopLoad() {
   if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
     browser->StopLoad();
   }
+}
+
+void MainWindow::Print() {
+  if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
+    browser->GetHost()->Print();
+  }
+}
+
+void MainWindow::ShowDevTools() {
+  CefRefPtr<CefBrowser> browser = ActiveBrowser();
+  if (!browser) {
+    return;
+  }
+  // A plain popup window. DevTools is a developer surface, not part of Frame's
+  // chrome, so it deliberately does not get the frameless treatment.
+  CefWindowInfo window_info;
+  window_info.SetAsPopup(hwnd_, "Frame DevTools");
+  browser->GetHost()->ShowDevTools(window_info, /*client=*/nullptr,
+                                   CefBrowserSettings(), CefPoint());
+}
+
+void MainWindow::AdjustZoom(double steps) {
+  CefRefPtr<CefBrowser> browser = ActiveBrowser();
+  if (!browser) {
+    return;
+  }
+  if (steps == 0.0) {
+    browser->GetHost()->SetZoomLevel(0.0);
+    return;
+  }
+  // Chromium's zoom "level" is logarithmic — factor = 1.2^level — so a fixed
+  // step is a fixed PERCENTAGE change at every size, which is what makes
+  // repeated presses feel even. Clamped to roughly 25%..500%, matching the ends
+  // of Chrome's own range.
+  constexpr double kStep = 0.5;
+  constexpr double kMinLevel = -7.6;
+  constexpr double kMaxLevel = 8.8;
+  const double level = browser->GetHost()->GetZoomLevel() + steps * kStep;
+  browser->GetHost()->SetZoomLevel(std::max(kMinLevel, std::min(kMaxLevel, level)));
 }
 
 // --- page callbacks -------------------------------------------------------
@@ -550,6 +997,13 @@ void MainWindow::OnPageLoadingChanged(int tab_id,
   tab->loading = loading;
   tab->can_go_back = can_go_back;
   tab->can_go_forward = can_go_forward;
+
+  // A frame:// page that finished loading while the sidebar was collapsed has
+  // the open-sidebar fallback baked into its stylesheet and needs correcting
+  // once, here. Nothing is pushed to third-party pages.
+  if (!loading && !sidebar_open_) {
+    PushPageShellMetrics();
+  }
   PushBrowserState();
 }
 
@@ -657,6 +1111,7 @@ std::string MainWindow::BuildBrowserStateJson() const {
   std::ostringstream json;
   json << "{\"activeTabId\":" << active_tab_id_
        << ",\"sidebarOpen\":" << (sidebar_open_ ? "true" : "false")
+       << ",\"incognito\":" << (options_.incognito ? "true" : "false")
        << ",\"canGoBack\":"
        << (active && active->can_go_back ? "true" : "false")
        << ",\"canGoForward\":"
@@ -708,6 +1163,38 @@ void MainWindow::PushBrowserState() {
     const std::string js =
         "window.FrameShell && FrameShell.onBrowserState(" + state + ");";
     main_frame->ExecuteJavaScript(js, main_frame->GetURL(), 0);
+  }
+}
+
+void MainWindow::PushPageShellMetrics() {
+  // Frame's own pages anchor the shell field to the window, the same way the
+  // chrome surfaces do, and derive everything they need from their own viewport
+  // plus the layout constants — everything except this. Collapsing the sidebar
+  // moves the page's origin, and no amount of CSS can see that happen.
+  const int shell_x =
+      sidebar_open_ ? layout::kSidebarWidth : layout::kCollapsedRailWidth;
+
+  for (Tab& tab : tabs_) {
+    if (!tab.browser) {
+      continue;
+    }
+    // frame:// ONLY. Running script in a site's page would be a privacy
+    // problem and a compatibility one, and no site needs to know where Frame
+    // put its sidebar.
+    if (!frame::url::StartsWith(tab.url, "frame://")) {
+      continue;
+    }
+    CefRefPtr<CefFrame> main_frame = tab.browser->GetMainFrame();
+    if (!main_frame) {
+      continue;
+    }
+    // An inline property on the root element, which outranks the stylesheet's
+    // own fallback and feeds back into the calc() that derives the rest.
+    std::ostringstream js;
+    js << "document.documentElement.style.setProperty('--shell-x','" << shell_x
+       << "px');document.documentElement.style.setProperty('--shell-y','"
+       << layout::kTopbarHeight << "px');";
+    main_frame->ExecuteJavaScript(js.str(), main_frame->GetURL(), 0);
   }
 }
 
@@ -778,6 +1265,12 @@ LRESULT MainWindow::HandleNcCalcSize(WPARAM wparam, LPARAM lparam) {
 }
 
 LRESULT MainWindow::HitTest(POINT screen_point) {
+  if (fullscreen_) {
+    // No caption to drag by and no border to resize from. Without this the
+    // window can still be dragged off the monitor by its invisible top strip.
+    return HTCLIENT;
+  }
+
   POINT raw = screen_point;
   ::ScreenToClient(hwnd_, &raw);
 
@@ -893,8 +1386,12 @@ void MainWindow::Paint(HDC hdc) {
     }
   }
 
-  PaintLayer(hdc, SurfaceId::kTopbar);
-  PaintLayer(hdc, SurfaceId::kSidebar);
+  // In fullscreen the surfaces keep their pixels but are simply not composited,
+  // which is what makes coming back out instant.
+  if (!fullscreen_) {
+    PaintLayer(hdc, SurfaceId::kTopbar);
+    PaintLayer(hdc, SurfaceId::kSidebar);
+  }
 }
 
 void MainWindow::OnSurfacePaint(SurfaceId id,
@@ -909,6 +1406,18 @@ void MainWindow::OnSurfacePaint(SurfaceId id,
   memcpy(target.pixels.data(), buffer, bytes);
   target.width = width;
   target.height = height;
+
+  // The corner masks take their colour from these pixels, and the first layout
+  // pass runs before the sidebar has ever painted — so without this the
+  // top-left mask would keep the fallback shell colour, which is the black
+  // wedge it exists to avoid, until something else forced a re-layout.
+  //
+  // Cheap to repeat: CornerMask only rebuilds a bitmap when that corner's
+  // colour actually changed, and the sidebar repaints on interaction, not on a
+  // clock.
+  if (id == SurfaceId::kSidebar) {
+    UpdateCornerMasks();
+  }
 
   if (hwnd_) {
     const CefRect bounds = SurfaceBounds(id);
@@ -933,6 +1442,13 @@ bool MainWindow::SurfaceAt(int x,
                            SurfaceId* id,
                            int* local_x,
                            int* local_y) const {
+  // Nothing is on screen to hit in fullscreen, so nothing may claim the
+  // pointer — otherwise the invisible topbar still swallows clicks along the
+  // top edge of a video.
+  if (fullscreen_) {
+    return false;
+  }
+
   // Works in DIPs and returns DIP-local coordinates: that is the space the
   // surface lays out in, so it is the space CEF expects mouse events in.
   const int dip_x = ToDip(x);
@@ -1040,6 +1556,28 @@ void MainWindow::ForwardMouseWheel(int screen_x,
   event.y = local_y;
   event.modifiers = MouseModifiers(wparam);
   layer(id).browser->GetHost()->SendMouseWheelEvent(event, /*deltaX=*/0, delta);
+}
+
+bool MainWindow::TryNativeShortcut(WPARAM wparam) {
+  // Only when neither the page nor a chrome surface owns the keyboard: both of
+  // those reach ExecuteCommand through OnPreKeyEvent instead, and a chord
+  // handled in two places fires twice.
+  if (focused_surface_ != SurfaceId::kCount) {
+    return false;
+  }
+
+  shortcuts::Chord chord;
+  chord.key = static_cast<int>(wparam);
+  chord.ctrl = ::GetKeyState(VK_CONTROL) < 0;
+  chord.shift = ::GetKeyState(VK_SHIFT) < 0;
+  chord.alt = ::GetKeyState(VK_MENU) < 0;
+
+  const shortcuts::Command command = shortcuts::Match(chord);
+  if (command == shortcuts::Command::kNone ||
+      shortcuts::IsEditCommand(command)) {
+    return false;
+  }
+  return ExecuteCommand(command);
 }
 
 void MainWindow::ForwardKeyEvent(UINT message, WPARAM wparam, LPARAM lparam) {
@@ -1249,9 +1787,19 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       return 0;
 
     case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+      // Last of the three shortcut entry points, for the window that has the
+      // native focus while neither the page nor a chrome surface holds the
+      // keyboard — briefly true at startup, and after the page's child window
+      // gives focus back. The other two are the OnPreKeyEvent overrides.
+      if (TryNativeShortcut(wparam)) {
+        return 0;
+      }
+      ForwardKeyEvent(message, wparam, lparam);
+      return 0;
+
     case WM_KEYUP:
     case WM_CHAR:
-    case WM_SYSKEYDOWN:
     case WM_SYSKEYUP:
     case WM_SYSCHAR:
       ForwardKeyEvent(message, wparam, lparam);
@@ -1274,7 +1822,11 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       break;
 
     case WM_DESTROY:
-      CefQuitMessageLoop();
+      // The window list decides whether this was the last window and therefore
+      // whether the application ends. Quitting the message loop from here
+      // directly is what made a second window impossible.
+      ::SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+      windows::OnWindowDestroyed(this);
       return 0;
 
     default:

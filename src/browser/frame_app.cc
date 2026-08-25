@@ -8,6 +8,7 @@
 #include "browser/chrome_surface.h"
 #include "browser/frame_scheme.h"
 #include "browser/main_window.h"
+#include "browser/window_list.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
 #include "shared/chrome_layout.h"
@@ -15,35 +16,12 @@
 namespace frame {
 namespace {
 
-// Chrome surfaces are served over frame:// like every other internal page, so
-// all of Frame's own UI shares one trusted origin. Over file:// they were a
-// opaque origin, which among other things left the clipboard API unavailable.
-std::string SurfaceUrl(const char* host) {
-  return std::string("frame://") + host;
-}
-
 int SwitchAsInt(CefRefPtr<CefCommandLine> cmd, const char* name, int fallback) {
   if (!cmd->HasSwitch(name)) {
     return fallback;
   }
   const std::string value = cmd->GetSwitchValue(name).ToString();
   return value.empty() ? fallback : std::atoi(value.c_str());
-}
-
-void CreateSurface(MainWindow* window, SurfaceId id, const char* host) {
-  CefRefPtr<ChromeSurface> surface(new ChromeSurface(window, id));
-
-  CefWindowInfo window_info;
-  // Off-screen rendering: CEF hands us pixels instead of owning a child HWND,
-  // which is what lets the native window composite the surfaces itself.
-  window_info.SetAsWindowless(window->hwnd());
-
-  CefBrowserSettings settings;
-  settings.windowless_frame_rate = 60;
-  settings.background_color = CefColorSetARGB(255, 11, 11, 13);
-
-  CefBrowserHost::CreateBrowser(window_info, surface, SurfaceUrl(host),
-                                settings, nullptr, nullptr);
 }
 
 }  // namespace
@@ -149,22 +127,21 @@ void FrameApp::OnContextInitialized() {
   // gives back a window that can always be moved, resized and closed.
   options.system_titlebar = cmd->HasSwitch("system-titlebar");
 
-  main_window_.reset(new MainWindow(options));
-  if (!main_window_->Create(::GetModuleHandleW(nullptr))) {
+  options.incognito = cmd->HasSwitch("incognito");
+
+  // The window list owns every window from here on, including the first: making
+  // the original a special case owned by the application is what would leave
+  // Ctrl+N with nowhere to put a second one.
+  MainWindow* window = windows::Open(options);
+  if (!window) {
     return;
   }
-
-  // Each chrome surface is its own off-screen browser, composited by the
-  // window. Independent surfaces mean one can repaint without touching the
-  // others.
-  CreateSurface(main_window_.get(), SurfaceId::kTopbar, "topbar");
-  CreateSurface(main_window_.get(), SurfaceId::kSidebar, "sidebar");
 
   // Frame's own start page, served over frame:// from the flat allowlist.
   const std::string start_url = cmd->HasSwitch("url")
                                     ? cmd->GetSwitchValue("url").ToString()
                                     : "frame://newtab";
-  main_window_->CreateTab(start_url, /*activate=*/true);
+  window->CreateTab(start_url, /*activate=*/true);
 }
 
 void FrameApp::OnWebKitInitialized() {

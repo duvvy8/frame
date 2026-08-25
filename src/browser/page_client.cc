@@ -1,8 +1,46 @@
 #include "browser/page_client.h"
 
 #include "browser/main_window.h"
+#include "shared/shortcuts.h"
 
 namespace frame {
+
+bool PageClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                               const CefKeyEvent& event,
+                               CefEventHandle os_event,
+                               bool* is_keyboard_shortcut) {
+  if (!window_) {
+    return false;
+  }
+
+  // RAWKEYDOWN only. CEF delivers RAWKEYDOWN, then KEYDOWN, then CHAR for a
+  // single press, so acting on more than one of them runs the command up to
+  // three times — which for Ctrl+T means three new tabs.
+  if (event.type != KEYEVENT_RAWKEYDOWN) {
+    return false;
+  }
+
+  shortcuts::Chord chord;
+  chord.key = event.windows_key_code;
+  chord.ctrl = (event.modifiers & EVENTFLAG_CONTROL_DOWN) != 0;
+  chord.shift = (event.modifiers & EVENTFLAG_SHIFT_DOWN) != 0;
+  chord.alt = (event.modifiers & EVENTFLAG_ALT_DOWN) != 0;
+
+  const shortcuts::Command command = shortcuts::Match(chord);
+
+  // Copy, paste, undo and friends are left to Chromium. It already implements
+  // them correctly for real page content — including inside text fields, cross
+  // frame, and for the selection model the page actually has — and replacing
+  // that with a CefFrame call would be a downgrade.
+  if (command == shortcuts::Command::kNone ||
+      shortcuts::IsEditCommand(command)) {
+    return false;
+  }
+
+  // Returning true stops the key reaching web content, so a page cannot see —
+  // or preventDefault() — the chord that closes its own tab.
+  return window_->ExecuteCommand(command);
+}
 
 PageClient::PageClient(MainWindow* window, int tab_id)
     : window_(window), tab_id_(tab_id) {}

@@ -1,0 +1,96 @@
+/* Frame — the internal pages behind Ctrl+I, Ctrl+H and Ctrl+J.
+ *
+ * These are real pages with no feature behind them yet, and they say so. The
+ * alternative was to leave the shortcuts unbound, which is worse: a browser
+ * where Ctrl+J does nothing at all reads as broken, whereas one that opens a
+ * page naming what is coming reads as unfinished, which is what it is.
+ *
+ * They share the shell field with every other surface, so they are anchored to
+ * the window exactly as newtab.css explains.
+ */
+
+:root {
+  --shell-x: var(--sidebar-width);
+  --shell-y: var(--topbar-height);
+  --win-w: calc(100vw + var(--shell-x) + var(--shell-inset));
+  --win-h: calc(100vh + var(--shell-y) + var(--shell-inset));
+}
+
+.internal {
+  user-select: none;
+  overflow-y: auto;
+}
+
+.sheet {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: clamp(48px, 9vh, 104px) 32px 64px;
+}
+
+.sheet-eyebrow {
+  font-family: var(--font-brand);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .30em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 14px;
+}
+
+.sheet-title {
+  font-family: var(--font-brand);
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 300;
+  letter-spacing: .01em;
+  line-height: 1.05;
+  margin: 0 0 18px;
+  color: var(--text);
+}
+
+.sheet-lede {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-dim);
+  margin: 0 0 34px;
+  max-width: 46ch;
+}
+
+.sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sheet-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 15px 18px;
+  background: var(--glass-fill);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sheet-list b {
+  /* A fixed column, not a minimum. With min-width the two longest labels
+   * overflowed it and pushed their own values right, so the value column
+   * stepped in and out down the list instead of forming a line. */
+  flex: 0 0 9.6em;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: .01em;
+}
+
+.sheet-note {
+  margin: 30px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-faint);
+}

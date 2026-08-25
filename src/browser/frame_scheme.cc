@@ -67,7 +67,30 @@ class FrameSchemeFactory : public CefSchemeHandlerFactory {
   DISALLOW_COPY_AND_ASSIGN(FrameSchemeFactory);
 };
 
+// Installs the factory on whichever request context is being brought up. See
+// the comment on CreateSchemeContextHandler() in the header.
+class FrameContextHandler : public CefRequestContextHandler {
+ public:
+  FrameContextHandler() = default;
+
+  void OnRequestContextInitialized(
+      CefRefPtr<CefRequestContext> context) override {
+    if (context) {
+      context->RegisterSchemeHandlerFactory(kSchemeName, CefString(),
+                                            new FrameSchemeFactory());
+    }
+  }
+
+ private:
+  IMPLEMENT_REFCOUNTING(FrameContextHandler);
+  DISALLOW_COPY_AND_ASSIGN(FrameContextHandler);
+};
+
 }  // namespace
+
+CefRefPtr<CefRequestContextHandler> CreateSchemeContextHandler() {
+  return new FrameContextHandler();
+}
 
 void RegisterFrameScheme(CefRawPtr<CefSchemeRegistrar> registrar) {
   // STANDARD so URLs parse with a host and relative paths resolve against it;
