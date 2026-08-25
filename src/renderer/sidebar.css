@@ -148,3 +148,50 @@
 .copy.is-done {
   color: var(--accent);
 }
+
+/* --- favourite contents ------------------------------------------------- */
+
+.favorite-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: contain;
+  /* Site icons arrive at whatever size the site felt like; scaling them down
+   * smoothly matters more than sharpness at this size. */
+  image-rendering: auto;
+}
+
+/* Shown while the site's own icon is still being fetched, or when it has
+ * none — a letter reads better at 70px than a generic globe glyph. */
+.favorite-letter {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.favorite:hover .favorite-letter {
+  color: var(--text);
+}
+
+/* --- collapsed rail ----------------------------------------------------- */
+
+/* Collapsed, the sidebar is an 8px rail. Its contents are not shrunk to fit —
+ * they are removed, because an address field and a favourites grid at 8px wide
+ * are just a column of clipped fragments. What remains is the shell material
+ * and a hairline, which is the whole point of the rail: it marks the edge and
+ * gives the sidebar something to animate back out of. */
+.is-rail .sidebar {
+  padding: 0;
+}
+
+.is-rail .address,
+.is-rail .favorites,
+.is-rail .sidebar-foot {
+  display: none;
+}
+
+.is-rail body,
+.is-rail .sidebar {
+  overflow: hidden;
+}

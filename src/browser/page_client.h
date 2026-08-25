@@ -2,6 +2,7 @@
 #define FRAME_BROWSER_PAGE_CLIENT_H_
 
 #include <string>
+#include <vector>
 
 #include "include/cef_client.h"
 #include "include/cef_display_handler.h"
@@ -52,6 +53,8 @@ class PageClient : public CefClient,
   void OnAddressChange(CefRefPtr<CefBrowser> browser,
                        CefRefPtr<CefFrame> frame,
                        const CefString& url) override;
+  void OnFaviconURLChange(CefRefPtr<CefBrowser> browser,
+                          const std::vector<CefString>& icon_urls) override;
 
   void Detach() { window_ = nullptr; }
 

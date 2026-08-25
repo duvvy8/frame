@@ -46,6 +46,9 @@ const char kCommandNavForward[] = "nav:forward";
 const char kCommandNavReload[] = "nav:reload";
 const char kCommandNavStop[] = "nav:stop";
 const char kCommandNavGo[] = "nav:go:";
+const char kCommandFavoriteAdd[] = "favorite:add:";
+const char kCommandFavoriteRemove[] = "favorite:remove:";
+const char kCommandFavoriteMove[] = "favorite:move:";
 
 bool StartsWith(const std::string& value, const char* prefix) {
   return value.rfind(prefix, 0) == 0;
@@ -208,6 +211,36 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       }
       if (StartsWith(name, kCommandNavGo)) {
         window_->Navigate(name.substr(std::strlen(kCommandNavGo)));
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandFavoriteAdd)) {
+        // "favorite:add:<url>\t<title>"
+        const std::string payload =
+            name.substr(std::strlen(kCommandFavoriteAdd));
+        const size_t tab = payload.find('\t');
+        if (tab == std::string::npos) {
+          window_->AddFavorite(payload, std::string());
+        } else {
+          window_->AddFavorite(payload.substr(0, tab), payload.substr(tab + 1));
+        }
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandFavoriteRemove)) {
+        window_->RemoveFavorite(name.substr(std::strlen(kCommandFavoriteRemove)));
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandFavoriteMove)) {
+        // "favorite:move:<from>:<to>"
+        const std::string payload =
+            name.substr(std::strlen(kCommandFavoriteMove));
+        const size_t split = payload.find(':');
+        if (split != std::string::npos) {
+          window_->MoveFavorite(std::atoi(payload.substr(0, split).c_str()),
+                                std::atoi(payload.substr(split + 1).c_str()));
+        }
         callback->Success("ok");
         return true;
       }

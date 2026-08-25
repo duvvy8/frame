@@ -28,7 +28,10 @@
     navForward: 'nav:forward',
     navReload: 'nav:reload',
     navStop: 'nav:stop',
-    navGo: 'nav:go:'
+    navGo: 'nav:go:',
+    favoriteAdd: 'favorite:add:',
+    favoriteRemove: 'favorite:remove:',
+    favoriteMove: 'favorite:move:'
   };
 
   function query(request) {
@@ -65,6 +68,11 @@
   // moves. The shell gradient is anchored to the window, so stale metrics leave
   // it laid out for the old size and it visibly stops part-way down.
   function onShellMetrics(shell) {
+    // A surface narrower than its content is collapsed, not clipped: the
+    // sidebar becomes an 8px rail and should render as one rather than as a
+    // full sidebar with everything cut off.
+    document.documentElement.classList.toggle(
+      'is-rail', shell.surfaceWidth > 0 && shell.surfaceWidth <= 16);
     px('--shell-x', shell.surfaceX);
     px('--shell-y', shell.surfaceY);
     px('--win-w', shell.windowWidth);

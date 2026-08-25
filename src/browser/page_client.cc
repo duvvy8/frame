@@ -51,6 +51,15 @@ void PageClient::OnTitleChange(CefRefPtr<CefBrowser> browser,
   }
 }
 
+void PageClient::OnFaviconURLChange(CefRefPtr<CefBrowser> browser,
+                                    const std::vector<CefString>& icon_urls) {
+  // The first entry is the site's preferred icon.
+  if (icon_urls.empty() || !window_) {
+    return;
+  }
+  window_->OnPageFaviconChanged(tab_id_, icon_urls.front().ToString());
+}
+
 void PageClient::OnAddressChange(CefRefPtr<CefBrowser> browser,
                                  CefRefPtr<CefFrame> frame,
                                  const CefString& url) {

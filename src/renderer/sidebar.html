@@ -26,50 +26,9 @@
       </button>
     </div>
 
-    <div class="favorites" id="favorites">
-      <button class="favorite glass-quiet" data-url="https://www.google.com"
-              title="Google">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor"
-                  stroke-width="1.6"/>
-          <path d="M12 4.5 V12 H19.5" fill="none" stroke="currentColor"
-                stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="favorite glass-quiet" data-url="https://www.youtube.com"
-              title="YouTube">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <rect x="3.5" y="6" width="17" height="12" rx="3.5" fill="none"
-                stroke="currentColor" stroke-width="1.6"/>
-          <path d="M10.5 9.8 L15 12 L10.5 14.2 Z" fill="currentColor"/>
-        </svg>
-      </button>
-      <button class="favorite glass-quiet"
-              data-url="https://calendar.google.com" title="Calendar">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <rect x="4" y="5.5" width="16" height="14" rx="3" fill="none"
-                stroke="currentColor" stroke-width="1.6"/>
-          <path d="M4 10 H20 M8.5 3.5 V7 M15.5 3.5 V7" fill="none"
-                stroke="currentColor" stroke-width="1.6"
-                stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="favorite glass-quiet" data-url="https://github.com"
-              title="GitHub">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M12 4 L19 8 V16 L12 20 L5 16 V8 Z" fill="none"
-                stroke="currentColor" stroke-width="1.6"
-                stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <button class="favorite is-empty" id="add-favorite" title="Add favorite"
-              aria-label="Add favorite">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M12 6 V18 M6 12 H18" stroke="currentColor"
-                stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
+    <!-- Rendered from the favourites the browser process holds. This markup is
+         never the source of truth for what is pinned. -->
+    <div class="favorites" id="favorites"></div>
 
     <div class="sidebar-foot">
       <span class="metric" id="metric">&nbsp;</span>
@@ -126,19 +85,98 @@
         setTimeout(function () { button.classList.remove('is-done'); }, 900);
       });
 
-      var favorites = document.querySelectorAll('.favorite[data-url]');
-      for (var i = 0; i < favorites.length; i++) {
-        (function (el) {
-          el.addEventListener('click', function () {
-            FrameShell.send(C.navGo, el.dataset.url);
+      // --- favourites -----------------------------------------------------
+
+      var favoritesEl = document.getElementById('favorites');
+
+      function initials(title, url) {
+        var source = (title || url || '?').replace(/^https?:\/\//, '');
+        return source.charAt(0).toUpperCase();
+      }
+
+      function buildFavorite(item) {
+        var el = document.createElement('button');
+        el.className = 'favorite glass-quiet';
+        el.title = item.title || item.url;
+        el.dataset.url = item.url;
+
+        if (item.icon) {
+          var img = document.createElement('img');
+          img.className = 'favorite-icon';
+          img.src = item.icon;
+          img.alt = '';
+          // A cached icon can still be a broken file; fall back rather than
+          // showing a torn-image glyph.
+          img.addEventListener('error', function () {
+            img.remove();
+            el.appendChild(fallback(item));
           });
-        })(favorites[i]);
+          el.appendChild(img);
+        } else {
+          // Shown while the site's own icon is still being fetched, or if it
+          // never had one.
+          el.appendChild(fallback(item));
+        }
+
+        el.addEventListener('click', function () {
+          FrameShell.send(C.navGo, item.url);
+        });
+        el.addEventListener('contextmenu', function (event) {
+          event.preventDefault();
+          FrameShell.send(C.favoriteRemove, item.url);
+        });
+        return el;
+      }
+
+      function fallback(item) {
+        var span = document.createElement('span');
+        span.className = 'favorite-letter';
+        span.textContent = initials(item.title, item.url);
+        return span;
+      }
+
+      function addButton() {
+        var el = document.createElement('button');
+        el.className = 'favorite is-empty';
+        el.title = 'Pin the current page';
+        el.setAttribute('aria-label', 'Pin the current page');
+        el.innerHTML =
+          '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">' +
+          '<path d="M12 6 V18 M6 12 H18" stroke="currentColor" ' +
+          'stroke-width="1.6" stroke-linecap="round"/></svg>';
+        el.addEventListener('click', function () {
+          if (current.url) {
+            FrameShell.send(C.favoriteAdd, current.url + '\t' + current.title);
+          }
+        });
+        return el;
+      }
+
+      var current = { url: '', title: '' };
+
+      function renderFavorites(state) {
+        favoritesEl.textContent = '';
+        var items = state.favorites || [];
+        for (var i = 0; i < items.length; i++) {
+          favoritesEl.appendChild(buildFavorite(items[i]));
+        }
+        favoritesEl.appendChild(addButton());
       }
 
       FrameShell.onBrowserState = function (state) {
         if (!editing) {
           address.value = state.address || '';
         }
+        var active = null;
+        for (var i = 0; i < state.tabs.length; i++) {
+          if (state.tabs[i].id === state.activeTabId) {
+            active = state.tabs[i];
+          }
+        }
+        current.url = state.address || '';
+        current.title = active ? active.title : '';
+
+        renderFavorites(state);
         metric.textContent = state.tabs.length +
                              (state.tabs.length === 1 ? ' tab' : ' tabs');
       };

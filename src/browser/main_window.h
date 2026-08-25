@@ -4,11 +4,13 @@
 #include <windows.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "browser/chrome_surface.h"
 #include "browser/corner_mask.h"
+#include "browser/favorites.h"
 #include "include/cef_browser.h"
 #include "shared/chrome_layout.h"
 
@@ -117,6 +119,12 @@ class MainWindow {
                        const std::string& failed_url);
   void OnPageTitleChanged(int tab_id, const std::string& title);
   void OnPageUrlChanged(int tab_id, const std::string& url);
+  void OnPageFaviconChanged(int tab_id, const std::string& icon_url);
+
+  // --- favourites ---
+  void AddFavorite(const std::string& url, const std::string& title);
+  void RemoveFavorite(const std::string& url);
+  void MoveFavorite(int from, int to);
 
   // Focus follows clicks: an off-screen surface receives no keyboard input
   // unless it is told it has focus.
@@ -195,6 +203,9 @@ class MainWindow {
 
   std::vector<layout::IntRect> drag_exclusions_;
   Layer layers_[static_cast<size_t>(SurfaceId::kCount)];
+
+  std::unique_ptr<FavoritesStore> favorites_;
+  std::unique_ptr<FaviconCache> favicons_;
 
   std::vector<Tab> tabs_;
   int active_tab_id_ = 0;

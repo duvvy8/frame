@@ -143,6 +143,25 @@ bool MainWindow::Create(HINSTANCE instance) {
   ApplyRoundedCorners();
   corner_mask_.Create(hwnd_, instance);
 
+  const std::string profile = ProfileDir();
+  favorites_.reset(new FavoritesStore(profile + "\\favorites.txt"));
+  favorites_->Load();
+  favorites_->EnsureDefaults();
+
+  favicons_.reset(new FaviconCache(profile + "\\favicons"));
+  favicons_->Load();
+
+  // Ask each pinned site for its own icon, once. Nothing is asked of anyone
+  // else — no third-party favicon service ever sees this list.
+  for (const Favorite& item : favorites_->items()) {
+    const std::string host = HostOf(item.url);
+    if (host.empty() || !favicons_->DataUrl(host).empty()) {
+      continue;
+    }
+    favicons_->Fetch(host, "https://" + host + "/favicon.ico",
+                     [this]() { PushBrowserState(); });
+  }
+
   ::SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
                  SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
                      SWP_NOACTIVATE);
@@ -570,6 +589,49 @@ void MainWindow::OnPageLoadError(int tab_id,
   PushBrowserState();
 }
 
+void MainWindow::OnPageFaviconChanged(int tab_id, const std::string& icon_url) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab || !favicons_) {
+    return;
+  }
+  // A site declaring its own icon is the best source for it, so this is
+  // preferred over guessing at /favicon.ico.
+  const std::string host = HostOf(tab->url);
+  if (host.empty()) {
+    return;
+  }
+  favicons_->Fetch(host, icon_url, [this]() { PushBrowserState(); });
+}
+
+void MainWindow::AddFavorite(const std::string& url, const std::string& title) {
+  if (!favorites_) {
+    return;
+  }
+  favorites_->Add(url, title);
+  const std::string host = HostOf(url);
+  if (favicons_ && !host.empty() && favicons_->DataUrl(host).empty()) {
+    favicons_->Fetch(host, "https://" + host + "/favicon.ico",
+                     [this]() { PushBrowserState(); });
+  }
+  PushBrowserState();
+}
+
+void MainWindow::RemoveFavorite(const std::string& url) {
+  if (!favorites_) {
+    return;
+  }
+  favorites_->Remove(url);
+  PushBrowserState();
+}
+
+void MainWindow::MoveFavorite(int from, int to) {
+  if (!favorites_) {
+    return;
+  }
+  favorites_->Move(from, to);
+  PushBrowserState();
+}
+
 void MainWindow::OnPageTitleChanged(int tab_id, const std::string& title) {
   Tab* tab = FindTab(tab_id);
   if (!tab) {
@@ -601,7 +663,23 @@ std::string MainWindow::BuildBrowserStateJson() const {
        << (active && active->can_go_forward ? "true" : "false")
        << ",\"loading\":" << (active && active->loading ? "true" : "false")
        << ",\"address\":\"" << JsonEscape(active ? active->url : "") << "\""
-       << ",\"tabs\":[";
+       << ",\"favorites\":[";
+  if (favorites_) {
+    const std::vector<Favorite>& pinned = favorites_->items();
+    for (size_t i = 0; i < pinned.size(); ++i) {
+      if (i) {
+        json << ',';
+      }
+      // The icon travels as a data: URL inside the payload the chrome already
+      // receives, so displaying it needs no extra plumbing.
+      const std::string icon =
+          favicons_ ? favicons_->DataUrl(HostOf(pinned[i].url)) : std::string();
+      json << "{\"url\":\"" << JsonEscape(pinned[i].url) << "\",\"title\":\""
+           << JsonEscape(pinned[i].title) << "\",\"icon\":\""
+           << JsonEscape(icon) << "\"}";
+    }
+  }
+  json << "],\"tabs\":[";
   for (size_t i = 0; i < tabs_.size(); ++i) {
     if (i) {
       json << ',';
