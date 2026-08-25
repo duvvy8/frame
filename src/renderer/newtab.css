@@ -182,18 +182,21 @@
 
 .wordmark-text {
   font-family: var(--font-brand);
-  font-size: clamp(34px, 4.6vw, 66px);
-  /* Light, not semibold.
+  /* Smaller and far less tracked than the face it replaced, because Unbounded
+   * is drawn wide to begin with. Carrying over the old 66px and .26em put
+   * FRAME through the sides of the window — a wide face needs LESS help, not
+   * the same amount. */
+  font-size: clamp(26px, 3.4vw, 50px);
+  /* 200, the lightest the variable axis goes.
    *
-   * Space Grotesk carries its character in the letter SHAPES — the flat-sided
-   * G, the straight-legged R, the narrow apertures — and weight only muddies
-   * them at display size. Every reference this was drawn from does the same
-   * thing: large, light, and generously tracked. */
-  font-weight: 300;
-  letter-spacing: .26em;
+   * The character here is entirely in the geometry — circular bowls, flat
+   * terminals, an almost constant stroke — and weight buries it. At display
+   * size the thinnest cut is the one that reads as drawn rather than typed. */
+  font-weight: 200;
+  letter-spacing: .16em;
   /* One tracking step of indent, so the optical centre lands correctly: the
    * trailing letter-space would otherwise push the word left of the mark. */
-  text-indent: .26em;
+  text-indent: .16em;
   line-height: 1;
   white-space: nowrap;
   background: linear-gradient(104deg, #ffffff 0%, #d8e9ff 44%, #86b6f2 100%);
@@ -238,7 +241,13 @@
   outline: none;
   background: transparent;
   color: var(--text);
-  font-family: var(--font-brand);
+  /* The system face, not the brand one.
+   *
+   * This is a field, not a statement — it holds URLs and queries the user
+   * types and has to stay readable at 15px while it fills up. A wide display
+   * face would run a long URL out of the pill and is optimised for exactly the
+   * opposite job. The wordmark above says the brand; this operates. */
+  font-family: var(--font);
   font-size: 15px;
   font-weight: 400;
   letter-spacing: .01em;
@@ -259,23 +268,29 @@
   border-radius: 20px;
   background: var(--glass-fill);
   color: var(--text);
-  font-family: var(--font-brand);
+  font-family: var(--font);
   font-size: 13px;
-  font-weight: 500;
-  letter-spacing: .04em;
+  font-weight: 600;
+  letter-spacing: .02em;
   cursor: default;
   transition:
-    background var(--dur-1) var(--ease),
-    border-color var(--dur-1) var(--ease);
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease-spring);
 }
 
 .search-go:hover {
   background: var(--glass-fill-hover);
   border-color: rgba(98, 168, 255, .45);
+  box-shadow: 0 0 18px rgba(98, 168, 255, .18);
 }
 
 .search-go:active {
   background: rgba(0, 0, 0, .22);
+  transform: scale(.97);
+  transition-duration: var(--dur-1);
+  transition-timing-function: var(--ease-soft);
 }
 
 /* --- entrance ----------------------------------------------------------- */

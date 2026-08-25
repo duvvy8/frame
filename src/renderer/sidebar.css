@@ -64,19 +64,51 @@
   padding: 0;
   color: var(--text-dim);
   cursor: default;
+  /* background and border-color were changing on hover without being listed
+   * here, so the tile's colour snapped while its shadow eased — two halves of
+   * one hover arriving at different times. */
   transition:
     color var(--dur-1) var(--ease),
-    box-shadow var(--dur-1) var(--ease),
-    transform var(--dur-1) var(--ease);
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease-spring);
 }
 
 .favorite:hover {
   color: var(--text);
   background: var(--glass-fill-hover);
+  border-color: rgba(255, 255, 255, .10);
+  /* Lifts toward the pointer. A pixel and a half is enough to read as a
+   * response and not enough to look like it moved. */
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .30);
 }
 
 .favorite:active {
-  transform: scale(.97);
+  /* Faster than the lift and with no spring: a press should feel like contact,
+   * which means arriving immediately and not bouncing. */
+  transform: scale(.96);
+  transition-duration: var(--dur-1);
+  transition-timing-function: var(--ease-soft);
+}
+
+/* Tiles arrive with the sidebar, staggered from the markup by an inline delay
+ * so the order comes from the data rather than from nth-child rules that would
+ * have to be kept in step with it. */
+.favorite.is-entering {
+  animation: favorite-in var(--dur-3) var(--ease) both;
+}
+
+@keyframes favorite-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* An empty slot reads as an outline, not as a filled pane. */
@@ -139,14 +171,34 @@
   color: var(--text-faint);
 }
 
+.address {
+  transition:
+    border-color var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease),
+    box-shadow var(--dur-3) var(--ease);
+}
+
 .address:focus-within {
   border-color: rgba(98, 168, 255, .55);
+  background: rgba(255, 255, 255, .10);
+  /* The same glow the search pill uses when focused, so focus reads as one
+   * idea across the two places you can type a URL. */
+  box-shadow: 0 0 22px rgba(98, 168, 255, .14);
 }
 
 /* Brief confirmation that the copy landed, rather than a toast for something
  * this small. */
+.copy {
+  transition:
+    color var(--dur-1) var(--ease),
+    transform var(--dur-2) var(--ease-spring);
+}
+
 .copy.is-done {
   color: var(--accent);
+  /* A small pop on the way in. It returns on its own when the class is
+   * dropped, which is the whole confirmation. */
+  transform: scale(1.18);
 }
 
 /* --- favourite contents ------------------------------------------------- */
@@ -164,7 +216,7 @@
 /* Shown while the site's own icon is still being fetched, or when it has
  * none — a letter reads better at 70px than a generic globe glyph. */
 .favorite-letter {
-  font-family: var(--font-display);
+  font-family: var(--font-brand);
   font-size: 20px;
   font-weight: 600;
   color: var(--text-dim);

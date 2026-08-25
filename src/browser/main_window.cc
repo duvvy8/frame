@@ -4,6 +4,7 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -37,6 +38,16 @@ const wchar_t kWindowTitle[] = L"Frame";
 
 const COLORREF kShellBackground = RGB(0x0b, 0x0b, 0x0d);
 const COLORREF kViewportPlaceholder = RGB(0x00, 0x00, 0x00);
+
+// Drives the sidebar slide. A window timer rather than a posted task, because
+// WM_TIMER cannot outlive the window it is set on — a self-reposting task can,
+// and would then run against a destroyed MainWindow.
+const UINT_PTR kSidebarTimerId = 1;
+
+// Asked for roughly every 8ms; Windows will not go below about 10. Progress is
+// computed from the clock rather than from the number of ticks, so a late or
+// coalesced timer message shortens the animation instead of stretching it.
+const UINT kSidebarTimerMs = 8;
 
 // A new tab opens on Frame's own page, not a blank one.
 
@@ -250,10 +261,26 @@ layout::ViewportRect MainWindow::ViewportDip() const {
   }
   // Computed in DIPs so the ported geometry stays exactly the function that
   // was verified against the original, rather than a scaled variant of it.
-  return layout::ViewportBounds({static_cast<double>(ClientWidthDip()),
-                                 static_cast<double>(ClientHeightDip()),
-                                 sidebar_open_,
-                                 /*bookmarks_visible=*/false});
+  layout::ViewportRect rect =
+      layout::ViewportBounds({static_cast<double>(ClientWidthDip()),
+                              static_cast<double>(ClientHeightDip()),
+                              sidebar_open_,
+                              /*bookmarks_visible=*/false});
+
+  // ViewportBounds knows the two RESTING positions and is left that way — it is
+  // a verified 1:1 port and teaching it to interpolate would put a transition
+  // inside the one function that must not drift from the original.
+  //
+  // So the in-between is applied here instead. The right edge does not move, so
+  // it is taken from the rect above rather than recomputed, and only the left
+  // edge follows the sidebar.
+  const int animated_x = SidebarWidthDip();
+  if (animated_x != rect.x) {
+    const int right = rect.x + rect.width;
+    rect.x = animated_x;
+    rect.width = std::max(0, right - animated_x);
+  }
+  return rect;
 }
 
 CefRect MainWindow::SurfaceBoundsDip(SurfaceId id) const {
@@ -262,8 +289,7 @@ CefRect MainWindow::SurfaceBoundsDip(SurfaceId id) const {
       return CefRect(0, 0, ClientWidthDip(), layout::kTopbarHeight);
 
     case SurfaceId::kSidebar: {
-      const int width =
-          sidebar_open_ ? layout::kSidebarWidth : layout::kCollapsedRailWidth;
+      const int width = SidebarWidthDip();
       const int height = ClientHeightDip() - layout::kTopbarHeight;
       return CefRect(0, layout::kTopbarHeight, width, height > 0 ? height : 0);
     }
@@ -311,15 +337,60 @@ void MainWindow::CloseWindow() {
   ::PostMessage(hwnd_, WM_CLOSE, 0, 0);
 }
 
+int MainWindow::SidebarWidthDip() const {
+  return static_cast<int>(std::lround(sidebar_width_current_));
+}
+
 void MainWindow::ToggleSidebar() {
   sidebar_open_ = !sidebar_open_;
-  // The sidebar's own width changed, and the viewport moved with it.
+
+  // Animated, not switched. This used to jump 160px in one frame, which is the
+  // largest single movement in the whole UI and the one place it was most
+  // obviously missing. kSidebarTransitionMs has been in the shared constants
+  // since the port — it was the duration of exactly this transition in the
+  // Electron build, and nothing had used it until now.
+  sidebar_width_from_ = sidebar_width_current_;
+  sidebar_width_to_ = sidebar_open_ ? layout::kSidebarWidth
+                                    : layout::kCollapsedRailWidth;
+  sidebar_anim_start_ms_ = ::GetTickCount64();
+
+  // Re-arming an existing timer restarts it, so toggling mid-slide picks up
+  // from wherever it had reached instead of snapping back to the start.
+  ::SetTimer(hwnd_, kSidebarTimerId, kSidebarTimerMs, nullptr);
+
+  // The chrome's own idea of open/closed flips immediately: the sidebar's
+  // contents should be fading to their new state WHILE it moves, not after it
+  // arrives.
+  PushBrowserState();
+}
+
+void MainWindow::TickSidebarAnimation() {
+  const ULONGLONG now = ::GetTickCount64();
+  const ULONGLONG elapsed = now - sidebar_anim_start_ms_;
+
+  double t = static_cast<double>(elapsed) /
+             static_cast<double>(layout::kSidebarTransitionMs);
+  if (t >= 1.0) {
+    t = 1.0;
+    ::KillTimer(hwnd_, kSidebarTimerId);
+  }
+
+  // Ease-out cubic: leaves immediately, arrives gently. The same shape as the
+  // --ease curve the stylesheets use, so native movement and CSS movement
+  // decelerate together rather than one finishing visibly before the other.
+  const double eased = 1.0 - std::pow(1.0 - t, 3.0);
+  sidebar_width_current_ =
+      sidebar_width_from_ + (sidebar_width_to_ - sidebar_width_from_) * eased;
+
+  // Everything that depends on the sidebar's width, every frame. The page is
+  // moved and resized with it, and the shell field is re-anchored on both the
+  // chrome surfaces and the page, so the gradient stays continuous across the
+  // seam WHILE it slides rather than only once it stops.
   NotifySurfacesResized();
   PushShellMetrics();
   PushPageShellMetrics();
   LayoutPages();
   ::InvalidateRect(hwnd_, nullptr, FALSE);
-  PushBrowserState();
 }
 
 void MainWindow::ToggleFullscreen() {
@@ -1171,8 +1242,7 @@ void MainWindow::PushPageShellMetrics() {
   // chrome surfaces do, and derive everything they need from their own viewport
   // plus the layout constants — everything except this. Collapsing the sidebar
   // moves the page's origin, and no amount of CSS can see that happen.
-  const int shell_x =
-      sidebar_open_ ? layout::kSidebarWidth : layout::kCollapsedRailWidth;
+  const int shell_x = SidebarWidthDip();
 
   for (Tab& tab : tabs_) {
     if (!tab.browser) {
@@ -1688,6 +1758,13 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     case WM_NCLBUTTONUP:
       if (wparam == HTMAXBUTTON) {
         ToggleMaximize();
+        return 0;
+      }
+      break;
+
+    case WM_TIMER:
+      if (wparam == kSidebarTimerId) {
+        TickSidebarAnimation();
         return 0;
       }
       break;

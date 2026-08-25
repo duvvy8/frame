@@ -224,6 +224,12 @@ class MainWindow {
   void ShellCornerColors(const layout::ViewportRect& dip,
                          COLORREF (&out)[CornerMask::kCornerCount]) const;
 
+  // The sidebar's current width in DIPs — animated, so this is the only thing
+  // that should ever be asked for it. Reading kSidebarWidth directly would be
+  // right twice per transition and wrong throughout it.
+  int SidebarWidthDip() const;
+  void TickSidebarAnimation();
+
   int ToPhysical(int dip) const;
   int ToDip(int physical) const;
   layout::ViewportRect ViewportDip() const;
@@ -245,6 +251,17 @@ class MainWindow {
   bool sidebar_open_ = true;
   bool tracking_mouse_ = false;
   bool tracking_nc_mouse_ = false;
+
+  // The sidebar's width WHILE IT IS MOVING.
+  //
+  // kSidebarWidth and kCollapsedRailWidth are the two resting values; this is
+  // everything in between. Held as a double so the easing curve is not
+  // quantised to whole pixels before it is drawn — rounding at each step is
+  // what turns a smooth 160px slide into a visible staircase.
+  double sidebar_width_current_ = layout::kSidebarWidth;
+  double sidebar_width_from_ = layout::kSidebarWidth;
+  double sidebar_width_to_ = layout::kSidebarWidth;
+  unsigned long long sidebar_anim_start_ms_ = 0;
 
   // Fullscreen is a window state, not a layout constant, so it lives here
   // rather than in the shared geometry: chrome_layout.h describes the chrome

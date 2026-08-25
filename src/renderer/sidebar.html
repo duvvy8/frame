@@ -164,13 +164,67 @@
 
       var current = { url: '', title: '' };
 
+      // Rebuilt only where something changed, for the same reasons the tab
+      // strip is — see renderTabs in topbar.html.
+      //
+      // Browser state is pushed constantly: every title, every load, every
+      // favicon that resolves. Wiping this grid on each of those threw away
+      // the hover state under the pointer and made a tile's transitions
+      // unreachable, because no tile ever survived long enough to transition.
+      // It also re-decoded every icon each time, for nothing.
+      //
+      // A tile is identified by its URL, which is exactly what the favourites
+      // store keys on, so reconciling costs one map.
       function renderFavorites(state) {
-        favoritesEl.textContent = '';
         var items = state.favorites || [];
-        for (var i = 0; i < items.length; i++) {
-          favoritesEl.appendChild(buildFavorite(items[i]));
+        var byUrl = {};
+        var present = favoritesEl.querySelectorAll('.favorite:not(.is-empty)');
+        var i;
+        for (i = 0; i < present.length; i++) {
+          byUrl[present[i].dataset.url] = present[i];
         }
-        favoritesEl.appendChild(addButton());
+
+        var seen = {};
+        var previous = null;
+        for (i = 0; i < items.length; i++) {
+          var item = items[i];
+          var el = byUrl[item.url];
+
+          // An icon arriving is the one change worth rebuilding a tile for:
+          // the fallback letter has to become the real image.
+          var hasIcon = !!el && !!el.querySelector('.favorite-icon');
+          if (el && !!item.icon !== hasIcon) {
+            var replacement = buildFavorite(item);
+            favoritesEl.replaceChild(replacement, el);
+            el = replacement;
+          } else if (!el) {
+            el = buildFavorite(item);
+            el.classList.add('is-entering');
+            // Staggered, so a row of tiles arrives as a row rather than all at
+            // once. Capped, or a long list would end on a noticeable wait.
+            el.style.animationDelay = Math.min(i, 7) * 34 + 'ms';
+          }
+          seen[item.url] = true;
+
+          var wanted = previous ? previous.nextSibling : favoritesEl.firstChild;
+          if (wanted !== el) {
+            favoritesEl.insertBefore(el, wanted);
+          }
+          previous = el;
+        }
+
+        for (i = 0; i < present.length; i++) {
+          if (!seen[present[i].dataset.url]) {
+            present[i].remove();
+          }
+        }
+
+        // The pin button stays last, and is only built once.
+        var pin = favoritesEl.querySelector('.favorite.is-empty');
+        if (!pin) {
+          pin = addButton();
+        }
+        favoritesEl.appendChild(pin);
       }
 
       FrameShell.onBrowserState = function (state) {

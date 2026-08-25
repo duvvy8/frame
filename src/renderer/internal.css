@@ -94,3 +94,56 @@
   line-height: 1.7;
   color: var(--text-faint);
 }
+
+/* --- entrance ----------------------------------------------------------- */
+
+/* The sheet assembles top to bottom, one element at a time.
+ *
+ * Delays are written out per element rather than generated, because the order
+ * is the reading order and that is a design decision — a generic
+ * `:nth-child(n) { delay: n * 40ms }` would silently reorder itself the moment
+ * anything is inserted.
+ *
+ * Every step is 34ms, which is close enough to a frame at 30fps that the
+ * elements feel like one movement rather than a queue. */
+.sheet-eyebrow,
+.sheet-title,
+.sheet-lede,
+.sheet-list li,
+.sheet-note {
+  animation: sheet-rise var(--dur-4) var(--ease) both;
+}
+
+.sheet-eyebrow { animation-delay: 0ms; }
+.sheet-title   { animation-delay: 34ms; }
+.sheet-lede    { animation-delay: 78ms; }
+
+.sheet-list li:nth-child(1) { animation-delay: 130ms; }
+.sheet-list li:nth-child(2) { animation-delay: 164ms; }
+.sheet-list li:nth-child(3) { animation-delay: 198ms; }
+.sheet-list li:nth-child(4) { animation-delay: 232ms; }
+.sheet-list li:nth-child(5) { animation-delay: 266ms; }
+.sheet-list li:nth-child(6) { animation-delay: 300ms; }
+
+.sheet-note { animation-delay: 340ms; }
+
+@keyframes sheet-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Rows respond to the pointer, so the list reads as inspectable rather than
+ * as a printed table. */
+.sheet-list li {
+  transition: background var(--dur-2) var(--ease);
+}
+
+.sheet-list li:hover {
+  background: var(--glass-fill-hover);
+}

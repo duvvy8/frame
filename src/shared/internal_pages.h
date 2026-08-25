@@ -41,8 +41,8 @@ inline constexpr Resource kResources[] = {
     // Bundled, never fetched. A Google Fonts <link> would make Frame's own new
     // tab page phone home to a third party on every open, which is the exact
     // behaviour this browser exists to avoid. SIL OFL 1.1; the licence travels
-    // with the file as space-grotesk-OFL.txt.
-    {"space-grotesk.woff2", "font/woff2"},
+    // with the file as unbounded-OFL.txt.
+    {"unbounded.woff2", "font/woff2"},
 };
 
 /// Turns a frame:// host and path into the resource name to serve.

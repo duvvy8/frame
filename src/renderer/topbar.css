@@ -129,6 +129,61 @@
   color: rgba(255, 255, 255, .86);
 }
 
+/* Tabs open and close by PUSHING the strip, rather than appearing in a gap
+ * that was already there.
+ *
+ * Width is a layout property and animating it is not free, but this is a
+ * handful of elements for a quarter of a second, and the alternative — sliding
+ * a tab into space that popped open first — is the exact jump being removed.
+ * The negative margin cancels the flex gap, so a collapsed tab occupies
+ * genuinely nothing instead of leaving an 8px hole behind. */
+.tab.is-entering {
+  animation: tab-in var(--dur-3) var(--ease) both;
+}
+
+.tab.is-leaving {
+  animation: tab-out var(--dur-2) var(--ease-soft) both;
+  /* It is on its way out; it must not accept a click on the way. */
+  pointer-events: none;
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    min-width: 0;
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-right: calc(-1 * var(--tab-gap));
+    transform: scale(.94);
+  }
+  to {
+    opacity: 1;
+    min-width: var(--tab-min-width);
+    max-width: var(--tab-max-width);
+    margin-right: 0;
+    transform: none;
+  }
+}
+
+@keyframes tab-out {
+  from {
+    opacity: 1;
+    min-width: var(--tab-min-width);
+    max-width: var(--tab-max-width);
+    margin-right: 0;
+  }
+  to {
+    opacity: 0;
+    min-width: 0;
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-right: calc(-1 * var(--tab-gap));
+    transform: scale(.94);
+  }
+}
+
 /* The active tab is marked by an accent rim and a soft glow over a DARKER
  * fill, not a brighter one. Darkening it separates it from the strip while the
  * accent does the actual signalling — the accent is for state, never

@@ -315,16 +315,110 @@
         return el;
       }
 
+      // Updates a tab element in place. Every field a push can change, and
+      // nothing else — touching the DOM only where it actually differs is what
+      // keeps a CSS transition alive across an update.
+      function syncTab(el, tab, isActive) {
+        var title = tab.title || 'Untitled';
+        var titleEl = el.querySelector('.tab-title');
+        if (titleEl.textContent !== title) {
+          titleEl.textContent = title;
+        }
+        if (el.title !== title) {
+          el.title = title;
+        }
+        el.classList.toggle('is-active', isActive);
+        el.querySelector('.tab-dot').classList.toggle('is-loading', !!tab.loading);
+      }
+
+      // Reconciles the strip against the pushed state instead of rebuilding it.
+      //
+      // This used to remove every tab and build them all again on every push,
+      // and pushes are frequent — a title arriving, a favicon resolving, a load
+      // finishing. That made animation impossible in a way that was invisible
+      // until you tried: a CSS transition needs the SAME element to still be
+      // there a moment later, and every element was new. Entrance animations
+      // had the mirror problem and replayed on the whole strip each time.
+      //
+      // Reconciling by id fixes both at once. It also stops the strip flashing
+      // under a fast-loading page, and stops a hover state being lost whenever
+      // a background tab happens to finish loading.
       function renderTabs(state) {
-        var existing = tabsEl.querySelectorAll('.tab');
-        for (var i = 0; i < existing.length; i++) {
-          existing[i].remove();
+        var byId = {};
+        var present = tabsEl.querySelectorAll('.tab');
+        var i;
+        for (i = 0; i < present.length; i++) {
+          // Leaving already means gone as far as reconciliation is concerned;
+          // it must not be adopted back into the strip mid-exit.
+          if (!present[i].classList.contains('is-leaving')) {
+            byId[present[i].dataset.tabId] = present[i];
+          }
         }
-        for (var j = 0; j < state.tabs.length; j++) {
-          var tab = state.tabs[j];
-          tabsEl.insertBefore(buildTab(tab, tab.id === state.activeTabId),
-                              newTabButton);
+
+        // Which ids the state still lists, decided BEFORE anything is moved.
+        // Marking the leavers first is what lets a closing tab collapse where
+        // it stood: reposition the survivors first and a tab closed from the
+        // middle of the strip gets pushed to the end, then plays its collapse
+        // there — a jump, in the middle of an animation added to remove one.
+        var seen = {};
+        for (i = 0; i < state.tabs.length; i++) {
+          seen[state.tabs[i].id] = true;
         }
+        for (i = 0; i < present.length; i++) {
+          var gone = present[i];
+          if (seen[gone.dataset.tabId] || gone.classList.contains('is-leaving')) {
+            continue;
+          }
+          gone.classList.add('is-leaving');
+          gone.addEventListener('animationend', function (event) {
+            event.currentTarget.remove();
+            publishDragRegions();
+          });
+        }
+
+        var previous = null;
+        for (i = 0; i < state.tabs.length; i++) {
+          var tab = state.tabs[i];
+          var isActive = tab.id === state.activeTabId;
+          var el = byId[tab.id];
+
+          if (el) {
+            syncTab(el, tab, isActive);
+          } else {
+            el = buildTab(tab, isActive);
+            el.classList.add('is-entering');
+            // One frame on the collapsed keyframe start, then release it —
+            // without the reflow the element is born mid-animation and simply
+            // appears.
+            void el.offsetWidth;
+            el.addEventListener('animationend', function (event) {
+              if (event.animationName === 'tab-in') {
+                event.currentTarget.classList.remove('is-entering');
+              }
+            });
+          }
+          // Reordering: only move an element that is not already in place, so
+          // a drag-reorder does not fight the push that confirms it.
+          //
+          // Tabs on their way out are stepped OVER rather than inserted
+          // around, so they keep the slot they are collapsing out of and the
+          // survivors close the gap as it shrinks.
+          var wanted = previous ? previous.nextSibling : tabsEl.firstChild;
+          while (wanted && wanted.classList &&
+                 wanted.classList.contains('is-leaving')) {
+            wanted = wanted.nextSibling;
+          }
+          if (wanted !== el) {
+            tabsEl.insertBefore(el, wanted);
+          }
+          previous = el;
+        }
+
+        // The + button stays last however the strip was reordered above. A tab
+        // collapsing at the end of the strip is still before it, so the button
+        // slides left as that tab closes rather than waiting for it to vanish.
+        tabsEl.appendChild(newTabButton);
+
         // Tab rectangles just moved, so the draggable strip did too.
         publishDragRegions();
       }
