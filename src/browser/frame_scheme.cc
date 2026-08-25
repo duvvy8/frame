@@ -5,6 +5,7 @@
 #include <string>
 
 #include "include/cef_parser.h"
+#include "shared/internal_pages.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
 
 namespace frame {
@@ -24,52 +25,16 @@ std::wstring ResourceDir() {
   return dir + L"\\resources\\";
 }
 
-// A FLAT allowlist, deliberately.
-//
-// Every internal page and asset is named here explicitly. Nothing derives a
-// filesystem path from the URL, so no page — however it is navigated to, and
-// whatever it embeds — can reach a file that is not on this list. That is the
-// whole security property of the scheme: traversal is not filtered, it is
-// impossible to express.
-struct Resource {
-  const char* name;
-  const char* mime;
-};
-
-const Resource kAllowed[] = {
-    {"newtab.html", "text/html"},
-    {"shell.css", "text/css"},
-    {"shell.js", "text/javascript"},
-    {"newtab.css", "text/css"},
-    {"logo.svg", "image/svg+xml"},
-};
-
-const Resource* Lookup(const std::string& name) {
-  for (const Resource& resource : kAllowed) {
-    if (name == resource.name) {
-      return &resource;
-    }
-  }
-  return nullptr;
-}
-
-// frame://newtab      -> newtab.html
-// frame://newtab/x.css -> x.css, if x.css is allowlisted
-std::string ResolveName(const CefString& url) {
+// The allowlist itself lives in shared/internal_pages.h so the security
+// boundary can be tested without a running browser. Only the URL parsing is
+// here, because that part needs CEF.
+const internal_pages::Resource* LookupUrl(const CefString& url) {
   CefURLParts parts;
   if (!CefParseURL(url, parts)) {
-    return std::string();
+    return nullptr;
   }
-  const std::string host = CefString(&parts.host).ToString();
-  std::string path = CefString(&parts.path).ToString();
-
-  while (!path.empty() && path.front() == '/') {
-    path.erase(path.begin());
-  }
-  if (path.empty()) {
-    return host + ".html";
-  }
-  return path;
+  return internal_pages::Lookup(CefString(&parts.host).ToString(),
+                                CefString(&parts.path).ToString());
 }
 
 class FrameSchemeFactory : public CefSchemeHandlerFactory {
@@ -82,13 +47,13 @@ class FrameSchemeFactory : public CefSchemeHandlerFactory {
                                        CefRefPtr<CefFrame> frame,
                                        const CefString& scheme_name,
                                        CefRefPtr<CefRequest> request) override {
-    const std::string name = ResolveName(request->GetURL());
-    const Resource* resource = Lookup(name);
+    const internal_pages::Resource* resource = LookupUrl(request->GetURL());
     if (!resource) {
       return nullptr;  // Not on the list; CEF reports it as a failed load.
     }
 
-    const std::wstring file = ResourceDir() + CefString(name).ToWString();
+    const std::wstring file =
+        ResourceDir() + CefString(resource->name).ToWString();
     CefRefPtr<CefStreamReader> stream =
         CefStreamReader::CreateForFile(CefString(file));
     if (!stream) {

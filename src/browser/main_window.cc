@@ -5,13 +5,13 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iomanip>
 #include <sstream>
 #include <string>
 
 #include "browser/page_client.h"
 #include "include/cef_app.h"
 #include "shared/chrome_layout.h"
+#include "shared/url_util.h"
 
 // Present in the Windows 11 SDK, defined defensively so the build does not
 // depend on which SDK version happens to be installed.
@@ -35,8 +35,6 @@ const COLORREF kShellBackground = RGB(0x0b, 0x0b, 0x0d);
 const COLORREF kViewportPlaceholder = RGB(0x00, 0x00, 0x00);
 
 // A new tab opens on Frame's own page, not a blank one.
-const char kNewTabPage[] = "frame://newtab";
-const char kBlankPage[] = "about:blank";
 
 int MouseModifiers(WPARAM wparam) {
   int modifiers = 0;
@@ -83,96 +81,10 @@ int KeyboardModifiers(WPARAM wparam, LPARAM lparam) {
   return modifiers;
 }
 
-std::string Trim(const std::string& value) {
-  const size_t first = value.find_first_not_of(" \t\r\n");
-  if (first == std::string::npos) {
-    return std::string();
-  }
-  const size_t last = value.find_last_not_of(" \t\r\n");
-  return value.substr(first, last - first + 1);
-}
-
-bool StartsWith(const std::string& value, const char* prefix) {
-  return value.rfind(prefix, 0) == 0;
-}
-
-std::string UrlEncode(const std::string& value) {
-  static const char* hex = "0123456789ABCDEF";
-  std::string out;
-  for (unsigned char ch : value) {
-    if (isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~') {
-      out.push_back(static_cast<char>(ch));
-    } else if (ch == ' ') {
-      out.push_back('+');
-    } else {
-      out.push_back('%');
-      out.push_back(hex[ch >> 4]);
-      out.push_back(hex[ch & 0x0F]);
-    }
-  }
-  return out;
-}
-
-// Decides whether omnibox input is a place to go or something to search for.
-// Deliberately simple for now; the bangs and search-shortcut system replaces
-// this wholesale in a later step.
-std::string NormalizeUrl(const std::string& raw) {
-  const std::string input = Trim(raw);
-  if (input.empty()) {
-    return kBlankPage;
-  }
-  if (StartsWith(input, "http://") || StartsWith(input, "https://") ||
-      StartsWith(input, "file://") || StartsWith(input, "about:") ||
-      StartsWith(input, "data:") || StartsWith(input, "chrome:") ||
-      StartsWith(input, "frame:")) {
-    return input;
-  }
-  if (input == "localhost" || StartsWith(input, "localhost:")) {
-    return "http://" + input;
-  }
-  // A dot with no whitespace reads as a hostname; anything else is a query.
-  const bool has_space = input.find(' ') != std::string::npos;
-  const size_t dot = input.find('.');
-  if (!has_space && dot != std::string::npos && dot > 0 &&
-      dot + 1 < input.size()) {
-    return "https://" + input;
-  }
-  return "https://www.google.com/search?q=" + UrlEncode(input);
-}
-
-// Minimal JSON string escaping. Page titles are attacker-influenced content,
-// so this has to be correct rather than convenient: an unescaped quote in a
-// title would break out of the string and into the script we execute.
-std::string JsonEscape(const std::string& value) {
-  std::ostringstream out;
-  for (unsigned char ch : value) {
-    switch (ch) {
-      case '"':
-        out << "\\\"";
-        break;
-      case '\\':
-        out << "\\\\";
-        break;
-      case '\n':
-        out << "\\n";
-        break;
-      case '\r':
-        out << "\\r";
-        break;
-      case '\t':
-        out << "\\t";
-        break;
-      default:
-        if (ch < 0x20) {
-          out << "\\u" << std::hex << std::setfill('0') << std::setw(4)
-              << static_cast<int>(ch) << std::dec;
-        } else {
-          out << static_cast<char>(ch);
-        }
-    }
-  }
-  return out.str();
-}
+// The omnibox rule and JSON escaping live in shared/url_util.h so they can be
+// tested directly; both handle input Frame does not control.
+using frame::url::JsonEscape;
+using frame::url::NormalizeUrl;
 
 }  // namespace
 
@@ -202,6 +114,7 @@ bool MainWindow::Create(HINSTANCE instance) {
     return false;
   }
 
+  UpdateDpi();
   ApplyRoundedCorners();
   corner_mask_.Create(hwnd_, instance);
 
@@ -232,21 +145,71 @@ void MainWindow::ApplyRoundedCorners() {
                           sizeof(dark));
 }
 
-CefRect MainWindow::SurfaceBounds(SurfaceId id) const {
+// --- DPI ------------------------------------------------------------------
+//
+// CEF makes the process PER_MONITOR_AWARE, which means Windows scales nothing
+// for us. Every layout constant is a DIP, so all of them have to be converted
+// before they touch a pixel — a window rectangle, a blit, a hit test. Leaving
+// them raw is invisible at 100% and wrong everywhere else.
+
+int MainWindow::ToPhysical(int dip) const {
+  return ::MulDiv(dip, dpi_, 96);
+}
+
+int MainWindow::ToDip(int physical) const {
+  return ::MulDiv(physical, 96, dpi_);
+}
+
+float MainWindow::DeviceScale() const {
+  return static_cast<float>(dpi_) / 96.0f;
+}
+
+int MainWindow::ClientWidthDip() const {
+  return ToDip(client_width_);
+}
+
+int MainWindow::ClientHeightDip() const {
+  return ToDip(client_height_);
+}
+
+void MainWindow::UpdateDpi() {
+  if (!hwnd_) {
+    return;
+  }
+  const UINT dpi = ::GetDpiForWindow(hwnd_);
+  dpi_ = dpi > 0 ? static_cast<int>(dpi) : 96;
+}
+
+layout::ViewportRect MainWindow::ViewportDip() const {
+  // Computed in DIPs so the ported geometry stays exactly the function that
+  // was verified against the original, rather than a scaled variant of it.
+  return layout::ViewportBounds({static_cast<double>(ClientWidthDip()),
+                                 static_cast<double>(ClientHeightDip()),
+                                 sidebar_open_,
+                                 /*bookmarks_visible=*/false});
+}
+
+CefRect MainWindow::SurfaceBoundsDip(SurfaceId id) const {
   switch (id) {
     case SurfaceId::kTopbar:
-      return CefRect(0, 0, client_width_, layout::kTopbarHeight);
+      return CefRect(0, 0, ClientWidthDip(), layout::kTopbarHeight);
 
     case SurfaceId::kSidebar: {
       const int width =
           sidebar_open_ ? layout::kSidebarWidth : layout::kCollapsedRailWidth;
-      const int height = client_height_ - layout::kTopbarHeight;
+      const int height = ClientHeightDip() - layout::kTopbarHeight;
       return CefRect(0, layout::kTopbarHeight, width, height > 0 ? height : 0);
     }
 
     default:
       return CefRect(0, 0, 0, 0);
   }
+}
+
+CefRect MainWindow::SurfaceBounds(SurfaceId id) const {
+  const CefRect dip = SurfaceBoundsDip(id);
+  return CefRect(ToPhysical(dip.x), ToPhysical(dip.y), ToPhysical(dip.width),
+                 ToPhysical(dip.height));
 }
 
 void MainWindow::SetSurfaceBrowser(SurfaceId id,
@@ -323,7 +286,7 @@ CefRefPtr<CefBrowser> MainWindow::ActiveBrowser() {
 int MainWindow::CreateTab(const std::string& url, bool activate) {
   Tab tab;
   tab.id = next_tab_id_++;
-  tab.url = url.empty() ? kNewTabPage : url;
+  tab.url = url.empty() ? frame::url::kNewTabPage : url;
   tab.title = "New Tab";
   tab.loading = true;
   tabs_.push_back(tab);
@@ -412,9 +375,10 @@ void MainWindow::ReorderTab(int tab_id, int new_index) {
 }
 
 void MainWindow::LayoutPages() {
-  const layout::ViewportRect viewport = layout::ViewportBounds(
-      {static_cast<double>(client_width_), static_cast<double>(client_height_),
-       sidebar_open_, /*bookmarks_visible=*/false});
+  const layout::ViewportRect dip = ViewportDip();
+  const layout::ViewportRect viewport = {
+      ToPhysical(dip.x), ToPhysical(dip.y), ToPhysical(dip.width),
+      ToPhysical(dip.height), ToPhysical(dip.radius)};
 
   for (Tab& tab : tabs_) {
     if (!tab.browser) {
@@ -635,14 +599,14 @@ void MainWindow::PushShellMetrics() {
     if (!main_frame) {
       continue;
     }
-    const CefRect bounds = SurfaceBounds(static_cast<SurfaceId>(i));
+    const CefRect bounds = SurfaceBoundsDip(static_cast<SurfaceId>(i));
     std::ostringstream js;
     js << "window.FrameShell && FrameShell.onShellMetrics({surfaceX:"
        << bounds.x << ",surfaceY:" << bounds.y
        << ",surfaceWidth:" << bounds.width
        << ",surfaceHeight:" << bounds.height
-       << ",windowWidth:" << client_width_
-       << ",windowHeight:" << client_height_ << "});";
+       << ",windowWidth:" << ClientWidthDip()
+       << ",windowHeight:" << ClientHeightDip() << "});";
     main_frame->ExecuteJavaScript(js.str(), main_frame->GetURL(), 0);
   }
 }
@@ -689,16 +653,23 @@ LRESULT MainWindow::HandleNcCalcSize(WPARAM wparam, LPARAM lparam) {
 }
 
 LRESULT MainWindow::HitTest(POINT screen_point) {
-  POINT p = screen_point;
-  ::ScreenToClient(hwnd_, &p);
+  POINT raw = screen_point;
+  ::ScreenToClient(hwnd_, &raw);
+
+  // Hit testing happens entirely in DIPs: the layout constants are DIPs, and
+  // so are the drag regions the surface reports from its own DOM. Converting
+  // the pointer once here keeps every comparison below in one space.
+  POINT p = {ToDip(raw.x), ToDip(raw.y)};
+  const int client_width = ClientWidthDip();
+  const int client_height = ClientHeightDip();
 
   const int border = layout::kResizeBorderThickness;
 
   if (!IsWindowMaximized()) {
     const bool top = p.y >= 0 && p.y < border;
-    const bool bottom = p.y < client_height_ && p.y >= client_height_ - border;
+    const bool bottom = p.y < client_height && p.y >= client_height - border;
     const bool left = p.x >= 0 && p.x < border;
-    const bool right = p.x < client_width_ && p.x >= client_width_ - border;
+    const bool right = p.x < client_width && p.x >= client_width - border;
 
     if (top && left) {
       return HTTOPLEFT;
@@ -729,11 +700,11 @@ LRESULT MainWindow::HitTest(POINT screen_point) {
   if (p.y >= 0 && p.y < layout::kTopbarHeight) {
     // HTMAXBUTTON is the only hit-test result Windows offers the Snap Layouts
     // flyout for, so this cannot be handled as an ordinary client click.
-    if (layout::MaximizeButtonRect(client_width_).Contains(p.x, p.y)) {
+    if (layout::MaximizeButtonRect(client_width).Contains(p.x, p.y)) {
       return HTMAXBUTTON;
     }
-    if (layout::MinimizeButtonRect(client_width_).Contains(p.x, p.y) ||
-        layout::CloseButtonRect(client_width_).Contains(p.x, p.y)) {
+    if (layout::MinimizeButtonRect(client_width).Contains(p.x, p.y) ||
+        layout::CloseButtonRect(client_width).Contains(p.x, p.y)) {
       return HTCLIENT;
     }
     for (const layout::IntRect& region : drag_exclusions_) {
@@ -781,10 +752,10 @@ void MainWindow::Paint(HDC hdc) {
   // Only paint the viewport placeholder when no page covers it; a live page
   // owns those pixels itself.
   if (tabs_.empty() || !ActiveBrowser()) {
-    const layout::ViewportRect viewport = layout::ViewportBounds(
-        {static_cast<double>(client_width_),
-         static_cast<double>(client_height_), sidebar_open_,
-         /*bookmarks_visible=*/false});
+    const layout::ViewportRect dip = ViewportDip();
+    const layout::ViewportRect viewport = {
+        ToPhysical(dip.x), ToPhysical(dip.y), ToPhysical(dip.width),
+        ToPhysical(dip.height), ToPhysical(dip.radius)};
     if (viewport.width > 0 && viewport.height > 0) {
       HRGN rounded = ::CreateRoundRectRgn(
           viewport.x, viewport.y, viewport.x + viewport.width + 1,
@@ -837,14 +808,20 @@ bool MainWindow::SurfaceAt(int x,
                            SurfaceId* id,
                            int* local_x,
                            int* local_y) const {
+  // Works in DIPs and returns DIP-local coordinates: that is the space the
+  // surface lays out in, so it is the space CEF expects mouse events in.
+  const int dip_x = ToDip(x);
+  const int dip_y = ToDip(y);
+
+  // Topbar first: it spans the full width and wins along the top edge.
   const SurfaceId order[] = {SurfaceId::kTopbar, SurfaceId::kSidebar};
   for (SurfaceId candidate : order) {
-    const CefRect bounds = SurfaceBounds(candidate);
-    if (x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y &&
-        y < bounds.y + bounds.height) {
+    const CefRect bounds = SurfaceBoundsDip(candidate);
+    if (dip_x >= bounds.x && dip_x < bounds.x + bounds.width &&
+        dip_y >= bounds.y && dip_y < bounds.y + bounds.height) {
       *id = candidate;
-      *local_x = x - bounds.x;
-      *local_y = y - bounds.y;
+      *local_x = dip_x - bounds.x;
+      *local_y = dip_y - bounds.y;
       return true;
     }
   }
@@ -1024,8 +1001,8 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
         Layer& top = layer(SurfaceId::kTopbar);
         if (top.browser) {
           CefMouseEvent event;
-          event.x = p.x;
-          event.y = p.y;
+          event.x = ToDip(p.x);
+          event.y = ToDip(p.y);
           top.browser->GetHost()->SendMouseMoveEvent(event,
                                                      /*mouseLeave=*/false);
         }
@@ -1084,6 +1061,34 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       // the window has to drag them along with it.
       LayoutPages();
       return 0;
+
+    case WM_DPICHANGED: {
+      // Dragged to a monitor with different scaling, or the scaling changed
+      // underneath us. Windows supplies the rectangle the window should take
+      // at the new scale; not honouring it leaves the window the wrong
+      // physical size on the new display.
+      dpi_ = HIWORD(wparam) > 0 ? HIWORD(wparam) : 96;
+      const RECT* suggested = reinterpret_cast<const RECT*>(lparam);
+      if (suggested) {
+        ::SetWindowPos(hwnd, nullptr, suggested->left, suggested->top,
+                       suggested->right - suggested->left,
+                       suggested->bottom - suggested->top,
+                       SWP_NOZORDER | SWP_NOACTIVATE);
+      }
+      // Every surface has to re-render at the new scale, not just re-lay out:
+      // an off-screen surface rasterises at the device scale it was told
+      // about, so a stale one stays blurry.
+      for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
+        if (layers_[i].browser) {
+          layers_[i].browser->GetHost()->NotifyScreenInfoChanged();
+          layers_[i].browser->GetHost()->WasResized();
+        }
+      }
+      LayoutPages();
+      PushShellMetrics();
+      ::InvalidateRect(hwnd, nullptr, FALSE);
+      return 0;
+    }
 
     case WM_MOUSEMOVE: {
       if (!tracking_mouse_) {

@@ -63,7 +63,20 @@ class MainWindow {
   int client_height() const { return client_height_; }
   bool sidebar_open() const { return sidebar_open_; }
 
+  // Where a surface sits, in PHYSICAL pixels — for blitting and positioning.
   CefRect SurfaceBounds(SurfaceId id) const;
+
+  // The same rectangle in DIPs, which is the space the layout constants and
+  // every HTML surface work in. Keeping the two explicitly separate is what
+  // stops a scaled display silently laying the chrome out at raw pixel sizes.
+  CefRect SurfaceBoundsDip(SurfaceId id) const;
+
+  // Device scale: 1.0 at 96 DPI, 1.5 at 150%, and so on.
+  float DeviceScale() const;
+
+  // Client size in DIPs — the units every CSS surface works in.
+  int ClientWidthDip() const;
+  int ClientHeightDip() const;
   void OnSurfacePaint(SurfaceId id, const void* buffer, int width, int height);
   void SetSurfaceBrowser(SurfaceId id, CefRefPtr<CefBrowser> browser);
 
@@ -149,6 +162,11 @@ class MainWindow {
 
   // Page placement.
   void LayoutPages();
+
+  int ToPhysical(int dip) const;
+  int ToDip(int physical) const;
+  layout::ViewportRect ViewportDip() const;
+  void UpdateDpi();
   Tab* FindTab(int tab_id);
   const Tab* FindTab(int tab_id) const;
   Tab* ActiveTab();
@@ -166,6 +184,11 @@ class MainWindow {
   bool sidebar_open_ = true;
   bool tracking_mouse_ = false;
   bool tracking_nc_mouse_ = false;
+
+  // Physical dots per inch for the monitor this window is on. CEF makes the
+  // process PER_MONITOR_AWARE, so Windows does not scale anything for us and
+  // every pixel value we hand it has to be scaled here.
+  int dpi_ = 96;
 
   // Fakes VIEWPORT_RADIUS on the page, which paints its own square corners.
   CornerMask corner_mask_;

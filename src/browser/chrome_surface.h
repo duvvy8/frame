@@ -45,6 +45,10 @@ class ChromeSurface : public CefClient,
 
   // CefRenderHandler
   void GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) override;
+  // Without this an off-screen surface always rasterises at 1x and looks soft
+  // on a scaled display, however correct its layout is.
+  bool GetScreenInfo(CefRefPtr<CefBrowser> browser,
+                     CefScreenInfo& screen_info) override;
   void OnPaint(CefRefPtr<CefBrowser> browser,
                PaintElementType type,
                const RectList& dirty_rects,

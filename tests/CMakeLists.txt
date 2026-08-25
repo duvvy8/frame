@@ -14,6 +14,8 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(frame_tests
   chrome_layout_test.cpp
+  url_util_test.cpp
+  internal_pages_test.cpp
 )
 
 target_link_libraries(frame_tests

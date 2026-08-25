@@ -108,14 +108,15 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       // The ambient shell gradient is anchored to the WINDOW, not to each
       // surface. Without this offset every surface would restart the gradient
       // at its own origin and the glow would visibly break at every seam.
+      // Reported in DIPs, because these become CSS pixel values.
       const CefRect bounds =
-          window_ ? window_->SurfaceBounds(id_) : CefRect(0, 0, 0, 0);
+          window_ ? window_->SurfaceBoundsDip(id_) : CefRect(0, 0, 0, 0);
       std::ostringstream json;
       json << "{\"surfaceX\":" << bounds.x << ",\"surfaceY\":" << bounds.y
            << ",\"surfaceWidth\":" << bounds.width
            << ",\"surfaceHeight\":" << bounds.height << ",\"windowWidth\":"
-           << (window_ ? window_->client_width() : 0) << ",\"windowHeight\":"
-           << (window_ ? window_->client_height() : 0) << "}";
+           << (window_ ? window_->ClientWidthDip() : 0) << ",\"windowHeight\":"
+           << (window_ ? window_->ClientHeightDip() : 0) << "}";
       callback->Success(json.str());
       return true;
     }
@@ -237,9 +238,20 @@ ChromeSurface::ChromeSurface(MainWindow* window, SurfaceId id)
   router_->AddHandler(query_handler_.get(), /*first=*/false);
 }
 
+bool ChromeSurface::GetScreenInfo(CefRefPtr<CefBrowser> browser,
+                                  CefScreenInfo& screen_info) {
+  if (!window_) {
+    return false;
+  }
+  screen_info.device_scale_factor = window_->DeviceScale();
+  return true;
+}
+
 void ChromeSurface::GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) {
+  // DIPs, not pixels: CEF multiplies by the device scale factor above to get
+  // the bitmap it hands back through OnPaint.
   const CefRect bounds =
-      window_ ? window_->SurfaceBounds(id_) : CefRect(0, 0, 1, 1);
+      window_ ? window_->SurfaceBoundsDip(id_) : CefRect(0, 0, 1, 1);
   // CEF rejects an empty view, so never report zero in either axis.
   rect.x = 0;
   rect.y = 0;
