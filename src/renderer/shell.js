@@ -16,7 +16,17 @@
     minimize: 'frame:window:minimize',
     maximize: 'frame:window:maximize',
     close: 'frame:window:close',
-    dragRegions: 'frame:dragregions:'
+    dragRegions: 'frame:dragregions:',
+
+    sidebarToggle: 'sidebar:toggle',
+    tabCreate: 'tab:create',
+    tabClose: 'tab:close:',
+    tabSelect: 'tab:select:',
+    navBack: 'nav:back',
+    navForward: 'nav:forward',
+    navReload: 'nav:reload',
+    navStop: 'nav:stop',
+    navGo: 'nav:go:'
   };
 
   function query(request) {
@@ -46,6 +56,16 @@
     document.documentElement.style.setProperty(name, value + 'px');
   }
 
+  // Called by the browser process whenever the window resizes or this surface
+  // moves. The shell gradient is anchored to the window, so stale metrics leave
+  // it laid out for the old size and it visibly stops part-way down.
+  function onShellMetrics(shell) {
+    px('--shell-x', shell.surfaceX);
+    px('--shell-y', shell.surfaceY);
+    px('--win-w', shell.windowWidth);
+    px('--win-h', shell.windowHeight);
+  }
+
   // Resolves once the surface knows its geometry. Surfaces await this before
   // reporting themselves ready.
   function bootstrap() {
@@ -63,10 +83,7 @@
         px('--new-tab-width', layout.newTabWidth);
 
         // Offsets that keep the shell gradient continuous across surfaces.
-        px('--shell-x', shell.surfaceX);
-        px('--shell-y', shell.surfaceY);
-        px('--win-w', shell.windowWidth);
-        px('--win-h', shell.windowHeight);
+        onShellMetrics(shell);
 
         return { layout: layout, shell: shell };
       });
@@ -93,15 +110,26 @@
     return query(CHANNEL.dragRegions + parts.join(';'));
   }
 
-  // Overwritten by a surface that cares. The browser process calls this
-  // directly when the window is maximised or restored.
+  // Both of these are overwritten by whichever surface cares. The browser
+  // process calls them directly — surfaces never poll for state.
   function onWindowState() {}
+  function onBrowserState() {}
+
+  // Fire-and-forget command. Nothing useful comes back from these beyond
+  // acknowledgement, and a failed command should not break the surface.
+  function send(channel, payload) {
+    return query(payload === undefined ? channel : channel + payload)
+      .catch(function () { /* command refused; surface stays usable */ });
+  }
 
   global.FrameShell = {
     CHANNEL: CHANNEL,
     query: query,
     bootstrap: bootstrap,
     reportDragRegions: reportDragRegions,
-    onWindowState: onWindowState
+    send: send,
+    onShellMetrics: onShellMetrics,
+    onWindowState: onWindowState,
+    onBrowserState: onBrowserState
   };
 })(window);

@@ -10,8 +10,7 @@
   <div class="topbar">
     <!-- The mark. Three glass planes forming an F: because they are
          translucent and overlap, the intersections brighten on their own,
-         which is what makes it read as stacked glass rather than flat shapes.
-         Simplified from the reference to stay legible at 18px. -->
+         which is what makes it read as stacked glass rather than flat shapes. -->
     <div class="brand" title="Frame">
       <svg class="mark" viewBox="0 0 28 28" width="20" height="20"
            aria-label="Frame" role="img">
@@ -32,21 +31,14 @@
             <stop offset="1" stop-color="#4a7ed6" stop-opacity=".34"/>
           </linearGradient>
         </defs>
-
         <g transform="rotate(-8 14 14)">
-          <!-- top plane -->
-          <path d="M5.5 3.2 H23 V8.6 H5.5 Z"
-                fill="url(#planeB)"
+          <path d="M5.5 3.2 H23 V8.6 H5.5 Z" fill="url(#planeB)"
                 stroke="rgba(255,255,255,.46)" stroke-width=".75"
                 stroke-linejoin="round"/>
-          <!-- middle plane -->
-          <path d="M10 11.6 H20.5 V16.8 H10 Z"
-                fill="url(#planeC)"
+          <path d="M10 11.6 H20.5 V16.8 H10 Z" fill="url(#planeC)"
                 stroke="rgba(255,255,255,.42)" stroke-width=".75"
                 stroke-linejoin="round"/>
-          <!-- stem, drawn last so it reads as the near pane -->
-          <path d="M6.6 3.2 H12.2 V25 H6.6 Z"
-                fill="url(#planeA)"
+          <path d="M6.6 3.2 H12.2 V25 H6.6 Z" fill="url(#planeA)"
                 stroke="rgba(255,255,255,.52)" stroke-width=".75"
                 stroke-linejoin="round"/>
         </g>
@@ -64,14 +56,15 @@
     </button>
 
     <div class="nav">
-      <button class="icon-button glass-button" title="Back" aria-label="Back">
+      <button class="icon-button glass-button" id="nav-back" title="Back"
+              aria-label="Back">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <path d="M10 3.5 L5.5 8 L10 12.5" fill="none" stroke="currentColor"
                 stroke-width="1.4" stroke-linecap="round"
                 stroke-linejoin="round"/>
         </svg>
       </button>
-      <button class="icon-button glass-button" title="Forward"
+      <button class="icon-button glass-button" id="nav-forward" title="Forward"
               aria-label="Forward">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <path d="M6 3.5 L10.5 8 L6 12.5" fill="none" stroke="currentColor"
@@ -79,7 +72,7 @@
                 stroke-linejoin="round"/>
         </svg>
       </button>
-      <button class="icon-button glass-button" title="Reload"
+      <button class="icon-button glass-button" id="nav-reload" title="Reload"
               aria-label="Reload">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
           <path d="M12.5 6.5 A5 5 0 1 0 12.8 9.6" fill="none"
@@ -92,16 +85,11 @@
       </button>
     </div>
 
+    <!-- Tabs are rendered from the state the browser process pushes. This
+         markup is never the source of truth for what is open. -->
     <div class="tabs" id="tabs">
-      <div class="tab is-active">
-        <span class="tab-dot"></span>
-        <span class="tab-title">New Tab</span>
-      </div>
-      <div class="tab">
-        <span class="tab-dot"></span>
-        <span class="tab-title">Frame</span>
-      </div>
-      <button class="new-tab glass-button" title="New tab" aria-label="New tab">
+      <button class="new-tab glass-button" id="new-tab" title="New tab"
+              aria-label="New tab">
         <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
           <path d="M8 4 V12 M4 8 H12" stroke="currentColor" stroke-width="1.4"
                 stroke-linecap="round"/>
@@ -109,13 +97,6 @@
       </button>
     </div>
 
-    <div class="status" id="status">connecting</div>
-
-    <!-- Caption buttons. Frame draws these itself now that Windows draws no
-         title bar. Their geometry comes from the shared constants, because the
-         hit-testing in C++ has to agree with this layout to the pixel — the
-         maximise button in particular, since that rect is what Windows watches
-         to offer the Snap Layouts flyout. -->
     <div class="caption" id="caption">
       <button class="caption-button" id="win-minimize" title="Minimize"
               aria-label="Minimize">
@@ -151,22 +132,23 @@
   <script src="shell.js"></script>
   <script>
     (function () {
-      var status = document.getElementById('status');
       var root = document.documentElement;
+      var tabsEl = document.getElementById('tabs');
+      var newTabButton = document.getElementById('new-tab');
+      var C = FrameShell.CHANNEL;
 
-      // Parts of the caption strip that must stay clickable. Everything else
-      // in the topbar drags the window.
+      // --- drag regions ---------------------------------------------------
+
       function interactiveElements() {
         var list = [
           document.getElementById('sidebar-toggle'),
-          document.querySelector('.nav'),
-          status
+          document.querySelector('.nav')
         ];
-        // Individual tabs, never the strip that contains them. The strip is
+        // Individual tabs, never the strip that contains them: the strip is
         // flexible and spans most of the topbar, so reporting it whole would
-        // leave almost nowhere to grab the window — the empty space between
-        // tabs has to stay draggable, as it is in every other browser.
-        var controls = document.querySelectorAll('#tabs .tab, #tabs .new-tab');
+        // leave almost nowhere to grab the window. The gaps between tabs stay
+        // draggable, as they are in every other browser.
+        var controls = tabsEl.querySelectorAll('.tab, .new-tab');
         for (var i = 0; i < controls.length; i++) {
           list.push(controls[i]);
         }
@@ -177,8 +159,73 @@
         FrameShell.reportDragRegions(interactiveElements());
       }
 
-      // The window tells us; we never guess from our own size, because a
-      // maximised window and a merely large one look identical from here.
+      // --- tab strip ------------------------------------------------------
+
+      function buildTab(tab, isActive) {
+        var el = document.createElement('div');
+        el.className = 'tab' + (isActive ? ' is-active' : '');
+        el.dataset.tabId = tab.id;
+        el.title = tab.title;
+
+        var dot = document.createElement('span');
+        dot.className = 'tab-dot' + (tab.loading ? ' is-loading' : '');
+        el.appendChild(dot);
+
+        var title = document.createElement('span');
+        title.className = 'tab-title';
+        // textContent, never innerHTML: page titles are hostile input.
+        title.textContent = tab.title || 'Untitled';
+        el.appendChild(title);
+
+        var close = document.createElement('button');
+        close.className = 'tab-close';
+        close.title = 'Close tab';
+        close.setAttribute('aria-label', 'Close tab');
+        close.innerHTML =
+          '<svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true">' +
+          '<path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" ' +
+          'stroke-width="1.4" stroke-linecap="round"/></svg>';
+        close.addEventListener('click', function (event) {
+          // Without this the click also selects the tab being closed.
+          event.stopPropagation();
+          FrameShell.send(C.tabClose, tab.id);
+        });
+        el.appendChild(close);
+
+        el.addEventListener('mousedown', function (event) {
+          // Middle-click closes, as everywhere else.
+          if (event.button === 1) {
+            event.preventDefault();
+            FrameShell.send(C.tabClose, tab.id);
+          }
+        });
+        el.addEventListener('click', function () {
+          FrameShell.send(C.tabSelect, tab.id);
+        });
+        return el;
+      }
+
+      function renderTabs(state) {
+        var existing = tabsEl.querySelectorAll('.tab');
+        for (var i = 0; i < existing.length; i++) {
+          existing[i].remove();
+        }
+        for (var j = 0; j < state.tabs.length; j++) {
+          var tab = state.tabs[j];
+          tabsEl.insertBefore(buildTab(tab, tab.id === state.activeTabId),
+                              newTabButton);
+        }
+        // Tab rectangles just moved, so the draggable strip did too.
+        publishDragRegions();
+      }
+
+      FrameShell.onBrowserState = function (state) {
+        renderTabs(state);
+        document.getElementById('nav-back').disabled = !state.canGoBack;
+        document.getElementById('nav-forward').disabled = !state.canGoForward;
+        root.classList.toggle('is-loading', !!state.loading);
+      };
+
       FrameShell.onWindowState = function (state) {
         root.classList.toggle('is-maximized', !!state.maximized);
         var button = document.getElementById('win-maximize');
@@ -186,35 +233,34 @@
         button.setAttribute('aria-label', button.title);
       };
 
-      document.getElementById('win-minimize').addEventListener('click',
-        function () { FrameShell.query(FrameShell.CHANNEL.minimize); });
-      document.getElementById('win-close').addEventListener('click',
-        function () { FrameShell.query(FrameShell.CHANNEL.close); });
-      // The maximise button is also reachable through the non-client path, so
-      // Windows can offer Snap Layouts over it. Both routes end up here.
-      document.getElementById('win-maximize').addEventListener('click',
-        function () { FrameShell.query(FrameShell.CHANNEL.maximize); });
+      // --- controls -------------------------------------------------------
 
-      FrameShell.bootstrap().then(function (state) {
-        // Proof the surface got its geometry from C++ rather than this file.
-        status.textContent = state.layout.topbarHeight + 'px · ' +
-                             state.shell.windowWidth + '×' +
-                             state.shell.windowHeight;
-        status.classList.add('is-ok');
+      function on(id, channel) {
+        document.getElementById(id).addEventListener('click', function () {
+          FrameShell.send(channel);
+        });
+      }
 
+      on('sidebar-toggle', C.sidebarToggle);
+      on('nav-back', C.navBack);
+      on('nav-forward', C.navForward);
+      on('nav-reload', C.navReload);
+      on('new-tab', C.tabCreate);
+      on('win-minimize', C.minimize);
+      on('win-close', C.close);
+      // Also reachable through the non-client path so Windows can offer Snap
+      // Layouts over it; both routes end up here.
+      on('win-maximize', C.maximize);
+
+      FrameShell.bootstrap().then(function () {
         publishDragRegions();
-        return FrameShell.query(FrameShell.CHANNEL.windowState);
+        return FrameShell.query(C.windowState);
       }).then(function (windowState) {
         if (windowState) {
           FrameShell.onWindowState(windowState);
         }
-      }).catch(function (err) {
-        status.textContent = 'bridge: ' + err.message;
-        status.classList.add('is-error');
-      });
+      }).catch(function () { /* surface still renders without the bridge */ });
 
-      // Tabs are flexible, so the undraggable regions move whenever the window
-      // resizes. Re-report rather than letting the window act on stale rects.
       if (typeof ResizeObserver === 'function') {
         new ResizeObserver(publishDragRegions).observe(document.body);
       }

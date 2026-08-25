@@ -111,3 +111,40 @@
 .metric.is-error {
   color: #ff8a5c;
 }
+
+/* --- address input ------------------------------------------------------ */
+
+.address-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Fill the pill's full height. An input is only as tall as its text line, so
+   * without this the pill has a dead band above and below the text where a
+   * click lands on the container and focuses nothing — which reads, fairly, as
+   * "the address bar doesn't work". */
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .01em;
+  padding: 0;
+  /* Text needs to be selectable here even though the rest of the chrome is not. */
+  user-select: text;
+  cursor: text;
+}
+
+.address-input::placeholder {
+  color: var(--text-faint);
+}
+
+.address:focus-within {
+  box-shadow: var(--glass-rim), 0 0 0 1px var(--accent-soft);
+}
+
+/* Brief confirmation that the copy landed, rather than a toast for something
+ * this small. */
+.copy.is-done {
+  color: var(--accent);
+}

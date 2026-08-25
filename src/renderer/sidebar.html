@@ -8,9 +8,12 @@
 </head>
 <body>
   <div class="sidebar">
-    <div class="address glass-quiet" title="Address">
-      <span class="address-text" id="address">frame://newtab</span>
-      <button class="copy glass-button" title="Copy address"
+    <!-- A real input, not a label: this is where you type a URL. -->
+    <div class="address glass-quiet">
+      <input class="address-input" id="address" type="text" spellcheck="false"
+             autocomplete="off" placeholder="Search or enter address"
+             aria-label="Address">
+      <button class="copy glass-button" id="copy" title="Copy address"
               aria-label="Copy address">
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <rect x="5.5" y="5.5" width="8" height="8" rx="2" fill="none"
@@ -24,7 +27,8 @@
     </div>
 
     <div class="favorites" id="favorites">
-      <button class="favorite glass-quiet" title="Favorite">
+      <button class="favorite glass-quiet" data-url="https://www.google.com"
+              title="Google">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor"
                   stroke-width="1.6"/>
@@ -32,14 +36,16 @@
                 stroke-width="1.6" stroke-linecap="round"/>
         </svg>
       </button>
-      <button class="favorite glass-quiet" title="Favorite">
+      <button class="favorite glass-quiet" data-url="https://www.youtube.com"
+              title="YouTube">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <rect x="3.5" y="6" width="17" height="12" rx="3.5" fill="none"
                 stroke="currentColor" stroke-width="1.6"/>
           <path d="M10.5 9.8 L15 12 L10.5 14.2 Z" fill="currentColor"/>
         </svg>
       </button>
-      <button class="favorite glass-quiet" title="Favorite">
+      <button class="favorite glass-quiet"
+              data-url="https://calendar.google.com" title="Calendar">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <rect x="4" y="5.5" width="16" height="14" rx="3" fill="none"
                 stroke="currentColor" stroke-width="1.6"/>
@@ -48,14 +54,15 @@
                 stroke-linecap="round"/>
         </svg>
       </button>
-      <button class="favorite glass-quiet" title="Favorite">
+      <button class="favorite glass-quiet" data-url="https://github.com"
+              title="GitHub">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path d="M12 4 L19 8 V16 L12 20 L5 16 V8 Z" fill="none"
                 stroke="currentColor" stroke-width="1.6"
                 stroke-linejoin="round"/>
         </svg>
       </button>
-      <button class="favorite is-empty" title="Add favorite"
+      <button class="favorite is-empty" id="add-favorite" title="Add favorite"
               aria-label="Add favorite">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path d="M12 6 V18 M6 12 H18" stroke="currentColor"
@@ -72,13 +79,71 @@
   <script src="shell.js"></script>
   <script>
     (function () {
+      var address = document.getElementById('address');
       var metric = document.getElementById('metric');
+      var C = FrameShell.CHANNEL;
+      var editing = false;
 
-      FrameShell.bootstrap().then(function (state) {
-        // Confirms this surface is sized and positioned from the C++ constants.
-        metric.textContent = state.layout.sidebarWidth + 'px · y' +
-                             state.shell.surfaceY;
-      }).catch(function (err) {
+      // Clicking anywhere on the pill focuses the field, including the padding
+      // around the text and the gap beside the copy button. Belt and braces
+      // alongside the input filling the pill's height in CSS.
+      document.querySelector('.address').addEventListener('mousedown',
+        function (event) {
+          if (event.target !== address &&
+              !event.target.closest('#copy')) {
+            event.preventDefault();
+            address.focus();
+          }
+        });
+
+      // While the user is typing, their text wins. Overwriting the field from
+      // a page's own address change mid-edit would be maddening.
+      address.addEventListener('focus', function () {
+        editing = true;
+        address.select();
+      });
+      address.addEventListener('blur', function () { editing = false; });
+
+      address.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          FrameShell.send(C.navGo, address.value);
+          editing = false;
+          address.blur();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          address.blur();
+        }
+      });
+
+      document.getElementById('copy').addEventListener('click', function () {
+        address.select();
+        // execCommand rather than the async clipboard API: this surface is a
+        // file:// document, where the modern API is not available.
+        document.execCommand('copy');
+        var button = document.getElementById('copy');
+        button.classList.add('is-done');
+        setTimeout(function () { button.classList.remove('is-done'); }, 900);
+      });
+
+      var favorites = document.querySelectorAll('.favorite[data-url]');
+      for (var i = 0; i < favorites.length; i++) {
+        (function (el) {
+          el.addEventListener('click', function () {
+            FrameShell.send(C.navGo, el.dataset.url);
+          });
+        })(favorites[i]);
+      }
+
+      FrameShell.onBrowserState = function (state) {
+        if (!editing) {
+          address.value = state.address || '';
+        }
+        metric.textContent = state.tabs.length +
+                             (state.tabs.length === 1 ? ' tab' : ' tabs');
+      };
+
+      FrameShell.bootstrap().catch(function (err) {
         metric.textContent = 'bridge: ' + err.message;
         metric.classList.add('is-error');
       });

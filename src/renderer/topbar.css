@@ -209,3 +209,58 @@
 .is-maximized .icon-restore {
   display: block;
 }
+
+/* --- tab close + loading ------------------------------------------------ */
+
+.tab-close {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: default;
+  transition:
+    opacity var(--dur-1) var(--ease),
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+/* The close affordance only appears on the tab you are pointing at, so a full
+ * strip does not read as a row of buttons. */
+.tab:hover .tab-close,
+.tab.is-active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, .12);
+  color: var(--text);
+}
+
+/* Loading pulses the state dot rather than adding a spinner: one accent, one
+ * meaning, no extra furniture in a 32px bar. */
+.tab-dot.is-loading {
+  animation: tab-pulse 900ms var(--ease) infinite;
+}
+
+@keyframes tab-pulse {
+  0%   { opacity: 1;   transform: scale(1); }
+  50%  { opacity: .35; transform: scale(.72); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+
+/* Disabled nav buttons stay visible but clearly inert — a missing button would
+ * make the row jump around as history changes. */
+.icon-button:disabled {
+  color: #40404a;
+}
+
+.icon-button:disabled:hover {
+  background-image: none;
+  box-shadow: none;
+  color: #40404a;
+}

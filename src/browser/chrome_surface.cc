@@ -1,5 +1,6 @@
 #include "browser/chrome_surface.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -22,6 +23,17 @@ const char kCommandClose[] = "frame:window:close";
 // Followed by "x,y,w,h;x,y,w,h;..." — a flat list rather than JSON, so the
 // browser process needs no parser to read it.
 const char kCommandDragRegions[] = "frame:dragregions:";
+
+// Chrome commands. Names are constants for the same reason as above.
+const char kCommandSidebarToggle[] = "sidebar:toggle";
+const char kCommandTabCreate[] = "tab:create";
+const char kCommandTabClose[] = "tab:close:";
+const char kCommandTabSelect[] = "tab:select:";
+const char kCommandNavBack[] = "nav:back";
+const char kCommandNavForward[] = "nav:forward";
+const char kCommandNavReload[] = "nav:reload";
+const char kCommandNavStop[] = "nav:stop";
+const char kCommandNavGo[] = "nav:go:";
 
 bool StartsWith(const std::string& value, const char* prefix) {
   return value.rfind(prefix, 0) == 0;
@@ -122,6 +134,52 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       }
       if (name == kCommandClose) {
         window_->CloseWindow();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandSidebarToggle) {
+        window_->ToggleSidebar();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandTabCreate) {
+        window_->CreateTab(std::string(), /*activate=*/true);
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandTabClose)) {
+        window_->CloseTab(std::atoi(name.c_str() + std::strlen(kCommandTabClose)));
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandTabSelect)) {
+        window_->SelectTab(
+            std::atoi(name.c_str() + std::strlen(kCommandTabSelect)));
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandNavBack) {
+        window_->GoBack();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandNavForward) {
+        window_->GoForward();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandNavReload) {
+        window_->Reload();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandNavStop) {
+        window_->StopLoad();
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandNavGo)) {
+        window_->Navigate(name.substr(std::strlen(kCommandNavGo)));
         callback->Success("ok");
         return true;
       }

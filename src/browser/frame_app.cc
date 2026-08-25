@@ -90,6 +90,13 @@ void FrameApp::OnContextInitialized() {
   // others.
   CreateSurface(main_window_.get(), SurfaceId::kTopbar, L"topbar.html");
   CreateSurface(main_window_.get(), SurfaceId::kSidebar, L"sidebar.html");
+
+  // Open on a real page. frame://newtab replaces this default once the scheme
+  // handler and internal pages land.
+  const std::string start_url = cmd->HasSwitch("url")
+                                    ? cmd->GetSwitchValue("url").ToString()
+                                    : "https://www.google.com";
+  main_window_->CreateTab(start_url, /*activate=*/true);
 }
 
 void FrameApp::OnWebKitInitialized() {
