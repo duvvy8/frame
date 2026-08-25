@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame topbar</title>
+  <link rel="stylesheet" href="topbar.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="nav">
+      <button class="nav-button" title="Back" aria-label="Back">&#8249;</button>
+      <button class="nav-button" title="Forward" aria-label="Forward">&#8250;</button>
+      <button class="nav-button" title="Reload" aria-label="Reload">&#10227;</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab is-active"><span class="tab-title">New tab</span></div>
+      <div class="tab"><span class="tab-title">Frame</span></div>
+      <button class="new-tab" title="New tab" aria-label="New tab">+</button>
+    </div>
+
+    <div class="bridge" id="bridge">bridge: connecting&#8230;</div>
+  </div>
+
+  <script>
+    // Minimal IPC bridge check. The chrome surface asks the browser process for
+    // the layout constants rather than hardcoding a second copy of them — if
+    // this round-trips, the JS <-> C++ transport works end to end.
+    (function () {
+      var el = document.getElementById('bridge');
+
+      if (typeof window.cefQuery !== 'function') {
+        el.textContent = 'bridge: unavailable';
+        el.classList.add('is-error');
+        return;
+      }
+
+      window.cefQuery({
+        request: 'frame:layout',
+        persistent: false,
+        onSuccess: function (response) {
+          var layout = JSON.parse(response);
+          // Size the strip from the value C++ reported, not a literal here.
+          document.documentElement.style.setProperty(
+            '--topbar-height', layout.topbarHeight + 'px');
+          el.textContent = 'bridge: ok \u2014 topbar ' + layout.topbarHeight +
+                           'px, sidebar ' + layout.sidebarWidth + 'px';
+          el.classList.add('is-ok');
+        },
+        onFailure: function (code, message) {
+          el.textContent = 'bridge: failed (' + code + ') ' + message;
+          el.classList.add('is-error');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

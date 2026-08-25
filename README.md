@@ -67,7 +67,7 @@ Migration sequencing follows the project spec.
 
 - [x] **1. Toolchain proof** — `cefsimple` builds and renders a live page
 - [x] **2. Layout constants** — ported to `src/shared/chrome_layout.h` with parity tests
-- [ ] 3. First OSR chrome surface (32px topbar)
+- [x] **3. First OSR chrome surface** — 32px topbar rendering off-screen, driven by a message-router bridge
 - [ ] 4. Sidebar, frame strips, corner masks
 - [ ] 5. Real `CefBrowser` per tab
 - [ ] 6. `frame://` scheme handler and internal pages

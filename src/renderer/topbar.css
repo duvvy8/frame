@@ -1,0 +1,180 @@
+/* Frame — topbar chrome surface.
+ *
+ * Rendered off-screen by CEF and composited into the native window. Written
+ * fresh for this codebase rather than carried over.
+ *
+ * Two conventions worth keeping as this grows:
+ *   - the accent is reserved for STATE and emphasis, never decoration
+ *   - motion decelerates (ease-out); nothing accelerates on the way in
+ *
+ * --topbar-height is overwritten at runtime with the value the browser process
+ * reports, so this file never becomes a second source of truth for geometry.
+ * The literal below is only a pre-bridge fallback.
+ */
+
+:root {
+  --topbar-height: 32px;
+
+  --shell: #141416;
+  --surface: #1c1c20;
+  --surface-hover: #26262c;
+  --text: #e8e8ea;
+  --text-dim: #8b8b93;
+  --border: #2a2a30;
+  --accent: #ff7a1a;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--shell);
+  color: var(--text);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--topbar-height);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.nav-button {
+  width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: default;
+  transition: background var(--dur-1) var(--ease),
+              color var(--dur-1) var(--ease);
+}
+
+.nav-button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  min-width: 95px;
+  max-width: 190px;
+  flex: 1 1 auto;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-dim);
+  transition: background var(--dur-1) var(--ease),
+              color var(--dur-1) var(--ease);
+}
+
+.tab:hover {
+  background: var(--surface-hover);
+}
+
+.tab.is-active {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* State, not decoration. */
+.tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 1px 1px 0 0;
+  background: var(--accent);
+}
+
+.tab-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.new-tab {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: default;
+  transition: background var(--dur-1) var(--ease),
+              color var(--dur-1) var(--ease);
+}
+
+.new-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.bridge {
+  flex: 0 0 auto;
+  padding: 0 8px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bridge.is-ok {
+  color: var(--text);
+}
+
+/* Failure has to be visible at a glance — this strip is the migration's
+ * canary for the whole IPC transport. */
+.bridge.is-error {
+  color: var(--accent);
+}
