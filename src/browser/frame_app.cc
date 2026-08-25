@@ -15,28 +15,11 @@
 namespace frame {
 namespace {
 
-// Directory containing the executable, which is where the build stages the
-// chrome surface HTML/CSS.
-std::wstring ExecutableDir() {
-  wchar_t path[MAX_PATH] = {};
-  ::GetModuleFileNameW(nullptr, path, MAX_PATH);
-  std::wstring result(path);
-  const size_t slash = result.find_last_of(L'\\');
-  return slash == std::wstring::npos ? result : result.substr(0, slash);
-}
-
-// file:// for now. The frame:// scheme handler, with its flat allowlist, lands
-// in a later migration step and replaces this.
-std::string SurfaceUrl(const wchar_t* file_name) {
-  std::wstring dir = ExecutableDir();
-  for (auto& ch : dir) {
-    if (ch == L'\\') {
-      ch = L'/';
-    }
-  }
-  const std::wstring url =
-      L"file:///" + dir + L"/resources/" + file_name;
-  return CefString(url).ToString();
+// Chrome surfaces are served over frame:// like every other internal page, so
+// all of Frame's own UI shares one trusted origin. Over file:// they were a
+// opaque origin, which among other things left the clipboard API unavailable.
+std::string SurfaceUrl(const char* host) {
+  return std::string("frame://") + host;
 }
 
 int SwitchAsInt(CefRefPtr<CefCommandLine> cmd, const char* name, int fallback) {
@@ -47,7 +30,7 @@ int SwitchAsInt(CefRefPtr<CefCommandLine> cmd, const char* name, int fallback) {
   return value.empty() ? fallback : std::atoi(value.c_str());
 }
 
-void CreateSurface(MainWindow* window, SurfaceId id, const wchar_t* file_name) {
+void CreateSurface(MainWindow* window, SurfaceId id, const char* host) {
   CefRefPtr<ChromeSurface> surface(new ChromeSurface(window, id));
 
   CefWindowInfo window_info;
@@ -59,7 +42,7 @@ void CreateSurface(MainWindow* window, SurfaceId id, const wchar_t* file_name) {
   settings.windowless_frame_rate = 60;
   settings.background_color = CefColorSetARGB(255, 11, 11, 13);
 
-  CefBrowserHost::CreateBrowser(window_info, surface, SurfaceUrl(file_name),
+  CefBrowserHost::CreateBrowser(window_info, surface, SurfaceUrl(host),
                                 settings, nullptr, nullptr);
 }
 
@@ -67,6 +50,82 @@ void CreateSurface(MainWindow* window, SurfaceId id, const wchar_t* file_name) {
 
 FrameApp::FrameApp() = default;
 FrameApp::~FrameApp() = default;
+
+void FrameApp::OnBeforeCommandLineProcessing(
+    const CefString& process_type,
+    CefRefPtr<CefCommandLine> command_line) {
+  // Telemetry switches, applied to every process.
+  //
+  // These are the reason the rewrite exists: Chromium's defaults phone home
+  // on a timer, and a browser built for privacy should not inherit that just
+  // because it was the default. Each one is a documented Chromium switch, not
+  // a guess.
+  //
+  // This is the minimum, not the whole privacy layer — request-level blocking
+  // and per-tab contexts are separate work. But it stops the browser talking
+  // to anyone on its own initiative.
+  static const char* kSwitches[] = {
+      // The component updater's background check-ins, variations pings, and
+      // most of the "phone home on a timer" behaviour.
+      "disable-background-networking",
+      "disable-client-side-phishing-detection",
+      "disable-sync",
+      "disable-default-apps",
+      // Hyperlink auditing pings.
+      "no-pings",
+      // Chromium's own network-health beacon, on by default upstream.
+      "disable-domain-reliability",
+      "disable-breakpad",
+      // Safe Browsing is a genuine tradeoff rather than a free win: its
+      // real-time mode sends visited URLs to Google. Off by default, to be
+      // exposed as an explicit opt-in with the tradeoff spelled out.
+      "safebrowsing-disable-auto-update",
+  };
+
+  for (const char* item : kSwitches) {
+    const std::string entry(item);
+    const size_t equals = entry.find('=');
+    if (equals == std::string::npos) {
+      command_line->AppendSwitch(entry);
+    } else {
+      command_line->AppendSwitchWithValue(entry.substr(0, equals),
+                                          entry.substr(equals + 1));
+    }
+  }
+
+  // Metrics are never initialised rather than being switched off after the
+  // fact: starting from a build that was never wired up is a stronger
+  // position than disabling something already running.
+  command_line->AppendSwitch("disable-metrics");
+  command_line->AppendSwitch("disable-metrics-reporting");
+
+  // --disable-features is MERGED, never assigned.
+  //
+  // CEF has already put its own required entries in this switch by the time we
+  // are called, and AppendSwitchWithValue replaces the whole value rather than
+  // adding to it. Overwriting it takes out CEF's own configuration and the
+  // browser process dies with an access violation before a window ever
+  // appears — which is exactly what happened when this was written the
+  // obvious way.
+  static const char* kDisableFeatures[] = {
+      "Translate",
+      "OptimizationHints",
+      "MediaRouter",
+      "OptimizationGuideModelDownloading",
+  };
+
+  std::string features = command_line->GetSwitchValue("disable-features");
+  for (const char* feature : kDisableFeatures) {
+    if (features.find(feature) != std::string::npos) {
+      continue;
+    }
+    if (!features.empty()) {
+      features += ",";
+    }
+    features += feature;
+  }
+  command_line->AppendSwitchWithValue("disable-features", features);
+}
 
 void FrameApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) {
   // Runs in EVERY process, before CEF starts. A renderer that has not been
@@ -98,8 +157,8 @@ void FrameApp::OnContextInitialized() {
   // Each chrome surface is its own off-screen browser, composited by the
   // window. Independent surfaces mean one can repaint without touching the
   // others.
-  CreateSurface(main_window_.get(), SurfaceId::kTopbar, L"topbar.html");
-  CreateSurface(main_window_.get(), SurfaceId::kSidebar, L"sidebar.html");
+  CreateSurface(main_window_.get(), SurfaceId::kTopbar, "topbar");
+  CreateSurface(main_window_.get(), SurfaceId::kSidebar, "sidebar");
 
   // Frame's own start page, served over frame:// from the flat allowlist.
   const std::string start_url = cmd->HasSwitch("url")

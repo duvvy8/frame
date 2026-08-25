@@ -10,6 +10,7 @@
 
 #include "browser/page_client.h"
 #include "include/cef_app.h"
+#include "include/cef_task.h"
 #include "shared/chrome_layout.h"
 #include "shared/url_util.h"
 
@@ -85,6 +86,30 @@ int KeyboardModifiers(WPARAM wparam, LPARAM lparam) {
 // tested directly; both handle input Frame does not control.
 using frame::url::JsonEscape;
 using frame::url::NormalizeUrl;
+
+// Defers a navigation to the next turn of the UI thread.
+//
+// Needed because OnLoadError arrives while the failed navigation is still
+// unwinding: starting another one from inside that handler re-enters the
+// teardown and takes the browser process down with it.
+class LoadUrlTask : public CefTask {
+ public:
+  LoadUrlTask(CefRefPtr<CefFrame> frame, const std::string& url)
+      : frame_(frame), url_(url) {}
+
+  void Execute() override {
+    if (frame_) {
+      frame_->LoadURL(url_);
+    }
+  }
+
+ private:
+  CefRefPtr<CefFrame> frame_;
+  const std::string url_;
+
+  IMPLEMENT_REFCOUNTING(LoadUrlTask);
+  DISALLOW_COPY_AND_ASSIGN(LoadUrlTask);
+};
 
 }  // namespace
 
@@ -516,10 +541,32 @@ void MainWindow::OnPageLoadError(int tab_id,
   if (!tab) {
     return;
   }
-  tab->title = "Unreachable";
   tab->loading = false;
-  // A proper frame://unreachable page, with the Wayback fallback, comes with
-  // the internal pages step. Until then the failure at least surfaces.
+
+  // Never replace our own error page with itself: if frame://unreachable
+  // somehow fails, showing whatever CEF reports is better than looping.
+  if (frame::url::StartsWith(failed_url, "frame://unreachable")) {
+    PushBrowserState();
+    return;
+  }
+
+  // Only outright navigation failures land here — PageClient already filters
+  // to main-frame loads and drops ERR_ABORTED. A site's own 404 page is the
+  // site's business and is never replaced by this.
+  const std::string target = std::string("frame://unreachable?url=") +
+                             frame::url::UrlEncode(failed_url) +
+                             "&reason=" + frame::url::UrlEncode(error_text);
+
+  if (tab->browser) {
+    // POSTED, never called directly from here. OnLoadError arrives while the
+    // failed navigation is still unwinding, and starting another one from
+    // inside it re-enters that teardown — which crashes the browser process
+    // outright rather than failing gracefully.
+    CefRefPtr<CefFrame> main_frame = tab->browser->GetMainFrame();
+    if (main_frame) {
+      CefPostTask(TID_UI, new LoadUrlTask(main_frame, target));
+    }
+  }
   PushBrowserState();
 }
 

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "include/cef_app.h"
+#include "include/cef_command_line.h"
 #include "include/cef_scheme.h"
 #include "include/wrapper/cef_message_router.h"
 
@@ -23,6 +24,9 @@ class FrameApp : public CefApp,
   ~FrameApp() override;
 
   // CefApp
+  void OnBeforeCommandLineProcessing(
+      const CefString& process_type,
+      CefRefPtr<CefCommandLine> command_line) override;
   void OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) override;
   CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override {
     return this;

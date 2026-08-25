@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Unreachable</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="unreachable.css">
+</head>
+<body class="unreachable">
+  <main class="stage">
+    <div class="card glass-lens">
+      <div class="mark-row">
+        <img src="logo.svg" width="28" height="28" alt="">
+        <span class="label">Unreachable</span>
+      </div>
+
+      <h1 class="headline" id="headline">This page didn&rsquo;t load</h1>
+      <p class="target" id="target"></p>
+      <p class="reason" id="reason"></p>
+
+      <div class="actions">
+        <button class="action is-primary" id="retry">Try again</button>
+        <!-- Offered, never automatic. Silently redirecting to an archive would
+             hide that the real site is down, which is the thing worth knowing. -->
+        <button class="action" id="wayback">Open last archived copy</button>
+      </div>
+
+      <p class="footnote">
+        The archived copy comes from the Wayback Machine, which means asking
+        archive.org for this address.
+      </p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      // The failure details arrive as query parameters, because the page is
+      // loaded in place of the one that failed and has no other channel.
+      var params = new URLSearchParams(window.location.search);
+      var failed = params.get('url') || '';
+      var reason = params.get('reason') || '';
+
+      var targetEl = document.getElementById('target');
+      var reasonEl = document.getElementById('reason');
+
+      // textContent, never innerHTML: the failed URL is untrusted input.
+      targetEl.textContent = failed;
+      reasonEl.textContent = reason ? reason.replace(/^ERR_/, '').replace(/_/g, ' ').toLowerCase() : '';
+
+      document.getElementById('retry').addEventListener('click', function () {
+        if (failed) {
+          window.location.href = failed;
+        }
+      });
+
+      var wayback = document.getElementById('wayback');
+      if (!failed) {
+        wayback.disabled = true;
+      }
+      wayback.addEventListener('click', function () {
+        // web.archive.org/web/<timestamp>/<url>, where "2" resolves to the
+        // most recent snapshot.
+        window.location.href = 'https://web.archive.org/web/2/' +
+                               encodeURI(failed);
+      });
+    })();
+  </script>
+</body>
+</html>

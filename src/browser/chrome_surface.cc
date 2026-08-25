@@ -4,7 +4,10 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <system_error>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -308,7 +311,17 @@ bool ChromeSurface::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
   if (slash != std::wstring::npos) {
     dir = dir.substr(0, slash);
   }
-  std::ofstream log(dir + L"\\frame-console.log", std::ios::app);
+  const std::wstring log_path = dir + L"\frame-console.log";
+
+  // Bounded rather than append-forever: a surface stuck in an error loop would
+  // otherwise write until the disk filled.
+  constexpr std::uintmax_t kMaxLogBytes = 256 * 1024;
+  std::error_code ec;
+  if (std::filesystem::file_size(log_path, ec) > kMaxLogBytes && !ec) {
+    std::filesystem::remove(log_path, ec);
+  }
+
+  std::ofstream log(log_path, std::ios::app);
   if (log) {
     log << "[" << (id_ == SurfaceId::kTopbar ? "topbar" : "sidebar")
         << "] severity=" << static_cast<int>(level) << " "
