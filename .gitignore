@@ -1,0 +1,20 @@
+# Build output
+build/
+out/
+cmake-build-*/
+
+# CEF binary distribution — large, downloaded per-machine, pinned by version in
+# CMake rather than committed.
+third_party/cef/
+
+# MSVC / Visual Studio
+.vs/
+*.user
+*.suo
+*.pdb
+*.ilk
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store
