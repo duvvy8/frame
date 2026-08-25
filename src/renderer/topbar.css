@@ -58,39 +58,61 @@
                               transparent 100%);
 }
 
+/* Ported from the Electron build's chrome.css.
+ *
+ * Two things here were previously guessed at and both were wrong:
+ *
+ *   - EVERY tab carries a pill, not just the active one. Without a fill the
+ *     inactive tabs have no shape at all and the strip reads as loose text
+ *     rather than as tabs.
+ *   - tabs are sized to their CONTENT between the min and max, via
+ *     `flex: 0 1 auto` + `width: max-content`. Stretching them all to the
+ *     maximum makes a two-tab window look like two enormous slabs.
+ *
+ * 28px in a 32px bar, so the tab nearly fills the strip's height. */
 .tab {
   position: relative;
   display: flex;
   align-items: center;
   gap: 7px;
-  height: 22px;
+  height: 28px;
+  width: max-content;
   min-width: var(--tab-min-width);
   max-width: var(--tab-max-width);
-  flex: 1 1 var(--tab-max-width);
-  padding: 0 10px;
+  flex: 0 1 auto;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .035);
   border-radius: 6px;
-  color: var(--text-dim);
+  background: rgba(255, 255, 255, .075);
+  color: rgba(255, 255, 255, .70);
+  font-size: 12.5px;
+  font-weight: 400;
   transition:
-    background-color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
     color var(--dur-1) var(--ease),
-    box-shadow var(--dur-1) var(--ease);
+    box-shadow var(--dur-2) var(--ease);
 }
 
-/* Inactive tabs carry no pane of their own — the active tab is the only lit
- * surface in the strip, so it stays unambiguous at a glance. */
 .tab:hover {
-  color: var(--text);
-  background-image: var(--glass-fill);
-  box-shadow: var(--glass-rim);
+  background: rgba(255, 255, 255, .10);
+  color: rgba(255, 255, 255, .86);
 }
 
+/* The active tab is marked by an accent rim and a soft glow over a DARKER
+ * fill, not a brighter one. Darkening it separates it from the strip while the
+ * accent does the actual signalling — the accent is for state, never
+ * decoration. */
 .tab.is-active {
-  background-image: var(--glass-fill-strong);
-  box-shadow: var(--glass-rim), var(--glass-shadow);
-  color: var(--text);
+  background: rgba(16, 17, 22, .82);
+  border-color: rgba(98, 168, 255, .80);
+  color: rgba(255, 255, 255, .94);
+  box-shadow:
+    0 0 8px rgba(98, 168, 255, .25),
+    inset 0 0 8px rgba(98, 168, 255, .07);
 }
 
-/* Accent marks state, and only state. */
 .tab.is-active .tab-dot {
   background: var(--accent);
   box-shadow: 0 0 6px var(--accent-soft);

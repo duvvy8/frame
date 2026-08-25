@@ -20,6 +20,10 @@ namespace {
 const char kQueryLayout[] = "frame:layout";
 const char kQueryShell[] = "frame:shell";
 const char kQueryWindowState[] = "frame:window:state";
+// A surface asks for the current state once it is ready. Pushes alone are a
+// race: everything worth pushing can happen before a surface has finished
+// loading, and that surface then never learns anything at all.
+const char kQueryBrowserState[] = "browser:state";
 const char kCommandMinimize[] = "frame:window:minimize";
 const char kCommandMaximize[] = "frame:window:maximize";
 const char kCommandClose[] = "frame:window:close";
@@ -140,6 +144,10 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       if (name == kCommandClose) {
         window_->CloseWindow();
         callback->Success("ok");
+        return true;
+      }
+      if (name == kQueryBrowserState) {
+        callback->Success(window_->BrowserStateJson());
         return true;
       }
       if (name == kCommandSidebarToggle) {

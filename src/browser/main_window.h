@@ -109,6 +109,10 @@ class MainWindow {
   // unless it is told it has focus.
   void FocusSurface(SurfaceId id);
 
+  // The same payload that gets pushed, so a surface can ask for it on load
+  // instead of waiting for a push that may already have happened.
+  std::string BrowserStateJson() const { return BuildBrowserStateJson(); }
+
  private:
   struct Layer {
     CefRefPtr<CefBrowser> browser;

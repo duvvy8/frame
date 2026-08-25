@@ -13,6 +13,7 @@
     layout: 'frame:layout',
     shell: 'frame:shell',
     windowState: 'frame:window:state',
+    browserState: 'browser:state',
     minimize: 'frame:window:minimize',
     maximize: 'frame:window:maximize',
     close: 'frame:window:close',
@@ -89,7 +90,15 @@
         // Offsets that keep the shell gradient continuous across surfaces.
         onShellMetrics(shell);
 
-        return { layout: layout, shell: shell };
+        // Pull the current browser state rather than waiting for a push: by
+        // the time a surface finishes loading, every push worth having may
+        // already have gone out.
+        return query(CHANNEL.browserState).then(function (state) {
+          if (state && state.tabs) {
+            global.FrameShell.onBrowserState(state);
+          }
+          return { layout: layout, shell: shell, browser: state };
+        });
       });
   }
 
