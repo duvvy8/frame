@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "include/cef_client.h"
+#include "include/cef_display_handler.h"
 #include "include/cef_life_span_handler.h"
 #include "include/cef_render_handler.h"
 #include "include/wrapper/cef_message_router.h"
@@ -28,13 +29,15 @@ enum class SurfaceId {
 // second copy anywhere.
 class ChromeSurface : public CefClient,
                       public CefRenderHandler,
-                      public CefLifeSpanHandler {
+                      public CefLifeSpanHandler,
+                      public CefDisplayHandler {
  public:
   ChromeSurface(MainWindow* window, SurfaceId id);
 
   // CefClient
   CefRefPtr<CefRenderHandler> GetRenderHandler() override { return this; }
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
+  CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                 CefRefPtr<CefFrame> frame,
                                 CefProcessId source_process,
@@ -52,6 +55,14 @@ class ChromeSurface : public CefClient,
   // CefLifeSpanHandler
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
   void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
+
+  // CefDisplayHandler. A chrome surface is our own code, so anything it logs
+  // is a bug worth seeing rather than page noise to ignore.
+  bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
+                        cef_log_severity_t level,
+                        const CefString& message,
+                        const CefString& source,
+                        int line) override;
 
   void Detach() { window_ = nullptr; }
 

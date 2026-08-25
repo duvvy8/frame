@@ -264,3 +264,24 @@
   box-shadow: none;
   color: #40404a;
 }
+
+/* --- tab dragging ------------------------------------------------------- */
+
+/* The dragged tab lifts and follows the pointer with no transition, so it
+ * tracks the cursor exactly rather than lagging behind it. */
+.tab.is-dragging {
+  z-index: 2;
+  transition: none;
+  cursor: grabbing;
+  background-image: var(--glass-fill-strong);
+  box-shadow:
+    var(--glass-rim),
+    0 6px 18px rgba(0, 0, 0, .55);
+}
+
+/* Its neighbours slide out of the way. These DO animate — the contrast between
+ * the tab that tracks the pointer and the ones that ease into place is what
+ * makes the reorder legible. */
+.tab.is-shifting {
+  transition: transform var(--dur-2) var(--ease);
+}

@@ -22,6 +22,7 @@
     tabCreate: 'tab:create',
     tabClose: 'tab:close:',
     tabSelect: 'tab:select:',
+    tabReorder: 'tab:reorder:',
     navBack: 'nav:back',
     navForward: 'nav:forward',
     navReload: 'nav:reload',
@@ -39,10 +40,13 @@
         request: request,
         persistent: false,
         onSuccess: function (response) {
+          // State queries answer with JSON; commands just acknowledge with a
+          // plain "ok". Treating a non-JSON reply as a failure turned every
+          // command into an unhandled rejection.
           try {
             resolve(JSON.parse(response));
           } catch (err) {
-            reject(err);
+            resolve(response);
           }
         },
         onFailure: function (code, message) {

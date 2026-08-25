@@ -80,6 +80,9 @@ class MainWindow {
   int CreateTab(const std::string& url, bool activate);
   void CloseTab(int tab_id);
   void SelectTab(int tab_id);
+  // Moves a tab to a new position in the strip. The order here is the order
+  // the chrome draws, so this is the only place it changes.
+  void ReorderTab(int tab_id, int new_index);
 
   // --- navigation, applied to the active tab ---
   void Navigate(const std::string& input);

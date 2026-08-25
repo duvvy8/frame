@@ -379,6 +379,34 @@ void MainWindow::SelectTab(int tab_id) {
   }
 }
 
+void MainWindow::ReorderTab(int tab_id, int new_index) {
+  size_t from = tabs_.size();
+  for (size_t i = 0; i < tabs_.size(); ++i) {
+    if (tabs_[i].id == tab_id) {
+      from = i;
+      break;
+    }
+  }
+  if (from == tabs_.size() || tabs_.empty()) {
+    return;
+  }
+
+  // The surface computes the target from pointer position, so clamp rather
+  // than trust it.
+  const int last = static_cast<int>(tabs_.size()) - 1;
+  const int to = std::max(0, std::min(new_index, last));
+  if (static_cast<size_t>(to) == from) {
+    return;
+  }
+
+  Tab moved = tabs_[from];
+  tabs_.erase(tabs_.begin() + from);
+  tabs_.insert(tabs_.begin() + to, moved);
+
+  // No page moves and no browser is touched: only the strip order changed.
+  PushBrowserState();
+}
+
 void MainWindow::LayoutPages() {
   const layout::ViewportRect viewport = layout::ViewportBounds(
       {static_cast<double>(client_width_), static_cast<double>(client_height_),

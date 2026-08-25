@@ -1,7 +1,10 @@
 #include "browser/chrome_surface.h"
 
+#include <windows.h>
+
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -29,6 +32,8 @@ const char kCommandSidebarToggle[] = "sidebar:toggle";
 const char kCommandTabCreate[] = "tab:create";
 const char kCommandTabClose[] = "tab:close:";
 const char kCommandTabSelect[] = "tab:select:";
+// Followed by "<id>:<index>".
+const char kCommandTabReorder[] = "tab:reorder:";
 const char kCommandNavBack[] = "nav:back";
 const char kCommandNavForward[] = "nav:forward";
 const char kCommandNavReload[] = "nav:reload";
@@ -158,6 +163,17 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
         callback->Success("ok");
         return true;
       }
+      if (StartsWith(name, kCommandTabReorder)) {
+        const std::string payload =
+            name.substr(std::strlen(kCommandTabReorder));
+        const size_t split = payload.find(':');
+        if (split != std::string::npos) {
+          window_->ReorderTab(std::atoi(payload.substr(0, split).c_str()),
+                              std::atoi(payload.substr(split + 1).c_str()));
+        }
+        callback->Success("ok");
+        return true;
+      }
       if (name == kCommandNavBack) {
         window_->GoBack();
         callback->Success("ok");
@@ -248,6 +264,38 @@ void ChromeSurface::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
   if (window_) {
     window_->SetSurfaceBrowser(id_, nullptr);
   }
+}
+
+bool ChromeSurface::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
+                                     cef_log_severity_t level,
+                                     const CefString& message,
+                                     const CefString& source,
+                                     int line) {
+  // Warnings and errors only. A chrome surface failing silently is the hardest
+  // class of bug to see here — a JS exception in an off-screen surface has no
+  // visible symptom at all, the controls just stop responding — so the ones
+  // that matter are always recorded. Routine console.log output is not, or the
+  // file would grow forever for no benefit.
+  if (level < LOGSEVERITY_WARNING) {
+    return false;
+  }
+
+  // Appended next to the executable.
+  wchar_t path[MAX_PATH] = {};
+  ::GetModuleFileNameW(nullptr, path, MAX_PATH);
+  std::wstring dir(path);
+  const size_t slash = dir.find_last_of(L'\\');
+  if (slash != std::wstring::npos) {
+    dir = dir.substr(0, slash);
+  }
+  std::ofstream log(dir + L"\\frame-console.log", std::ios::app);
+  if (log) {
+    log << "[" << (id_ == SurfaceId::kTopbar ? "topbar" : "sidebar")
+        << "] severity=" << static_cast<int>(level) << " "
+        << source.ToString() << ":" << line << " - " << message.ToString()
+        << "\n";
+  }
+  return false;  // Also let CEF handle it normally.
 }
 
 bool ChromeSurface::OnProcessMessageReceived(
