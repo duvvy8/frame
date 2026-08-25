@@ -76,6 +76,9 @@ void FrameApp::OnContextInitialized() {
   options.x = SwitchAsInt(cmd, "x", options.x);
   options.y = SwitchAsInt(cmd, "y", options.y);
   options.no_activate = cmd->HasSwitch("no-activate");
+  // Escape hatch if custom hit-testing ever misbehaves: --system-titlebar
+  // gives back a window that can always be moved, resized and closed.
+  options.system_titlebar = cmd->HasSwitch("system-titlebar");
 
   main_window_.reset(new MainWindow(options));
   if (!main_window_->Create(::GetModuleHandleW(nullptr))) {

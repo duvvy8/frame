@@ -176,3 +176,64 @@ TEST_CASE("dynamicTabMax parity: coercion corners", "[layout][tabs][edge]") {
     CHECK(DynamicTabMax(options) == 190);
   }
 }
+
+// The caption metrics are new to the CEF implementation — they have no JS
+// counterpart, so these assert internal consistency rather than parity. They
+// matter because the C++ hit-testing and the topbar CSS both position the
+// caption buttons, and a disagreement silently breaks the Snap Layouts flyout.
+TEST_CASE("Caption buttons tile right-aligned without gaps", "[layout][caption]") {
+  using frame::layout::CloseButtonRect;
+  using frame::layout::kCaptionButtonWidth;
+  using frame::layout::MaximizeButtonRect;
+  using frame::layout::MinimizeButtonRect;
+
+  const int width = 1200;
+  const auto close = CloseButtonRect(width);
+  const auto maximize = MaximizeButtonRect(width);
+  const auto minimize = MinimizeButtonRect(width);
+
+  SECTION("close sits flush against the right edge") {
+    CHECK(close.x + close.width == width);
+  }
+
+  SECTION("buttons are contiguous, right to left") {
+    CHECK(maximize.x + maximize.width == close.x);
+    CHECK(minimize.x + minimize.width == maximize.x);
+  }
+
+  SECTION("each is one caption width, spanning the topbar") {
+    CHECK(close.width == kCaptionButtonWidth);
+    CHECK(maximize.width == kCaptionButtonWidth);
+    CHECK(minimize.width == kCaptionButtonWidth);
+    CHECK(close.height == frame::layout::kTopbarHeight);
+  }
+
+  SECTION("the block reserves exactly three button widths") {
+    CHECK(frame::layout::CaptionButtonsWidth() == kCaptionButtonWidth * 3);
+    CHECK(width - minimize.x == frame::layout::CaptionButtonsWidth());
+  }
+}
+
+TEST_CASE("Caption hit-testing accepts only its own rectangle",
+          "[layout][caption]") {
+  const int width = 1200;
+  const auto maximize = frame::layout::MaximizeButtonRect(width);
+
+  SECTION("inside") {
+    CHECK(maximize.Contains(maximize.x + 1, 1));
+    CHECK(maximize.Contains(maximize.x + maximize.width - 1,
+                            frame::layout::kTopbarHeight - 1));
+  }
+
+  SECTION("the far edges belong to the neighbouring buttons") {
+    // Half-open rectangles: without this, adjacent buttons would both claim
+    // the shared boundary column.
+    CHECK_FALSE(maximize.Contains(maximize.x - 1, 1));
+    CHECK_FALSE(maximize.Contains(maximize.x + maximize.width, 1));
+  }
+
+  SECTION("below the topbar is not the caption") {
+    CHECK_FALSE(maximize.Contains(maximize.x + 1,
+                                  frame::layout::kTopbarHeight));
+  }
+}

@@ -49,7 +49,8 @@ endif()
 
 add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
 target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper
-                      ${CEF_STANDARD_LIBS})
+                      ${CEF_STANDARD_LIBS}
+                      dwmapi)
 
 # Our own headers ("browser/...", "shared/...") alongside CEF's.
 target_include_directories(${CEF_TARGET} PRIVATE "${CMAKE_SOURCE_DIR}/src")

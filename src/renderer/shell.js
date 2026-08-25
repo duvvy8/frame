@@ -11,7 +11,12 @@
   // the same discipline the C++ side applies to its constants.
   var CHANNEL = {
     layout: 'frame:layout',
-    shell: 'frame:shell'
+    shell: 'frame:shell',
+    windowState: 'frame:window:state',
+    minimize: 'frame:window:minimize',
+    maximize: 'frame:window:maximize',
+    close: 'frame:window:close',
+    dragRegions: 'frame:dragregions:'
   };
 
   function query(request) {
@@ -67,9 +72,36 @@
       });
   }
 
+  // Tells the window which parts of the caption strip must NOT drag it.
+  // Only the surface knows where its controls ended up after layout, so it has
+  // to report them rather than C++ guessing.
+  function reportDragRegions(elements) {
+    var parts = [];
+    for (var i = 0; i < elements.length; i++) {
+      var el = elements[i];
+      if (!el) {
+        continue;
+      }
+      var r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) {
+        continue;
+      }
+      parts.push(Math.round(r.left) + ',' + Math.round(r.top) + ',' +
+                 Math.round(r.width) + ',' + Math.round(r.height));
+    }
+    // Flat list rather than JSON so the browser process needs no parser.
+    return query(CHANNEL.dragRegions + parts.join(';'));
+  }
+
+  // Overwritten by a surface that cares. The browser process calls this
+  // directly when the window is maximised or restored.
+  function onWindowState() {}
+
   global.FrameShell = {
     CHANNEL: CHANNEL,
     query: query,
-    bootstrap: bootstrap
+    bootstrap: bootstrap,
+    reportDragRegions: reportDragRegions,
+    onWindowState: onWindowState
   };
 })(window);

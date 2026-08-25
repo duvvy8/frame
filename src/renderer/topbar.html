@@ -110,12 +110,90 @@
     </div>
 
     <div class="status" id="status">connecting</div>
+
+    <!-- Caption buttons. Frame draws these itself now that Windows draws no
+         title bar. Their geometry comes from the shared constants, because the
+         hit-testing in C++ has to agree with this layout to the pixel — the
+         maximise button in particular, since that rect is what Windows watches
+         to offer the Snap Layouts flyout. -->
+    <div class="caption" id="caption">
+      <button class="caption-button" id="win-minimize" title="Minimize"
+              aria-label="Minimize">
+        <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+          <path d="M0 5 H10" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button class="caption-button" id="win-maximize" title="Maximize"
+              aria-label="Maximize">
+        <svg class="icon-maximize" viewBox="0 0 10 10" width="10" height="10"
+             aria-hidden="true">
+          <rect x="0.5" y="0.5" width="9" height="9" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+        </svg>
+        <svg class="icon-restore" viewBox="0 0 10 10" width="10" height="10"
+             aria-hidden="true">
+          <rect x="0.5" y="2.5" width="7" height="7" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+          <path d="M2.5 2.5 V0.5 H9.5 V7.5 H7.5" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button class="caption-button is-close" id="win-close" title="Close"
+              aria-label="Close">
+        <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+          <path d="M0.5 0.5 L9.5 9.5 M9.5 0.5 L0.5 9.5" stroke="currentColor"
+                stroke-width="1"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <script src="shell.js"></script>
   <script>
     (function () {
       var status = document.getElementById('status');
+      var root = document.documentElement;
+
+      // Parts of the caption strip that must stay clickable. Everything else
+      // in the topbar drags the window.
+      function interactiveElements() {
+        var list = [
+          document.getElementById('sidebar-toggle'),
+          document.querySelector('.nav'),
+          status
+        ];
+        // Individual tabs, never the strip that contains them. The strip is
+        // flexible and spans most of the topbar, so reporting it whole would
+        // leave almost nowhere to grab the window — the empty space between
+        // tabs has to stay draggable, as it is in every other browser.
+        var controls = document.querySelectorAll('#tabs .tab, #tabs .new-tab');
+        for (var i = 0; i < controls.length; i++) {
+          list.push(controls[i]);
+        }
+        return list;
+      }
+
+      function publishDragRegions() {
+        FrameShell.reportDragRegions(interactiveElements());
+      }
+
+      // The window tells us; we never guess from our own size, because a
+      // maximised window and a merely large one look identical from here.
+      FrameShell.onWindowState = function (state) {
+        root.classList.toggle('is-maximized', !!state.maximized);
+        var button = document.getElementById('win-maximize');
+        button.title = state.maximized ? 'Restore' : 'Maximize';
+        button.setAttribute('aria-label', button.title);
+      };
+
+      document.getElementById('win-minimize').addEventListener('click',
+        function () { FrameShell.query(FrameShell.CHANNEL.minimize); });
+      document.getElementById('win-close').addEventListener('click',
+        function () { FrameShell.query(FrameShell.CHANNEL.close); });
+      // The maximise button is also reachable through the non-client path, so
+      // Windows can offer Snap Layouts over it. Both routes end up here.
+      document.getElementById('win-maximize').addEventListener('click',
+        function () { FrameShell.query(FrameShell.CHANNEL.maximize); });
 
       FrameShell.bootstrap().then(function (state) {
         // Proof the surface got its geometry from C++ rather than this file.
@@ -123,10 +201,23 @@
                              state.shell.windowWidth + '×' +
                              state.shell.windowHeight;
         status.classList.add('is-ok');
+
+        publishDragRegions();
+        return FrameShell.query(FrameShell.CHANNEL.windowState);
+      }).then(function (windowState) {
+        if (windowState) {
+          FrameShell.onWindowState(windowState);
+        }
       }).catch(function (err) {
         status.textContent = 'bridge: ' + err.message;
         status.classList.add('is-error');
       });
+
+      // Tabs are flexible, so the undraggable regions move whenever the window
+      // resizes. Re-report rather than letting the window act on stale rects.
+      if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(publishDragRegions).observe(document.body);
+      }
     })();
   </script>
 </body>

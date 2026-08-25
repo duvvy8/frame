@@ -9,7 +9,9 @@
   align-items: center;
   gap: 6px;
   height: var(--topbar-height);
-  padding: 0 6px;
+  /* No padding on the right: the caption buttons run flush to the window edge,
+   * the way the system ones did. */
+  padding: 0 0 0 6px;
 }
 
 /* The mark sits in the top-left corner of the window, ahead of every control. */
@@ -143,4 +145,67 @@
   background-image: none;
   background-color: rgba(255, 90, 40, .14);
   box-shadow: inset 0 0 0 1px rgba(255, 120, 70, .35);
+}
+
+/* --- caption buttons ---------------------------------------------------- */
+
+/* Frame draws these now that Windows draws no title bar. Square, flush to the
+ * edge, full topbar height — matching the system metrics so the strip still
+ * feels like a real Windows caption rather than a toolbar pretending to be one.
+ *
+ * Width is fixed at 46px to match kCaptionButtonWidth in the shared header.
+ * The C++ hit-testing computes the same rectangles; if these two ever diverge,
+ * the Snap Layouts flyout stops lining up with the maximise button. */
+.caption {
+  flex: 0 0 auto;
+  display: flex;
+  align-self: stretch;
+  margin-left: 4px;
+}
+
+.caption-button {
+  width: 46px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 0;
+  color: var(--text-dim);
+  cursor: default;
+  transition:
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.caption-button:hover {
+  background-color: rgba(255, 255, 255, .09);
+  color: var(--text);
+}
+
+.caption-button:active {
+  background-color: rgba(255, 255, 255, .05);
+}
+
+/* Close is the one destructive control up here, so it gets the one loud
+ * hover in the whole chrome. */
+.caption-button.is-close:hover {
+  background-color: #c42b1c;
+  color: #fff;
+}
+
+.caption-button.is-close:active {
+  background-color: #b3271a;
+}
+
+/* Maximise vs restore: the window reports which, we never infer it. */
+.icon-restore {
+  display: none;
+}
+
+.is-maximized .icon-maximize {
+  display: none;
+}
+
+.is-maximized .icon-restore {
+  display: block;
 }

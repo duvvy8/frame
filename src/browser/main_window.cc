@@ -1,11 +1,25 @@
 #include "browser/main_window.h"
 
+#include <dwmapi.h>
 #include <windowsx.h>
 
 #include <cstring>
+#include <string>
 
 #include "include/cef_app.h"
 #include "shared/chrome_layout.h"
+
+// Present in the Windows 11 SDK, defined defensively so the build does not
+// depend on which SDK version happens to be installed.
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+#ifndef DWMWCP_ROUND
+#define DWMWCP_ROUND 2
+#endif
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
 
 namespace frame {
 namespace {
@@ -55,12 +69,24 @@ bool MainWindow::Create(HINSTANCE instance) {
   wc.lpszClassName = kWindowClass;
   ::RegisterClassExW(&wc);
 
+  // WS_OVERLAPPEDWINDOW is kept even though no caption is drawn. The style is
+  // what gives the window snapping, the minimise/restore animations, and a
+  // taskbar entry that behaves; WM_NCCALCSIZE removes the visible frame
+  // without giving those up.
   hwnd_ = ::CreateWindowExW(0, kWindowClass, kWindowTitle, WS_OVERLAPPEDWINDOW,
                             options_.x, options_.y, options_.width,
                             options_.height, nullptr, nullptr, instance, this);
   if (!hwnd_) {
     return false;
   }
+
+  ApplyRoundedCorners();
+
+  // Forces a WM_NCCALCSIZE pass so the frameless layout takes effect before
+  // the window is shown, rather than visibly reflowing after first paint.
+  ::SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+                 SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                     SWP_NOACTIVATE);
 
   RECT client = {};
   ::GetClientRect(hwnd_, &client);
@@ -72,15 +98,28 @@ bool MainWindow::Create(HINSTANCE instance) {
   return true;
 }
 
+void MainWindow::ApplyRoundedCorners() {
+  // The outer corner belongs to DWM, never to us. Asking the compositor for it
+  // means the curve matches every other Windows 11 window and cannot come
+  // apart from the window's own background at the corner.
+  UINT preference = DWMWCP_ROUND;
+  ::DwmSetWindowAttribute(hwnd_, DWMWA_WINDOW_CORNER_PREFERENCE, &preference,
+                          sizeof(preference));
+
+  // Keeps the thin DWM border dark instead of light-themed.
+  BOOL dark = TRUE;
+  ::DwmSetWindowAttribute(hwnd_, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark,
+                          sizeof(dark));
+}
+
 CefRect MainWindow::SurfaceBounds(SurfaceId id) const {
   switch (id) {
     case SurfaceId::kTopbar:
-      // Full width, across the very top.
+      // Full width, across the very top — now including the pixels the system
+      // caption used to occupy.
       return CefRect(0, 0, client_width_, layout::kTopbarHeight);
 
     case SurfaceId::kSidebar: {
-      // Below the topbar, down the left edge. Collapsing swaps the full width
-      // for the narrow rail, exactly as viewportBounds() assumes.
       const int width =
           sidebar_open_ ? layout::kSidebarWidth : layout::kCollapsedRailWidth;
       const int height = client_height_ - layout::kTopbarHeight;
@@ -95,27 +134,142 @@ CefRect MainWindow::SurfaceBounds(SurfaceId id) const {
 void MainWindow::SetSurfaceBrowser(SurfaceId id,
                                    CefRefPtr<CefBrowser> browser) {
   layer(id).browser = browser;
-}
-
-void MainWindow::OnSurfacePaint(SurfaceId id,
-                                const void* buffer,
-                                int width,
-                                int height) {
-  Layer& target = layer(id);
-  const size_t bytes = static_cast<size_t>(width) * height * 4;
-  if (target.pixels.size() != bytes) {
-    target.pixels.resize(bytes);
-  }
-  memcpy(target.pixels.data(), buffer, bytes);
-  target.width = width;
-  target.height = height;
-
-  if (hwnd_) {
-    const CefRect bounds = SurfaceBounds(id);
-    RECT dirty = {bounds.x, bounds.y, bounds.x + width, bounds.y + height};
-    ::InvalidateRect(hwnd_, &dirty, FALSE);
+  if (id == SurfaceId::kTopbar && browser) {
+    PushWindowState();
   }
 }
+
+void MainWindow::SetDragExclusions(std::vector<layout::IntRect> regions) {
+  drag_exclusions_ = std::move(regions);
+}
+
+// --- window commands ------------------------------------------------------
+
+bool MainWindow::IsWindowMaximized() const {
+  return hwnd_ && ::IsZoomed(hwnd_) != 0;
+}
+
+void MainWindow::Minimize() {
+  ::ShowWindow(hwnd_, SW_MINIMIZE);
+}
+
+void MainWindow::ToggleMaximize() {
+  ::ShowWindow(hwnd_, IsWindowMaximized() ? SW_RESTORE : SW_MAXIMIZE);
+}
+
+void MainWindow::CloseWindow() {
+  ::PostMessage(hwnd_, WM_CLOSE, 0, 0);
+}
+
+void MainWindow::PushWindowState() {
+  Layer& top = layer(SurfaceId::kTopbar);
+  if (!top.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = top.browser->GetMainFrame();
+  if (!main_frame) {
+    return;
+  }
+  // The caption button has to show restore-vs-maximise, and only the window
+  // knows which it is.
+  const std::string js =
+      std::string("window.FrameShell && FrameShell.onWindowState({maximized:") +
+      (IsWindowMaximized() ? "true" : "false") + "});";
+  main_frame->ExecuteJavaScript(js, main_frame->GetURL(), 0);
+}
+
+// --- frameless plumbing ---------------------------------------------------
+
+LRESULT MainWindow::HandleNcCalcSize(WPARAM wparam, LPARAM lparam) {
+  if (!wparam) {
+    return ::DefWindowProc(hwnd_, WM_NCCALCSIZE, wparam, lparam);
+  }
+
+  auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+
+  if (IsWindowMaximized()) {
+    // A maximised window's rect deliberately overhangs the monitor by the
+    // frame thickness. Without putting that inset back, the topbar would sit
+    // off-screen and the caption buttons would be unreachable.
+    const int border = ::GetSystemMetrics(SM_CXSIZEFRAME) +
+                       ::GetSystemMetrics(SM_CXPADDEDBORDER);
+    params->rgrc[0].left += border;
+    params->rgrc[0].right -= border;
+    params->rgrc[0].top += border;
+    params->rgrc[0].bottom -= border;
+  }
+
+  // Returning 0 with the rect otherwise untouched makes the client area the
+  // whole window: no caption, no frame. The resize borders become ours to
+  // hit-test, which HitTest() does.
+  return 0;
+}
+
+LRESULT MainWindow::HitTest(POINT screen_point) {
+  POINT p = screen_point;
+  ::ScreenToClient(hwnd_, &p);
+
+  const int border = layout::kResizeBorderThickness;
+
+  // Resize grips. A maximised window has none.
+  if (!IsWindowMaximized()) {
+    const bool top = p.y >= 0 && p.y < border;
+    const bool bottom = p.y < client_height_ && p.y >= client_height_ - border;
+    const bool left = p.x >= 0 && p.x < border;
+    const bool right = p.x < client_width_ && p.x >= client_width_ - border;
+
+    if (top && left) {
+      return HTTOPLEFT;
+    }
+    if (top && right) {
+      return HTTOPRIGHT;
+    }
+    if (bottom && left) {
+      return HTBOTTOMLEFT;
+    }
+    if (bottom && right) {
+      return HTBOTTOMRIGHT;
+    }
+    if (top) {
+      return HTTOP;
+    }
+    if (bottom) {
+      return HTBOTTOM;
+    }
+    if (left) {
+      return HTLEFT;
+    }
+    if (right) {
+      return HTRIGHT;
+    }
+  }
+
+  if (p.y >= 0 && p.y < layout::kTopbarHeight) {
+    // Reporting HTMAXBUTTON is the whole reason the Snap Layouts flyout
+    // appears on hover. Windows offers it for that hit-test result and
+    // nothing else, so this cannot be handled as an ordinary client click.
+    if (layout::MaximizeButtonRect(client_width_).Contains(p.x, p.y)) {
+      return HTMAXBUTTON;
+    }
+    // Minimise and close are plain client clicks, handled by the surface.
+    if (layout::MinimizeButtonRect(client_width_).Contains(p.x, p.y) ||
+        layout::CloseButtonRect(client_width_).Contains(p.x, p.y)) {
+      return HTCLIENT;
+    }
+    // Anything the surface flagged as interactive stays clickable; the rest of
+    // the topbar drags the window.
+    for (const layout::IntRect& region : drag_exclusions_) {
+      if (region.Contains(p.x, p.y)) {
+        return HTCLIENT;
+      }
+    }
+    return HTCAPTION;
+  }
+
+  return HTCLIENT;
+}
+
+// --- painting -------------------------------------------------------------
 
 void MainWindow::PaintLayer(HDC hdc, SurfaceId id) {
   const Layer& source = layer(id);
@@ -170,6 +324,26 @@ void MainWindow::Paint(HDC hdc) {
   PaintLayer(hdc, SurfaceId::kSidebar);
 }
 
+void MainWindow::OnSurfacePaint(SurfaceId id,
+                                const void* buffer,
+                                int width,
+                                int height) {
+  Layer& target = layer(id);
+  const size_t bytes = static_cast<size_t>(width) * height * 4;
+  if (target.pixels.size() != bytes) {
+    target.pixels.resize(bytes);
+  }
+  memcpy(target.pixels.data(), buffer, bytes);
+  target.width = width;
+  target.height = height;
+
+  if (hwnd_) {
+    const CefRect bounds = SurfaceBounds(id);
+    RECT dirty = {bounds.x, bounds.y, bounds.x + width, bounds.y + height};
+    ::InvalidateRect(hwnd_, &dirty, FALSE);
+  }
+}
+
 void MainWindow::NotifySurfacesResized() {
   for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
     Layer& target = layers_[i];
@@ -179,6 +353,8 @@ void MainWindow::NotifySurfacesResized() {
     }
   }
 }
+
+// --- input routing --------------------------------------------------------
 
 bool MainWindow::SurfaceAt(int x,
                            int y,
@@ -198,6 +374,16 @@ bool MainWindow::SurfaceAt(int x,
     }
   }
   return false;
+}
+
+void MainWindow::SendMouseLeaveToAll() {
+  for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
+    if (layers_[i].browser) {
+      CefMouseEvent event;
+      layers_[i].browser->GetHost()->SendMouseMoveEvent(event,
+                                                        /*mouseLeave=*/true);
+    }
+  }
 }
 
 void MainWindow::ForwardMouseMove(int x, int y, WPARAM wparam) {
@@ -289,6 +475,66 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
                                   WPARAM wparam,
                                   LPARAM lparam) {
   switch (message) {
+    case WM_NCCALCSIZE:
+      if (options_.system_titlebar) {
+        break;
+      }
+      return HandleNcCalcSize(wparam, lparam);
+
+    case WM_NCHITTEST: {
+      if (options_.system_titlebar) {
+        break;
+      }
+      POINT screen = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+      return HitTest(screen);
+    }
+
+    // The caption buttons sit in the non-client area as far as Windows is
+    // concerned, so ordinary mouse messages never reach them. These four keep
+    // the maximise button hovering and clicking like a real control while
+    // still reporting HTMAXBUTTON for Snap Layouts.
+    case WM_NCMOUSEMOVE: {
+      if (wparam == HTMAXBUTTON) {
+        if (!tracking_nc_mouse_) {
+          TRACKMOUSEEVENT track = {sizeof(track), TME_LEAVE | TME_NONCLIENT,
+                                   hwnd, 0};
+          ::TrackMouseEvent(&track);
+          tracking_nc_mouse_ = true;
+        }
+        POINT p = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        ::ScreenToClient(hwnd, &p);
+        Layer& top = layer(SurfaceId::kTopbar);
+        if (top.browser) {
+          CefMouseEvent event;
+          event.x = p.x;
+          event.y = p.y;
+          top.browser->GetHost()->SendMouseMoveEvent(event,
+                                                     /*mouseLeave=*/false);
+        }
+        return 0;
+      }
+      break;
+    }
+
+    case WM_NCMOUSELEAVE:
+      tracking_nc_mouse_ = false;
+      SendMouseLeaveToAll();
+      break;
+
+    case WM_NCLBUTTONDOWN:
+      if (wparam == HTMAXBUTTON) {
+        // Swallowed so the system does not start its own caption drag.
+        return 0;
+      }
+      break;
+
+    case WM_NCLBUTTONUP:
+      if (wparam == HTMAXBUTTON) {
+        ToggleMaximize();
+        return 0;
+      }
+      break;
+
     case WM_ERASEBKGND:
       // Everything is painted in WM_PAINT; erasing here only causes flicker.
       return 1;
@@ -305,6 +551,7 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       client_width_ = LOWORD(lparam);
       client_height_ = HIWORD(lparam);
       NotifySurfacesResized();
+      PushWindowState();
       return 0;
 
     case WM_MOUSEMOVE: {
@@ -319,17 +566,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       return 0;
     }
 
-    case WM_MOUSELEAVE: {
+    case WM_MOUSELEAVE:
       tracking_mouse_ = false;
-      for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
-        if (layers_[i].browser) {
-          CefMouseEvent event;
-          layers_[i].browser->GetHost()->SendMouseMoveEvent(
-              event, /*mouseLeave=*/true);
-        }
-      }
+      SendMouseLeaveToAll();
       return 0;
-    }
 
     case WM_LBUTTONDOWN:
     case WM_LBUTTONUP:

@@ -43,6 +43,62 @@ inline constexpr int kTabGap = 8;                 // TAB_GAP
 inline constexpr int kNewTabWidth = 34;           // NEW_TAB_WIDTH
 inline constexpr int kDragReserve = 96;           // DRAG_RESERVE
 
+// --- Window caption -------------------------------------------------------
+//
+// NEW in the CEF implementation: the Electron build let Windows draw the
+// caption, so these have no counterpart in chrome-layout.js and are not part
+// of the ported parity surface.
+//
+// Frame draws its own caption buttons inside the topbar, which means the
+// hit-testing code and the CSS must agree on where they are to the pixel. This
+// is the one place that decides.
+
+// 46px matches the Windows 11 caption metric, so the buttons feel native and
+// the Snap Layouts flyout lines up under the maximize button.
+inline constexpr int kCaptionButtonWidth = 46;
+inline constexpr int kCaptionButtonHeight = kTopbarHeight;
+inline constexpr int kCaptionButtonCount = 3;
+
+// How far in from a window edge still counts as a resize grip.
+inline constexpr int kResizeBorderThickness = 6;
+
+// Plain rectangle so this header stays free of any framework type.
+struct IntRect {
+  int x = 0;
+  int y = 0;
+  int width = 0;
+  int height = 0;
+
+  bool Contains(int px, int py) const {
+    return px >= x && px < x + width && py >= y && py < y + height;
+  }
+};
+
+// Caption buttons are right-aligned in Windows order: minimize, maximize,
+// close. `slot` counts back from the right edge, so slot 0 is close.
+inline IntRect CaptionButtonRect(int window_width, int slot) {
+  const int right = window_width - kCaptionButtonWidth * slot;
+  const int left = right - kCaptionButtonWidth;
+  return {left, 0, kCaptionButtonWidth, kCaptionButtonHeight};
+}
+
+inline IntRect CloseButtonRect(int window_width) {
+  return CaptionButtonRect(window_width, 0);
+}
+
+inline IntRect MaximizeButtonRect(int window_width) {
+  return CaptionButtonRect(window_width, 1);
+}
+
+inline IntRect MinimizeButtonRect(int window_width) {
+  return CaptionButtonRect(window_width, 2);
+}
+
+// Total width the caption block reserves at the right end of the topbar.
+inline constexpr int CaptionButtonsWidth() {
+  return kCaptionButtonWidth * kCaptionButtonCount;
+}
+
 namespace internal {
 
 // Mirrors the JS `Number(v) || 0` coercion at each call site: a value that is

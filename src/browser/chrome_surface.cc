@@ -1,6 +1,9 @@
 #include "browser/chrome_surface.h"
 
+#include <cstring>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "browser/main_window.h"
 #include "shared/chrome_layout.h"
@@ -12,6 +15,39 @@ namespace {
 // rename fails to compile instead of silently going unhandled at runtime.
 const char kQueryLayout[] = "frame:layout";
 const char kQueryShell[] = "frame:shell";
+const char kQueryWindowState[] = "frame:window:state";
+const char kCommandMinimize[] = "frame:window:minimize";
+const char kCommandMaximize[] = "frame:window:maximize";
+const char kCommandClose[] = "frame:window:close";
+// Followed by "x,y,w,h;x,y,w,h;..." — a flat list rather than JSON, so the
+// browser process needs no parser to read it.
+const char kCommandDragRegions[] = "frame:dragregions:";
+
+bool StartsWith(const std::string& value, const char* prefix) {
+  return value.rfind(prefix, 0) == 0;
+}
+
+// Parses "x,y,w,h;x,y,w,h;..." into rectangles, skipping anything malformed
+// rather than throwing: a bad region should cost one undraggable strip, not
+// the window.
+std::vector<layout::IntRect> ParseRegions(const std::string& payload) {
+  std::vector<layout::IntRect> regions;
+  std::istringstream stream(payload);
+  std::string item;
+  while (std::getline(stream, item, ';')) {
+    if (item.empty()) {
+      continue;
+    }
+    layout::IntRect rect;
+    char separator = 0;
+    std::istringstream parts(item);
+    if ((parts >> rect.x >> separator >> rect.y >> separator >> rect.width >>
+         separator >> rect.height)) {
+      regions.push_back(rect);
+    }
+  }
+  return regions;
+}
 
 // Answers the two things a chrome surface cannot know on its own.
 class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
@@ -61,6 +97,44 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
            << (window_ ? window_->client_height() : 0) << "}";
       callback->Success(json.str());
       return true;
+    }
+
+    // Window commands. These run on the CEF UI thread, which is the same
+    // thread the window's message loop runs on, so touching the HWND directly
+    // here is safe.
+    if (window_) {
+      if (name == kQueryWindowState) {
+        std::ostringstream json;
+        json << "{\"maximized\":"
+             << (window_->IsWindowMaximized() ? "true" : "false") << "}";
+        callback->Success(json.str());
+        return true;
+      }
+      if (name == kCommandMinimize) {
+        window_->Minimize();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandMaximize) {
+        window_->ToggleMaximize();
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandClose) {
+        window_->CloseWindow();
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandDragRegions)) {
+        // Only the topbar owns the caption strip; a stray report from another
+        // surface must not decide where the window can be dragged.
+        if (id_ == SurfaceId::kTopbar) {
+          window_->SetDragExclusions(
+              ParseRegions(name.substr(std::strlen(kCommandDragRegions))));
+        }
+        callback->Success("ok");
+        return true;
+      }
     }
 
     return false;  // Not ours; let another handler try.
