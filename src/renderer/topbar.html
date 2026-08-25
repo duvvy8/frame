@@ -3,54 +3,129 @@
 <head>
   <meta charset="utf-8">
   <title>Frame topbar</title>
+  <link rel="stylesheet" href="shell.css">
   <link rel="stylesheet" href="topbar.css">
 </head>
 <body>
   <div class="topbar">
+    <!-- The mark. Three glass planes forming an F: because they are
+         translucent and overlap, the intersections brighten on their own,
+         which is what makes it read as stacked glass rather than flat shapes.
+         Simplified from the reference to stay legible at 18px. -->
+    <div class="brand" title="Frame">
+      <svg class="mark" viewBox="0 0 28 28" width="20" height="20"
+           aria-label="Frame" role="img">
+        <defs>
+          <linearGradient id="planeA" x1="4" y1="2" x2="20" y2="20"
+                          gradientUnits="userSpaceOnUse">
+            <stop stop-color="#d6ecff" stop-opacity=".92"/>
+            <stop offset="1" stop-color="#5b93e6" stop-opacity=".42"/>
+          </linearGradient>
+          <linearGradient id="planeB" x1="6" y1="3" x2="24" y2="12"
+                          gradientUnits="userSpaceOnUse">
+            <stop stop-color="#a8d8ff" stop-opacity=".78"/>
+            <stop offset="1" stop-color="#4374cc" stop-opacity=".30"/>
+          </linearGradient>
+          <linearGradient id="planeC" x1="10" y1="11" x2="22" y2="18"
+                          gradientUnits="userSpaceOnUse">
+            <stop stop-color="#c2e3ff" stop-opacity=".85"/>
+            <stop offset="1" stop-color="#4a7ed6" stop-opacity=".34"/>
+          </linearGradient>
+        </defs>
+
+        <g transform="rotate(-8 14 14)">
+          <!-- top plane -->
+          <path d="M5.5 3.2 H23 V8.6 H5.5 Z"
+                fill="url(#planeB)"
+                stroke="rgba(255,255,255,.46)" stroke-width=".75"
+                stroke-linejoin="round"/>
+          <!-- middle plane -->
+          <path d="M10 11.6 H20.5 V16.8 H10 Z"
+                fill="url(#planeC)"
+                stroke="rgba(255,255,255,.42)" stroke-width=".75"
+                stroke-linejoin="round"/>
+          <!-- stem, drawn last so it reads as the near pane -->
+          <path d="M6.6 3.2 H12.2 V25 H6.6 Z"
+                fill="url(#planeA)"
+                stroke="rgba(255,255,255,.52)" stroke-width=".75"
+                stroke-linejoin="round"/>
+        </g>
+      </svg>
+    </div>
+
+    <button class="icon-button glass-button" id="sidebar-toggle"
+            title="Toggle sidebar" aria-label="Toggle sidebar">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <rect x="1.5" y="2.5" width="13" height="11" rx="2.5"
+              fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="6" y1="2.5" x2="6" y2="13.5"
+              stroke="currentColor" stroke-width="1.2"/>
+      </svg>
+    </button>
+
     <div class="nav">
-      <button class="nav-button" title="Back" aria-label="Back">&#8249;</button>
-      <button class="nav-button" title="Forward" aria-label="Forward">&#8250;</button>
-      <button class="nav-button" title="Reload" aria-label="Reload">&#10227;</button>
+      <button class="icon-button glass-button" title="Back" aria-label="Back">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M10 3.5 L5.5 8 L10 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-button glass-button" title="Forward"
+              aria-label="Forward">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M6 3.5 L10.5 8 L6 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-button glass-button" title="Reload"
+              aria-label="Reload">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M12.5 6.5 A5 5 0 1 0 12.8 9.6" fill="none"
+                stroke="currentColor" stroke-width="1.3"
+                stroke-linecap="round"/>
+          <path d="M12.9 3.2 V6.8 H9.3" fill="none" stroke="currentColor"
+                stroke-width="1.3" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="tabs">
-      <div class="tab is-active"><span class="tab-title">New tab</span></div>
-      <div class="tab"><span class="tab-title">Frame</span></div>
-      <button class="new-tab" title="New tab" aria-label="New tab">+</button>
+    <div class="tabs" id="tabs">
+      <div class="tab is-active">
+        <span class="tab-dot"></span>
+        <span class="tab-title">New Tab</span>
+      </div>
+      <div class="tab">
+        <span class="tab-dot"></span>
+        <span class="tab-title">Frame</span>
+      </div>
+      <button class="new-tab glass-button" title="New tab" aria-label="New tab">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <path d="M8 4 V12 M4 8 H12" stroke="currentColor" stroke-width="1.4"
+                stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="bridge" id="bridge">bridge: connecting&#8230;</div>
+    <div class="status" id="status">connecting</div>
   </div>
 
+  <script src="shell.js"></script>
   <script>
-    // Minimal IPC bridge check. The chrome surface asks the browser process for
-    // the layout constants rather than hardcoding a second copy of them — if
-    // this round-trips, the JS <-> C++ transport works end to end.
     (function () {
-      var el = document.getElementById('bridge');
+      var status = document.getElementById('status');
 
-      if (typeof window.cefQuery !== 'function') {
-        el.textContent = 'bridge: unavailable';
-        el.classList.add('is-error');
-        return;
-      }
-
-      window.cefQuery({
-        request: 'frame:layout',
-        persistent: false,
-        onSuccess: function (response) {
-          var layout = JSON.parse(response);
-          // Size the strip from the value C++ reported, not a literal here.
-          document.documentElement.style.setProperty(
-            '--topbar-height', layout.topbarHeight + 'px');
-          el.textContent = 'bridge: ok \u2014 topbar ' + layout.topbarHeight +
-                           'px, sidebar ' + layout.sidebarWidth + 'px';
-          el.classList.add('is-ok');
-        },
-        onFailure: function (code, message) {
-          el.textContent = 'bridge: failed (' + code + ') ' + message;
-          el.classList.add('is-error');
-        }
+      FrameShell.bootstrap().then(function (state) {
+        // Proof the surface got its geometry from C++ rather than this file.
+        status.textContent = state.layout.topbarHeight + 'px · ' +
+                             state.shell.windowWidth + '×' +
+                             state.shell.windowHeight;
+        status.classList.add('is-ok');
+      }).catch(function (err) {
+        status.textContent = 'bridge: ' + err.message;
+        status.classList.add('is-error');
       });
     })();
   </script>

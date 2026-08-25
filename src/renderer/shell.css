@@ -1,0 +1,167 @@
+/* Frame — shell material and the glass system.
+ *
+ * Shared by every chrome surface. Written fresh for this codebase.
+ *
+ * Conventions that keep the chrome coherent as it grows:
+ *   - the accent means STATE or emphasis, never decoration
+ *   - motion decelerates; nothing accelerates on the way in
+ *   - readability in glass comes from blur depth, not opacity: never push a
+ *     base tint past ~0.5 alpha, or it stops reading as glass and starts
+ *     reading as grey plastic
+ *   - round with border-radius + clip-path, not overflow:hidden, on anything
+ *     that has to clip a translucent layer
+ */
+
+:root {
+  /* Geometry. Every one of these is overwritten at runtime from the shared
+   * C++ constants, so this file is never a second source of truth. The values
+   * here are only a pre-bridge fallback. */
+  --topbar-height: 32px;
+  --sidebar-width: 168px;
+  --viewport-radius: 12px;
+  --tab-min-width: 95px;
+  --tab-max-width: 190px;
+  --tab-gap: 8px;
+  --new-tab-width: 34px;
+
+  /* Window-anchored shell offsets, filled in by shell.js. */
+  --shell-x: 0px;
+  --shell-y: 0px;
+  --win-w: 1200px;
+  --win-h: 800px;
+
+  /* Base palette. */
+  --bg: #0b0b0d;
+  --text: #f0f0f3;
+  --text-dim: #8e8e99;
+  --text-faint: #5f5f6b;
+
+  /* Ambient shell light. Cool, to sit with the glass mark in the corner.
+   * For the warmer look, these two are the only lines to change:
+   *   --ambient-a: rgba(255, 122, 26, .20);
+   *   --ambient-b: rgba(255, 80, 20, .12); */
+  --ambient-a: rgba(74, 140, 255, .26);
+  --ambient-b: rgba(64, 96, 220, .16);
+
+  /* Accent — state only. */
+  --accent: #62a8ff;
+  --accent-soft: rgba(98, 168, 255, .18);
+
+  /* Glass recipe.
+   * fill = the tint, rim = the lit edge, shadow = the lift off the shell.
+   * The rim is what sells it: a real pane catches light on its top edge and
+   * holds a faint line all the way round. */
+  --glass-fill: linear-gradient(180deg,
+      rgba(255, 255, 255, .075),
+      rgba(255, 255, 255, .022));
+  --glass-fill-strong: linear-gradient(180deg,
+      rgba(255, 255, 255, .14),
+      rgba(255, 255, 255, .05));
+  --glass-rim:
+      inset 0 1px 0 rgba(255, 255, 255, .16),
+      inset 0 0 0 1px rgba(255, 255, 255, .055);
+  --glass-shadow: 0 2px 10px rgba(0, 0, 0, .40);
+  --glass-blur: blur(18px) saturate(1.3);
+
+  /* Motion. */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 210ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Buttons default to the platform `buttonface` colour, which renders as a pale
+ * grey panel and completely overpowers a glass fill layered on top of it. Every
+ * control here supplies its own surface, so clear it once, globally. */
+button {
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  border: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+/* The shell material.
+ *
+ * Anchored to the WINDOW, not to this surface: each surface offsets the layer
+ * by its own origin so the gradient continues across the seam between them.
+ * Painted per-surface but sampled from one shared coordinate space, which is
+ * why the topbar and sidebar look like one piece of glass rather than two. */
+body::before {
+  content: "";
+  position: fixed;
+  left: calc(-1 * var(--shell-x));
+  top: calc(-1 * var(--shell-y));
+  width: var(--win-w);
+  height: var(--win-h);
+  pointer-events: none;
+  background:
+    radial-gradient(1000px 460px at 0% 0%, var(--ambient-a), transparent 68%),
+    radial-gradient(760px 520px at 2% 100%, var(--ambient-b), transparent 70%);
+}
+
+/* Everything a surface draws sits above the shell material. */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- glass primitives -------------------------------------------------- */
+
+.glass {
+  background-image: var(--glass-fill);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+}
+
+.glass-quiet {
+  background-image: var(--glass-fill);
+  box-shadow: var(--glass-rim);
+}
+
+/* Interactive glass: lifts on hover, settles on press. */
+.glass-button {
+  border: 0;
+  color: var(--text-dim);
+  background-image: none;
+  background-color: transparent;
+  border-radius: 6px;
+  cursor: default;
+  transition:
+    background-color var(--dur-1) var(--ease),
+    box-shadow var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.glass-button:hover {
+  background-image: var(--glass-fill);
+  box-shadow: var(--glass-rim);
+  color: var(--text);
+}
+
+.glass-button:active {
+  background-image: none;
+  background-color: rgba(0, 0, 0, .22);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35);
+}

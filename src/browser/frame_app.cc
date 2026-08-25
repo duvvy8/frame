@@ -5,8 +5,8 @@
 #include <cstdlib>
 #include <string>
 
+#include "browser/chrome_surface.h"
 #include "browser/main_window.h"
-#include "browser/topbar_client.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
 #include "shared/chrome_layout.h"
@@ -26,25 +26,40 @@ std::wstring ExecutableDir() {
 
 // file:// for now. The frame:// scheme handler, with its flat allowlist, lands
 // in a later migration step and replaces this.
-std::string TopbarUrl() {
+std::string SurfaceUrl(const wchar_t* file_name) {
   std::wstring dir = ExecutableDir();
   for (auto& ch : dir) {
     if (ch == L'\\') {
       ch = L'/';
     }
   }
-  const std::wstring url = L"file:///" + dir + L"/resources/topbar.html";
+  const std::wstring url =
+      L"file:///" + dir + L"/resources/" + file_name;
   return CefString(url).ToString();
 }
 
-int SwitchAsInt(CefRefPtr<CefCommandLine> cmd,
-                const char* name,
-                int fallback) {
+int SwitchAsInt(CefRefPtr<CefCommandLine> cmd, const char* name, int fallback) {
   if (!cmd->HasSwitch(name)) {
     return fallback;
   }
   const std::string value = cmd->GetSwitchValue(name).ToString();
   return value.empty() ? fallback : std::atoi(value.c_str());
+}
+
+void CreateSurface(MainWindow* window, SurfaceId id, const wchar_t* file_name) {
+  CefRefPtr<ChromeSurface> surface(new ChromeSurface(window, id));
+
+  CefWindowInfo window_info;
+  // Off-screen rendering: CEF hands us pixels instead of owning a child HWND,
+  // which is what lets the native window composite the surfaces itself.
+  window_info.SetAsWindowless(window->hwnd());
+
+  CefBrowserSettings settings;
+  settings.windowless_frame_rate = 60;
+  settings.background_color = CefColorSetARGB(255, 11, 11, 13);
+
+  CefBrowserHost::CreateBrowser(window_info, surface, SurfaceUrl(file_name),
+                                settings, nullptr, nullptr);
 }
 
 }  // namespace
@@ -67,19 +82,11 @@ void FrameApp::OnContextInitialized() {
     return;
   }
 
-  CefRefPtr<TopbarClient> client(new TopbarClient(main_window_.get()));
-
-  CefWindowInfo window_info;
-  // Off-screen rendering: CEF hands us pixels instead of owning a child HWND,
-  // which is what lets the native window composite chrome surfaces itself.
-  window_info.SetAsWindowless(main_window_->hwnd());
-
-  CefBrowserSettings browser_settings;
-  browser_settings.windowless_frame_rate = 60;
-  browser_settings.background_color = CefColorSetARGB(255, 20, 20, 22);
-
-  CefBrowserHost::CreateBrowser(window_info, client, TopbarUrl(),
-                                browser_settings, nullptr, nullptr);
+  // Each chrome surface is its own off-screen browser, composited by the
+  // window. Independent surfaces mean one can repaint without touching the
+  // others.
+  CreateSurface(main_window_.get(), SurfaceId::kTopbar, L"topbar.html");
+  CreateSurface(main_window_.get(), SurfaceId::kSidebar, L"sidebar.html");
 }
 
 void FrameApp::OnWebKitInitialized() {

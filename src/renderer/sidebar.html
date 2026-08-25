@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame sidebar</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="address glass-quiet" title="Address">
+      <span class="address-text" id="address">frame://newtab</span>
+      <button class="copy glass-button" title="Copy address"
+              aria-label="Copy address">
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+          <rect x="5.5" y="5.5" width="8" height="8" rx="2" fill="none"
+                stroke="currentColor" stroke-width="1.2"/>
+          <path d="M10.5 5.5 V4 A1.5 1.5 0 0 0 9 2.5 H4 A1.5 1.5 0 0 0 2.5 4
+                   V9 A1.5 1.5 0 0 0 4 10.5 H5.5"
+                fill="none" stroke="currentColor" stroke-width="1.2"
+                stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="favorites" id="favorites">
+      <button class="favorite glass-quiet" title="Favorite">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor"
+                  stroke-width="1.6"/>
+          <path d="M12 4.5 V12 H19.5" fill="none" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="favorite glass-quiet" title="Favorite">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="3.5" y="6" width="17" height="12" rx="3.5" fill="none"
+                stroke="currentColor" stroke-width="1.6"/>
+          <path d="M10.5 9.8 L15 12 L10.5 14.2 Z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="favorite glass-quiet" title="Favorite">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="4" y="5.5" width="16" height="14" rx="3" fill="none"
+                stroke="currentColor" stroke-width="1.6"/>
+          <path d="M4 10 H20 M8.5 3.5 V7 M15.5 3.5 V7" fill="none"
+                stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="favorite glass-quiet" title="Favorite">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M12 4 L19 8 V16 L12 20 L5 16 V8 Z" fill="none"
+                stroke="currentColor" stroke-width="1.6"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="favorite is-empty" title="Add favorite"
+              aria-label="Add favorite">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M12 6 V18 M6 12 H18" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sidebar-foot">
+      <span class="metric" id="metric">&nbsp;</span>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script>
+    (function () {
+      var metric = document.getElementById('metric');
+
+      FrameShell.bootstrap().then(function (state) {
+        // Confirms this surface is sized and positioned from the C++ constants.
+        metric.textContent = state.layout.sidebarWidth + 'px · y' +
+                             state.shell.surfaceY;
+      }).catch(function (err) {
+        metric.textContent = 'bridge: ' + err.message;
+        metric.classList.add('is-error');
+      });
+    })();
+  </script>
+</body>
+</html>

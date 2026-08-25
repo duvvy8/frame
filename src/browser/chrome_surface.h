@@ -1,5 +1,7 @@
-#ifndef FRAME_BROWSER_TOPBAR_CLIENT_H_
-#define FRAME_BROWSER_TOPBAR_CLIENT_H_
+#ifndef FRAME_BROWSER_CHROME_SURFACE_H_
+#define FRAME_BROWSER_CHROME_SURFACE_H_
+
+#include <memory>
 
 #include "include/cef_client.h"
 #include "include/cef_life_span_handler.h"
@@ -10,16 +12,25 @@ namespace frame {
 
 class MainWindow;
 
-// CefClient for the off-screen-rendered topbar surface.
+// Identifies one chrome surface. Each is an independent off-screen browser
+// composited by MainWindow, mirroring the design where the window is assembled
+// from several separately rendered pieces rather than one page.
+enum class SurfaceId {
+  kTopbar = 0,
+  kSidebar = 1,
+  kCount = 2,
+};
+
+// CefClient for a single off-screen chrome surface.
 //
-// Off-screen rendering is the deliberate choice for chrome surfaces: it keeps
-// the chrome as HTML/CSS while the engine underneath is native, and it hands us
-// a real bitmap of the surface, which the capture-driven glass effects need.
-class TopbarClient : public CefClient,
-                     public CefRenderHandler,
-                     public CefLifeSpanHandler {
+// The surface does not decide where it lives: it asks MainWindow for its bounds
+// so that all geometry stays derived from the shared layout constants, with no
+// second copy anywhere.
+class ChromeSurface : public CefClient,
+                      public CefRenderHandler,
+                      public CefLifeSpanHandler {
  public:
-  explicit TopbarClient(MainWindow* window);
+  ChromeSurface(MainWindow* window, SurfaceId id);
 
   // CefClient
   CefRefPtr<CefRenderHandler> GetRenderHandler() override { return this; }
@@ -42,19 +53,18 @@ class TopbarClient : public CefClient,
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
   void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
 
-  // Detaches from the window during teardown, so a late paint cannot touch a
-  // destroyed window.
   void Detach() { window_ = nullptr; }
 
  private:
-  MainWindow* window_;  // Not owned; outlives this client, cleared by Detach().
+  MainWindow* window_;  // Not owned; cleared by Detach() during teardown.
+  const SurfaceId id_;
   CefRefPtr<CefMessageRouterBrowserSide> router_;
   std::unique_ptr<CefMessageRouterBrowserSide::Handler> query_handler_;
 
-  IMPLEMENT_REFCOUNTING(TopbarClient);
-  DISALLOW_COPY_AND_ASSIGN(TopbarClient);
+  IMPLEMENT_REFCOUNTING(ChromeSurface);
+  DISALLOW_COPY_AND_ASSIGN(ChromeSurface);
 };
 
 }  // namespace frame
 
-#endif  // FRAME_BROWSER_TOPBAR_CLIENT_H_
+#endif  // FRAME_BROWSER_CHROME_SURFACE_H_

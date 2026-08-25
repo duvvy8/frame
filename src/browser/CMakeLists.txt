@@ -18,8 +18,8 @@ set(FRAME_SRCS
   frame_app.h
   main_window.cc
   main_window.h
-  topbar_client.cc
-  topbar_client.h
+  chrome_surface.cc
+  chrome_surface.h
   "${CMAKE_SOURCE_DIR}/src/frame_main_win.cc"
 )
 source_group(frame FILES ${FRAME_SRCS})
