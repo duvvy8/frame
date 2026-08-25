@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "browser/chrome_surface.h"
+#include "browser/corner_mask.h"
 #include "include/cef_browser.h"
 #include "shared/chrome_layout.h"
 
@@ -161,6 +162,9 @@ class MainWindow {
   bool sidebar_open_ = true;
   bool tracking_mouse_ = false;
   bool tracking_nc_mouse_ = false;
+
+  // Fakes VIEWPORT_RADIUS on the page, which paints its own square corners.
+  CornerMask corner_mask_;
 
   std::vector<layout::IntRect> drag_exclusions_;
   Layer layers_[static_cast<size_t>(SurfaceId::kCount)];

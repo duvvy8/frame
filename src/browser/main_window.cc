@@ -200,6 +200,7 @@ bool MainWindow::Create(HINSTANCE instance) {
   }
 
   ApplyRoundedCorners();
+  corner_mask_.Create(hwnd_, instance);
 
   ::SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
                  SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
@@ -426,14 +427,21 @@ void MainWindow::LayoutPages() {
     }
     ::SetWindowPos(page, nullptr, viewport.x, viewport.y, viewport.width,
                    viewport.height, SWP_NOZORDER | SWP_NOACTIVATE);
-    // The page's own rounded corners. A region rather than a drawn radius,
-    // because the page is a separate HWND that paints itself and would happily
-    // paint straight over anything we drew underneath it.
-    HRGN region = ::CreateRoundRectRgn(0, 0, viewport.width + 1,
-                                       viewport.height + 1,
-                                       viewport.radius * 2, viewport.radius * 2);
-    ::SetWindowRgn(page, region, TRUE);  // Window owns the region now.
     ::ShowWindow(page, SW_SHOW);
+  }
+
+  // The page keeps its square corners and the masks cover them. Clipping the
+  // page with SetWindowRgn instead produced a visibly stair-stepped curve,
+  // because an HRGN is a binary mask with no antialiasing.
+  if (ActiveBrowser()) {
+    corner_mask_.Layout(viewport, kShellBackground);
+    if (Tab* active = ActiveTab()) {
+      if (active->browser) {
+        corner_mask_.RaiseAbove(active->browser->GetHost()->GetWindowHandle());
+      }
+    }
+  } else {
+    corner_mask_.Hide();
   }
 }
 
@@ -1053,12 +1061,25 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     }
 
     case WM_SIZE:
+      if (wparam == SIZE_MINIMIZED) {
+        // The corner masks are top-level windows, so they do not minimise with
+        // their owner's client area — they have to be hidden explicitly or they
+        // hang in mid-air over the desktop.
+        corner_mask_.Hide();
+        return 0;
+      }
       client_width_ = LOWORD(lparam);
       client_height_ = HIWORD(lparam);
       NotifySurfacesResized();
       LayoutPages();
       PushShellMetrics();
       PushWindowState();
+      return 0;
+
+    case WM_MOVE:
+      // Same reason: the masks are positioned in screen coordinates, so moving
+      // the window has to drag them along with it.
+      LayoutPages();
       return 0;
 
     case WM_MOUSEMOVE: {
