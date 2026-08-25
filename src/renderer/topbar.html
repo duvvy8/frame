@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame topbar</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="topbar.css">
+</head>
+<body>
+  <div class="topbar">
+    <!-- The mark lives in logo.svg so there is one copy of it, reusable as an
+         icon or favicon rather than duplicated per surface. -->
+    <div class="brand" title="Frame">
+      <img class="mark" src="logo.svg" width="20" height="20" alt="Frame">
+    </div>
+
+    <button class="icon-button glass-button" id="sidebar-toggle"
+            title="Toggle sidebar" aria-label="Toggle sidebar">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <rect x="1.5" y="2.5" width="13" height="11" rx="2.5"
+              fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="6" y1="2.5" x2="6" y2="13.5"
+              stroke="currentColor" stroke-width="1.2"/>
+      </svg>
+    </button>
+
+    <div class="nav">
+      <button class="icon-button glass-button" id="nav-back" title="Back"
+              aria-label="Back">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M10 3.5 L5.5 8 L10 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-button glass-button" id="nav-forward" title="Forward"
+              aria-label="Forward">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M6 3.5 L10.5 8 L6 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-button glass-button" id="nav-reload" title="Reload"
+              aria-label="Reload">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M12.5 6.5 A5 5 0 1 0 12.8 9.6" fill="none"
+                stroke="currentColor" stroke-width="1.3"
+                stroke-linecap="round"/>
+          <path d="M12.9 3.2 V6.8 H9.3" fill="none" stroke="currentColor"
+                stroke-width="1.3" stroke-linecap="round"
+                stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs are rendered from the state the browser process pushes. This
+         markup is never the source of truth for what is open. -->
+    <div class="tabs" id="tabs">
+      <button class="new-tab glass-button" id="new-tab" title="New tab"
+              aria-label="New tab">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <path d="M8 4 V12 M4 8 H12" stroke="currentColor" stroke-width="1.4"
+                stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="caption" id="caption">
+      <button class="caption-button" id="win-minimize" title="Minimize"
+              aria-label="Minimize">
+        <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+          <path d="M0 5 H10" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button class="caption-button" id="win-maximize" title="Maximize"
+              aria-label="Maximize">
+        <svg class="icon-maximize" viewBox="0 0 10 10" width="10" height="10"
+             aria-hidden="true">
+          <rect x="0.5" y="0.5" width="9" height="9" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+        </svg>
+        <svg class="icon-restore" viewBox="0 0 10 10" width="10" height="10"
+             aria-hidden="true">
+          <rect x="0.5" y="2.5" width="7" height="7" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+          <path d="M2.5 2.5 V0.5 H9.5 V7.5 H7.5" fill="none"
+                stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </button>
+      <button class="caption-button is-close" id="win-close" title="Close"
+              aria-label="Close">
+        <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+          <path d="M0.5 0.5 L9.5 9.5 M9.5 0.5 L0.5 9.5" stroke="currentColor"
+                stroke-width="1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var tabsEl = document.getElementById('tabs');
+      var newTabButton = document.getElementById('new-tab');
+      var C = FrameShell.CHANNEL;
+
+      // --- drag regions ---------------------------------------------------
+
+      function interactiveElements() {
+        var list = [
+          document.getElementById('sidebar-toggle'),
+          document.querySelector('.nav')
+        ];
+        // Individual tabs, never the strip that contains them: the strip is
+        // flexible and spans most of the topbar, so reporting it whole would
+        // leave almost nowhere to grab the window. The gaps between tabs stay
+        // draggable, as they are in every other browser.
+        var controls = tabsEl.querySelectorAll('.tab, .new-tab');
+        for (var i = 0; i < controls.length; i++) {
+          list.push(controls[i]);
+        }
+        return list;
+      }
+
+      function publishDragRegions() {
+        FrameShell.reportDragRegions(interactiveElements());
+      }
+
+      // --- tab dragging ---------------------------------------------------
+
+      // Tabs are all laid out at the same width, so a drag is just an index
+      // shift: how many whole tab-widths the pointer has travelled. That keeps
+      // the maths honest and the result predictable, rather than depending on
+      // where within a neighbour the pointer happens to be.
+      var drag = null;
+      var pendingState = null;
+
+      function tabStep() {
+        var gap = parseFloat(
+          getComputedStyle(tabsEl).getPropertyValue('gap')) || 0;
+        return drag.el.getBoundingClientRect().width + gap;
+      }
+
+      function targetIndex(dx) {
+        var count = tabsEl.querySelectorAll('.tab').length;
+        var delta = Math.round(dx / tabStep());
+        return Math.max(0, Math.min(drag.index + delta, count - 1));
+      }
+
+      // The dragged tab follows the pointer; everything between its old and
+      // new slot slides one place to make room.
+      function applyDragTransforms(dx) {
+        var step = tabStep();
+        var target = targetIndex(dx);
+        var tabs = tabsEl.querySelectorAll('.tab');
+
+        for (var i = 0; i < tabs.length; i++) {
+          var el = tabs[i];
+          if (el === drag.el) {
+            el.style.transform = 'translateX(' + dx + 'px)';
+            continue;
+          }
+          var shift = 0;
+          if (target > drag.index && i > drag.index && i <= target) {
+            shift = -step;
+          } else if (target < drag.index && i >= target && i < drag.index) {
+            shift = step;
+          }
+          el.style.transform = shift ? 'translateX(' + shift + 'px)' : '';
+        }
+        return target;
+      }
+
+      function endDrag(commit) {
+        if (!drag) {
+          return;
+        }
+        var moved = drag.moved;
+        var target = drag.target;
+        var id = drag.id;
+
+        var tabs = tabsEl.querySelectorAll('.tab');
+        for (var i = 0; i < tabs.length; i++) {
+          tabs[i].style.transform = '';
+          tabs[i].classList.remove('is-dragging', 'is-shifting');
+        }
+        drag = null;
+
+        if (moved && commit && target !== null) {
+          FrameShell.send(FrameShell.CHANNEL.tabReorder, id + ':' + target);
+        }
+        // A state push may have arrived mid-drag and been held back.
+        if (pendingState) {
+          var held = pendingState;
+          pendingState = null;
+          applyBrowserState(held);
+        }
+      }
+
+      document.addEventListener('mousemove', function (event) {
+        if (!drag) {
+          return;
+        }
+        // The button was released somewhere we never saw a mouseup from.
+        if (event.buttons === 0) {
+          endDrag(true);
+          return;
+        }
+        var dx = event.clientX - drag.startX;
+        if (!drag.moved) {
+          // A few pixels of slop, so a slightly shaky click still selects the
+          // tab instead of starting a drag.
+          if (Math.abs(dx) < 4) {
+            return;
+          }
+          drag.moved = true;
+          drag.el.classList.add('is-dragging');
+          var all = tabsEl.querySelectorAll('.tab');
+          for (var i = 0; i < all.length; i++) {
+            if (all[i] !== drag.el) {
+              all[i].classList.add('is-shifting');
+            }
+          }
+        }
+        drag.target = applyDragTransforms(dx);
+      });
+
+      document.addEventListener('mouseup', function () { endDrag(true); });
+
+      // Deliberately NOT document 'mouseleave' as a safety net: under
+      // off-screen rendering that fires on essentially every synthesized move,
+      // which ended the drag one move after it began. Watching the button
+      // state instead catches the real case — the button released while the
+      // pointer was outside the surface, so no mouseup ever arrived.
+
+      // --- tab strip ------------------------------------------------------
+
+      function buildTab(tab, isActive) {
+        var el = document.createElement('div');
+        el.className = 'tab' + (isActive ? ' is-active' : '');
+        el.dataset.tabId = tab.id;
+        el.title = tab.title;
+
+        var dot = document.createElement('span');
+        dot.className = 'tab-dot' + (tab.loading ? ' is-loading' : '');
+        el.appendChild(dot);
+
+        var title = document.createElement('span');
+        title.className = 'tab-title';
+        // textContent, never innerHTML: page titles are hostile input.
+        title.textContent = tab.title || 'Untitled';
+        el.appendChild(title);
+
+        var close = document.createElement('button');
+        close.className = 'tab-close';
+        close.title = 'Close tab';
+        close.setAttribute('aria-label', 'Close tab');
+        close.innerHTML =
+          '<svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true">' +
+          '<path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" ' +
+          'stroke-width="1.4" stroke-linecap="round"/></svg>';
+        close.addEventListener('click', function (event) {
+          // Without this the click also selects the tab being closed.
+          event.stopPropagation();
+          FrameShell.send(C.tabClose, tab.id);
+        });
+        el.appendChild(close);
+
+        el.addEventListener('mousedown', function (event) {
+          // Middle-click closes, as everywhere else.
+          if (event.button === 1) {
+            event.preventDefault();
+            FrameShell.send(C.tabClose, tab.id);
+            return;
+          }
+          if (event.button !== 0 || event.target.closest('.tab-close')) {
+            return;
+          }
+          // Select on press, not on release: it matches every other browser,
+          // and it means a tab you start dragging is already the active one
+          // rather than snapping active when you let go.
+          if (!isActive) {
+            FrameShell.send(C.tabSelect, tab.id);
+          }
+
+          var index = Array.prototype.indexOf.call(
+            tabsEl.querySelectorAll('.tab'), el);
+          drag = {
+            id: tab.id,
+            el: el,
+            index: index,
+            target: index,
+            startX: event.clientX,
+            moved: false
+          };
+        });
+
+        return el;
+      }
+
+      function renderTabs(state) {
+        var existing = tabsEl.querySelectorAll('.tab');
+        for (var i = 0; i < existing.length; i++) {
+          existing[i].remove();
+        }
+        for (var j = 0; j < state.tabs.length; j++) {
+          var tab = state.tabs[j];
+          tabsEl.insertBefore(buildTab(tab, tab.id === state.activeTabId),
+                              newTabButton);
+        }
+        // Tab rectangles just moved, so the draggable strip did too.
+        publishDragRegions();
+      }
+
+      function applyBrowserState(state) {
+        renderTabs(state);
+        document.getElementById('nav-back').disabled = !state.canGoBack;
+        document.getElementById('nav-forward').disabled = !state.canGoForward;
+        root.classList.toggle('is-loading', !!state.loading);
+      }
+
+      FrameShell.onBrowserState = function (state) {
+        // Rebuilding the strip mid-drag would destroy the element being
+        // dragged. A page finishing its load during a drag is entirely
+        // normal, so hold the update until the drag ends.
+        if (drag && drag.moved) {
+          pendingState = state;
+          return;
+        }
+        applyBrowserState(state);
+      };
+
+      FrameShell.onWindowState = function (state) {
+        root.classList.toggle('is-maximized', !!state.maximized);
+        var button = document.getElementById('win-maximize');
+        button.title = state.maximized ? 'Restore' : 'Maximize';
+        button.setAttribute('aria-label', button.title);
+      };
+
+      // --- controls -------------------------------------------------------
+
+      function on(id, channel) {
+        document.getElementById(id).addEventListener('click', function () {
+          FrameShell.send(channel);
+        });
+      }
+
+      on('sidebar-toggle', C.sidebarToggle);
+      on('nav-back', C.navBack);
+      on('nav-forward', C.navForward);
+      on('nav-reload', C.navReload);
+      on('new-tab', C.tabCreate);
+      on('win-minimize', C.minimize);
+      on('win-close', C.close);
+      // Also reachable through the non-client path so Windows can offer Snap
+      // Layouts over it; both routes end up here.
+      on('win-maximize', C.maximize);
+
+      FrameShell.bootstrap().then(function () {
+        publishDragRegions();
+        return FrameShell.query(C.windowState);
+      }).then(function (windowState) {
+        if (windowState) {
+          FrameShell.onWindowState(windowState);
+        }
+      }).catch(function () { /* surface still renders without the bridge */ });
+
+      if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(publishDragRegions).observe(document.body);
+      }
+    })();
+  </script>
+</body>
+</html>

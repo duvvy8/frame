@@ -38,3 +38,18 @@ if(FRAME_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
+
+# The application target. Requires the CEF binary distribution, so it is
+# skipped when that is absent — the shared logic and its tests still build on a
+# bare checkout with no 339 MB download.
+option(FRAME_BUILD_APP "Build the Frame application" ON)
+
+if(FRAME_BUILD_APP)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cef/CMakeLists.txt")
+    add_subdirectory(src/browser)
+  else()
+    message(WARNING
+      "third_party/cef not found - skipping the app target. "
+      "Run scripts/get-cef.ps1 to fetch it.")
+  endif()
+endif()

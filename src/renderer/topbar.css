@@ -1,0 +1,309 @@
+/* Frame — topbar surface.
+ *
+ * Composited across the full window width at --topbar-height. Every dimension
+ * that matters comes from the shared constants via shell.js.
+ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--topbar-height);
+  /* No padding on the right: the caption buttons run flush to the window edge,
+   * the way the system ones did. */
+  padding: 0 0 0 6px;
+}
+
+/* The mark sits in the top-left corner of the window, ahead of every control. */
+.brand {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+
+.mark {
+  display: block;
+  /* A faint bloom off the glass, so the mark sits in the ambient light rather
+   * than on top of it. */
+  filter: drop-shadow(0 0 5px rgba(98, 168, 255, .35));
+}
+
+.icon-button {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.nav {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--tab-gap);
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px;
+  /* Tabs that overflow fade out rather than being chopped mid-glyph. */
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px),
+                              transparent 100%);
+}
+
+/* Ported from the Electron build's chrome.css.
+ *
+ * Two things here were previously guessed at and both were wrong:
+ *
+ *   - EVERY tab carries a pill, not just the active one. Without a fill the
+ *     inactive tabs have no shape at all and the strip reads as loose text
+ *     rather than as tabs.
+ *   - tabs are sized to their CONTENT between the min and max, via
+ *     `flex: 0 1 auto` + `width: max-content`. Stretching them all to the
+ *     maximum makes a two-tab window look like two enormous slabs.
+ *
+ * 28px in a 32px bar, so the tab nearly fills the strip's height. */
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  width: max-content;
+  min-width: var(--tab-min-width);
+  max-width: var(--tab-max-width);
+  flex: 0 1 auto;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .035);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .075);
+  color: rgba(255, 255, 255, .70);
+  font-size: 12.5px;
+  font-weight: 400;
+  transition:
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, .10);
+  color: rgba(255, 255, 255, .86);
+}
+
+/* The active tab is marked by an accent rim and a soft glow over a DARKER
+ * fill, not a brighter one. Darkening it separates it from the strip while the
+ * accent does the actual signalling — the accent is for state, never
+ * decoration. */
+.tab.is-active {
+  background: rgba(16, 17, 22, .82);
+  border-color: rgba(98, 168, 255, .80);
+  color: rgba(255, 255, 255, .94);
+  box-shadow:
+    0 0 8px rgba(98, 168, 255, .25),
+    inset 0 0 8px rgba(98, 168, 255, .07);
+}
+
+.tab.is-active .tab-dot {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-soft);
+}
+
+.tab-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: background var(--dur-1) var(--ease);
+}
+
+.tab-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.new-tab {
+  flex: 0 0 auto;
+  width: var(--new-tab-width);
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.status {
+  flex: 0 0 auto;
+  padding: 0 8px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+.status.is-ok {
+  color: var(--text-dim);
+  background-image: var(--glass-fill);
+  box-shadow: var(--glass-rim);
+}
+
+/* The bridge is the migration's canary — a failure has to be obvious. */
+.status.is-error {
+  color: #ff8a5c;
+  background-image: none;
+  background-color: rgba(255, 90, 40, .14);
+  box-shadow: inset 0 0 0 1px rgba(255, 120, 70, .35);
+}
+
+/* --- caption buttons ---------------------------------------------------- */
+
+/* Frame draws these now that Windows draws no title bar. Square, flush to the
+ * edge, full topbar height — matching the system metrics so the strip still
+ * feels like a real Windows caption rather than a toolbar pretending to be one.
+ *
+ * Width is fixed at 46px to match kCaptionButtonWidth in the shared header.
+ * The C++ hit-testing computes the same rectangles; if these two ever diverge,
+ * the Snap Layouts flyout stops lining up with the maximise button. */
+.caption {
+  flex: 0 0 auto;
+  display: flex;
+  align-self: stretch;
+  margin-left: 4px;
+}
+
+.caption-button {
+  width: 46px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 0;
+  color: var(--text-dim);
+  cursor: default;
+  transition:
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.caption-button:hover {
+  background-color: rgba(255, 255, 255, .09);
+  color: var(--text);
+}
+
+.caption-button:active {
+  background-color: rgba(255, 255, 255, .05);
+}
+
+/* Close is the one destructive control up here, so it gets the one loud
+ * hover in the whole chrome. */
+.caption-button.is-close:hover {
+  background-color: #c42b1c;
+  color: #fff;
+}
+
+.caption-button.is-close:active {
+  background-color: #b3271a;
+}
+
+/* Maximise vs restore: the window reports which, we never infer it. */
+.icon-restore {
+  display: none;
+}
+
+.is-maximized .icon-maximize {
+  display: none;
+}
+
+.is-maximized .icon-restore {
+  display: block;
+}
+
+/* --- tab close + loading ------------------------------------------------ */
+
+.tab-close {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: default;
+  transition:
+    opacity var(--dur-1) var(--ease),
+    background-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+/* The close affordance only appears on the tab you are pointing at, so a full
+ * strip does not read as a row of buttons. */
+.tab:hover .tab-close,
+.tab.is-active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, .12);
+  color: var(--text);
+}
+
+/* Loading pulses the state dot rather than adding a spinner: one accent, one
+ * meaning, no extra furniture in a 32px bar. */
+.tab-dot.is-loading {
+  animation: tab-pulse 900ms var(--ease) infinite;
+}
+
+@keyframes tab-pulse {
+  0%   { opacity: 1;   transform: scale(1); }
+  50%  { opacity: .35; transform: scale(.72); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+
+/* Disabled nav buttons stay visible but clearly inert — a missing button would
+ * make the row jump around as history changes. */
+.icon-button:disabled {
+  color: #40404a;
+}
+
+.icon-button:disabled:hover {
+  background-image: none;
+  box-shadow: none;
+  color: #40404a;
+}
+
+/* --- tab dragging ------------------------------------------------------- */
+
+/* The dragged tab lifts and follows the pointer with no transition, so it
+ * tracks the cursor exactly rather than lagging behind it. */
+.tab.is-dragging {
+  z-index: 2;
+  transition: none;
+  cursor: grabbing;
+  background-image: var(--glass-fill-strong);
+  box-shadow:
+    var(--glass-rim),
+    0 6px 18px rgba(0, 0, 0, .55);
+}
+
+/* Its neighbours slide out of the way. These DO animate — the contrast between
+ * the tab that tracks the pointer and the ones that ease into place is what
+ * makes the reorder legible. */
+.tab.is-shifting {
+  transition: transform var(--dur-2) var(--ease);
+}

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28"
+     role="img" aria-label="Frame">
+  <title>Frame</title>
+  <!--
+    Three translucent glass planes forming an F. Because they overlap, the
+    intersections brighten on their own, which is what makes it read as
+    stacked glass rather than flat shapes.
+
+    Self-contained: the gradients live inside the file, so it works as an
+    <img> source, a favicon, or pasted inline. Keep the viewBox at 28x28 so
+    every use scales from the same grid.
+  -->
+  <defs>
+    <linearGradient id="framePlaneA" x1="4" y1="2" x2="20" y2="20"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d6ecff" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#5b93e6" stop-opacity=".42"/>
+    </linearGradient>
+    <linearGradient id="framePlaneB" x1="6" y1="3" x2="24" y2="12"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a8d8ff" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#4374cc" stop-opacity=".30"/>
+    </linearGradient>
+    <linearGradient id="framePlaneC" x1="10" y1="11" x2="22" y2="18"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c2e3ff" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#4a7ed6" stop-opacity=".34"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="rotate(-8 14 14)">
+    <!-- top plane -->
+    <path d="M5.5 3.2 H23 V8.6 H5.5 Z" fill="url(#framePlaneB)"
+          stroke="rgba(255,255,255,.46)" stroke-width=".75"
+          stroke-linejoin="round"/>
+    <!-- middle plane -->
+    <path d="M10 11.6 H20.5 V16.8 H10 Z" fill="url(#framePlaneC)"
+          stroke="rgba(255,255,255,.42)" stroke-width=".75"
+          stroke-linejoin="round"/>
+    <!-- stem, drawn last so it reads as the near pane -->
+    <path d="M6.6 3.2 H12.2 V25 H6.6 Z" fill="url(#framePlaneA)"
+          stroke="rgba(255,255,255,.52)" stroke-width=".75"
+          stroke-linejoin="round"/>
+  </g>
+</svg>

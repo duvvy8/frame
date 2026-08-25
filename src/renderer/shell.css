@@ -1,0 +1,217 @@
+/* Frame — shell material and the glass system.
+ *
+ * Shared by every chrome surface. Written fresh for this codebase.
+ *
+ * Conventions that keep the chrome coherent as it grows:
+ *   - the accent means STATE or emphasis, never decoration
+ *   - motion decelerates; nothing accelerates on the way in
+ *   - readability in glass comes from blur depth, not opacity: never push a
+ *     base tint past ~0.5 alpha, or it stops reading as glass and starts
+ *     reading as grey plastic
+ *   - round with border-radius + clip-path, not overflow:hidden, on anything
+ *     that has to clip a translucent layer
+ */
+
+:root {
+  /* Geometry. Every one of these is overwritten at runtime from the shared
+   * C++ constants, so this file is never a second source of truth. The values
+   * here are only a pre-bridge fallback. */
+  --topbar-height: 32px;
+  --sidebar-width: 168px;
+  --viewport-radius: 12px;
+  --tab-min-width: 95px;
+  --tab-max-width: 190px;
+  --tab-gap: 8px;
+  --new-tab-width: 34px;
+
+  /* Window-anchored shell offsets, filled in by shell.js. */
+  --shell-x: 0px;
+  --shell-y: 0px;
+  --win-w: 1200px;
+  --win-h: 800px;
+
+  /* Base palette. */
+  --bg: #0b0b0d;
+  --text: #f0f0f3;
+  --text-dim: #8e8e99;
+  --text-faint: #5f5f6b;
+
+  /* Ambient shell light. Cool, to sit with the glass mark in the corner.
+   * For the warmer look, these two are the only lines to change:
+   *   --ambient-a: rgba(255, 122, 26, .20);
+   *   --ambient-b: rgba(255, 80, 20, .12); */
+  --ambient-a: rgba(74, 140, 255, .26);
+  --ambient-b: rgba(64, 96, 220, .16);
+
+  /* Accent — state only. */
+  --accent: #62a8ff;
+  --accent-soft: rgba(98, 168, 255, .18);
+
+  /* Glass recipe.
+   *
+   * The rim is what separates glass from plastic, and it is NOT a border. A
+   * uniform 1px ring outlines a shape; real glass catches light directionally,
+   * bright along the edge facing the light and dimmer on the opposite one,
+   * with the body shaded slightly inside those edges.
+   *
+   * This is the lens rim from the Electron build's theme.css, unchanged in
+   * structure — only the hue follows Frame's palette. Six layers:
+   *   1. faint hairline all the way round, so the shape still reads
+   *   2. bright specular on the top-left edge only
+   *   3. dimmer specular on the bottom-right
+   *   4-5. inner shading, which gives the pane thickness
+   *   6. a small outer lift off the shell
+   * The negative spreads are what confine layers 2 and 3 to single edges. */
+  --lg-lens-rim:
+      inset 0 0 0 1px rgba(255, 255, 255, .11),
+      inset 2px 1px 0 -1px rgba(255, 255, 255, .52),
+      inset -1.5px -1px 0 -1px rgba(255, 255, 255, .36),
+      inset -1px 2px 3px -1px rgba(0, 0, 0, .14),
+      inset 0 -4px 1px -3px rgba(0, 0, 0, .1),
+      0 3px 7px rgba(0, 0, 0, .12);
+  --lg-shadow-sm: 0 6px 18px rgba(0, 0, 0, .22);
+
+  /* Readability comes from blur depth, never from opacity: a base tint past
+   * roughly .5 alpha stops reading as glass and starts reading as grey card.
+   *
+   * Ordinary surfaces — tiles, pills, buttons — are a flat translucent fill
+   * behind an almost invisible hairline. The lens rim above is NOT used here:
+   * on a 70px tile it outlines the shape instead of lighting it, and a strip
+   * of outlined boxes is exactly what reads as plastic. It belongs on the few
+   * large surfaces that are meant to look like a lens. */
+  --glass-hairline: rgba(255, 255, 255, .025);
+  --glass-fill: rgba(255, 255, 255, .075);
+  --glass-fill-hover: rgba(255, 255, 255, .13);
+  --glass-fill-strong: rgba(255, 255, 255, .14);
+  --glass-rim: none;
+  --glass-shadow: var(--lg-shadow-sm);
+  --glass-blur: blur(18px) saturate(1.3);
+
+  /* Motion, matching the Electron build: short and decelerating, nothing
+   * eases in, because nothing should feel sluggish. */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --ease-soft: cubic-bezier(.4, 0, .2, 1);
+  --dur-1: 110ms;
+  --dur-2: 180ms;
+  --dur-3: 280ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Buttons default to the platform `buttonface` colour, which renders as a pale
+ * grey panel and completely overpowers a glass fill layered on top of it. Every
+ * control here supplies its own surface, so clear it once, globally. */
+button {
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  border: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* One font stack for the whole app, matching the Electron build's theme.css.
+ * Segoe UI Variable Text is optically sized for UI copy; the intermediate
+ * "Segoe UI Variable" fallback matters because the Text optical size is not
+ * always present on its own. font-synthesis is off so a weight the family does
+ * not have is never faked into a smeared approximation. */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui,
+          Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI",
+          system-ui, Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+}
+
+body {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* Controls do not inherit the document font on their own. Without this the tab
+ * strip and every button fall back to the platform default, which is a
+ * different family at a different weight. */
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+/* The shell material.
+ *
+ * Anchored to the WINDOW, not to this surface: each surface offsets the layer
+ * by its own origin so the gradient continues across the seam between them.
+ * Painted per-surface but sampled from one shared coordinate space, which is
+ * why the topbar and sidebar look like one piece of glass rather than two. */
+body::before {
+  content: "";
+  position: fixed;
+  left: calc(-1 * var(--shell-x));
+  top: calc(-1 * var(--shell-y));
+  width: var(--win-w);
+  height: var(--win-h);
+  pointer-events: none;
+  background:
+    radial-gradient(1000px 460px at 0% 0%, var(--ambient-a), transparent 68%),
+    radial-gradient(760px 520px at 2% 100%, var(--ambient-b), transparent 70%);
+}
+
+/* Everything a surface draws sits above the shell material. */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- glass primitives -------------------------------------------------- */
+
+/* A lens: the few large surfaces that should read as a shaped piece of glass.
+ * The search pill on the new tab page is the canonical one. */
+.glass-lens {
+  background: var(--glass-fill);
+  box-shadow: var(--lg-shadow-sm), var(--lg-lens-rim);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Everything else: flat translucent fill, hairline edge, no rim. */
+.glass-quiet {
+  border: 1px solid var(--glass-hairline);
+  background: var(--glass-fill);
+}
+
+.glass-button {
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  background: transparent;
+  border-radius: 6px;
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.glass-button:hover {
+  background: var(--glass-fill-hover);
+  color: var(--text);
+}
+
+.glass-button:active {
+  background: rgba(0, 0, 0, .22);
+}

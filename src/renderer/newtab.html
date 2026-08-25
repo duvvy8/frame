@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body class="newtab">
+  <main class="stage">
+    <div class="wordmark">
+      <img class="wordmark-mark" src="logo.svg" width="52" height="52" alt="">
+      <span class="wordmark-text">FRAME</span>
+    </div>
+
+    <!-- The search pill is the one surface on this page that should read as a
+         lens, so it is the one that wears the rim. -->
+    <form class="search glass-lens" id="search" autocomplete="off">
+      <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16"
+           aria-hidden="true">
+        <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor"
+                stroke-width="1.5"/>
+        <path d="M10.4 10.4 L14 14" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round"/>
+      </svg>
+      <input class="search-input" id="q" type="text" spellcheck="false"
+             placeholder="Search Google or type a URL" aria-label="Search">
+      <button class="search-go" type="submit">Search</button>
+    </form>
+  </main>
+
+  <script>
+    (function () {
+      // This is a page, not a chrome surface, so it has no bridge to the
+      // browser process — and does not need one. Navigating itself is exactly
+      // what a new tab page should do with a query.
+      var form = document.getElementById('search');
+      var input = document.getElementById('q');
+
+      function looksLikeUrl(value) {
+        if (/^[a-z]+:\/\//i.test(value)) {
+          return true;
+        }
+        // A dot with no whitespace reads as a hostname; anything else is a
+        // query. Same rule the omnibox applies in the browser process.
+        return value.indexOf(' ') === -1 && /\.[^.\s]{2,}$/.test(value);
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var value = input.value.trim();
+        if (!value) {
+          return;
+        }
+        if (looksLikeUrl(value)) {
+          window.location.href =
+            /^[a-z]+:\/\//i.test(value) ? value : 'https://' + value;
+        } else {
+          window.location.href =
+            'https://www.google.com/search?q=' + encodeURIComponent(value);
+        }
+      });
+
+      input.focus();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame sidebar</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar">
+    <!-- A real input, not a label: this is where you type a URL. -->
+    <div class="address glass-quiet">
+      <input class="address-input" id="address" type="text" spellcheck="false"
+             autocomplete="off" placeholder="Search or enter address"
+             aria-label="Address">
+      <button class="copy glass-button" id="copy" title="Copy address"
+              aria-label="Copy address">
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+          <rect x="5.5" y="5.5" width="8" height="8" rx="2" fill="none"
+                stroke="currentColor" stroke-width="1.2"/>
+          <path d="M10.5 5.5 V4 A1.5 1.5 0 0 0 9 2.5 H4 A1.5 1.5 0 0 0 2.5 4
+                   V9 A1.5 1.5 0 0 0 4 10.5 H5.5"
+                fill="none" stroke="currentColor" stroke-width="1.2"
+                stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Rendered from the favourites the browser process holds. This markup is
+         never the source of truth for what is pinned. -->
+    <div class="favorites" id="favorites"></div>
+
+    <div class="sidebar-foot">
+      <span class="metric" id="metric">&nbsp;</span>
+    </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script>
+    (function () {
+      var address = document.getElementById('address');
+      var metric = document.getElementById('metric');
+      var C = FrameShell.CHANNEL;
+      var editing = false;
+
+      // Clicking anywhere on the pill focuses the field, including the padding
+      // around the text and the gap beside the copy button. Belt and braces
+      // alongside the input filling the pill's height in CSS.
+      document.querySelector('.address').addEventListener('mousedown',
+        function (event) {
+          if (event.target !== address &&
+              !event.target.closest('#copy')) {
+            event.preventDefault();
+            address.focus();
+          }
+        });
+
+      // While the user is typing, their text wins. Overwriting the field from
+      // a page's own address change mid-edit would be maddening.
+      address.addEventListener('focus', function () {
+        editing = true;
+        address.select();
+      });
+      address.addEventListener('blur', function () { editing = false; });
+
+      address.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          FrameShell.send(C.navGo, address.value);
+          editing = false;
+          address.blur();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          address.blur();
+        }
+      });
+
+      document.getElementById('copy').addEventListener('click', function () {
+        address.select();
+        // execCommand rather than the async clipboard API: this surface is a
+        // file:// document, where the modern API is not available.
+        document.execCommand('copy');
+        var button = document.getElementById('copy');
+        button.classList.add('is-done');
+        setTimeout(function () { button.classList.remove('is-done'); }, 900);
+      });
+
+      // --- favourites -----------------------------------------------------
+
+      var favoritesEl = document.getElementById('favorites');
+
+      function initials(title, url) {
+        var source = (title || url || '?').replace(/^https?:\/\//, '');
+        return source.charAt(0).toUpperCase();
+      }
+
+      function buildFavorite(item) {
+        var el = document.createElement('button');
+        el.className = 'favorite glass-quiet';
+        el.title = item.title || item.url;
+        el.dataset.url = item.url;
+
+        if (item.icon) {
+          var img = document.createElement('img');
+          img.className = 'favorite-icon';
+          img.src = item.icon;
+          img.alt = '';
+          // A cached icon can still be a broken file; fall back rather than
+          // showing a torn-image glyph.
+          img.addEventListener('error', function () {
+            img.remove();
+            el.appendChild(fallback(item));
+          });
+          el.appendChild(img);
+        } else {
+          // Shown while the site's own icon is still being fetched, or if it
+          // never had one.
+          el.appendChild(fallback(item));
+        }
+
+        el.addEventListener('click', function () {
+          FrameShell.send(C.navGo, item.url);
+        });
+        el.addEventListener('contextmenu', function (event) {
+          event.preventDefault();
+          FrameShell.send(C.favoriteRemove, item.url);
+        });
+        return el;
+      }
+
+      function fallback(item) {
+        var span = document.createElement('span');
+        span.className = 'favorite-letter';
+        span.textContent = initials(item.title, item.url);
+        return span;
+      }
+
+      function addButton() {
+        var el = document.createElement('button');
+        el.className = 'favorite is-empty';
+        el.title = 'Pin the current page';
+        el.setAttribute('aria-label', 'Pin the current page');
+        el.innerHTML =
+          '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">' +
+          '<path d="M12 6 V18 M6 12 H18" stroke="currentColor" ' +
+          'stroke-width="1.6" stroke-linecap="round"/></svg>';
+        el.addEventListener('click', function () {
+          if (current.url) {
+            FrameShell.send(C.favoriteAdd, current.url + '\t' + current.title);
+          }
+        });
+        return el;
+      }
+
+      var current = { url: '', title: '' };
+
+      function renderFavorites(state) {
+        favoritesEl.textContent = '';
+        var items = state.favorites || [];
+        for (var i = 0; i < items.length; i++) {
+          favoritesEl.appendChild(buildFavorite(items[i]));
+        }
+        favoritesEl.appendChild(addButton());
+      }
+
+      FrameShell.onBrowserState = function (state) {
+        if (!editing) {
+          address.value = state.address || '';
+        }
+        var active = null;
+        for (var i = 0; i < state.tabs.length; i++) {
+          if (state.tabs[i].id === state.activeTabId) {
+            active = state.tabs[i];
+          }
+        }
+        current.url = state.address || '';
+        current.title = active ? active.title : '';
+
+        renderFavorites(state);
+        metric.textContent = state.tabs.length +
+                             (state.tabs.length === 1 ? ' tab' : ' tabs');
+      };
+
+      FrameShell.bootstrap().catch(function (err) {
+        metric.textContent = 'bridge: ' + err.message;
+        metric.classList.add('is-error');
+      });
+    })();
+  </script>
+</body>
+</html>
