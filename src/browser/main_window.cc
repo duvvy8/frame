@@ -665,6 +665,20 @@ int MainWindow::CreateTab(const std::string& url, bool activate) {
                                         viewport.height > 0 ? viewport.height
                                                             : 1));
 
+  // ALLOY, not the default.
+  //
+  // SetAsChild leaves runtime_style at CEF_RUNTIME_STYLE_DEFAULT, which means
+  // CHROME style — "the full Chrome UI and browser functionality". Frame draws
+  // its own chrome and uses none of it, but it was being built anyway: with a
+  // single tab open the process list held five renderers, and two of them were
+  // chrome://omnibox-popup.top-chrome, an address-bar dropdown belonging to a
+  // UI this browser does not have.
+  //
+  // Alloy is the style the off-screen chrome surfaces already use —
+  // SetAsWindowless sets it unconditionally — so this makes the page browsers
+  // consistent with them rather than introducing something new.
+  window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+
   CefBrowserSettings settings;
   settings.background_color = CefColorSetARGB(255, 0, 0, 0);
 
