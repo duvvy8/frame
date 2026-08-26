@@ -284,6 +284,23 @@ layout::ViewportRect MainWindow::ViewportDip() const {
     rect.x = animated_x;
     rect.width = std::max(0, right - animated_x);
   }
+
+  // The page runs to the window's right and bottom edges.
+  //
+  // kShellInset put an 8px margin there and nowhere else — the left and top
+  // edges have always been flush against the sidebar and the topbar — so it
+  // was an asymmetric border that only two sides of the page had. Worse, those
+  // eight pixels are filled by GDI with one flat colour and can never hold a
+  // gradient, so the shell field had to be faded down to meet them. That fade
+  // was the visible one: a broad dark vignette down the right and along the
+  // bottom that did not belong to the palette.
+  //
+  // Removing the margin removes the thing the gradient had to match, so the
+  // field now reaches the edge at full strength and there is nothing to blend
+  // into. ViewportBounds keeps returning the inset rectangle and its parity
+  // tests keep passing; this is the same kind of local override as fullscreen.
+  rect.width = std::max(0, ClientWidthDip() - rect.x);
+  rect.height = std::max(0, ClientHeightDip() - rect.y);
   return rect;
 }
 
@@ -913,43 +930,55 @@ bool MainWindow::SampleSurfacePixel(SurfaceId id,
 void MainWindow::ShellCornerColors(
     const layout::ViewportRect& dip,
     COLORREF (&out)[CornerMask::kCornerCount]) const {
-  // kShellBackground is the right answer for three of the four corners, and it
-  // is right by construction rather than by luck: shell.css settles the field
-  // back to exactly --bg along the window's right and bottom edges, because the
-  // eight-pixel margin the window paints there with a GDI brush cannot hold a
-  // gradient. Every corner touching those edges is therefore already flat.
+  // Every colour here is READ from a rendered chrome surface rather than
+  // computed. The field is defined once, in CSS, and re-deriving it in C++
+  // would make this a second place that decides what the shell looks like —
+  // the two would drift the first time a colour changed. Sampling cannot.
+  //
+  // The fallback is the flat shell colour, which is only ever visibly wrong if
+  // a surface has not painted yet; OnSurfacePaint re-runs this when it does.
   for (COLORREF& color : out) {
     color = kShellBackground;
   }
 
-  // The top-left corner is the exception, and the only one that ever showed a
-  // black wedge: it sits inland, in the brightest part of the field.
-  //
-  // The colour is READ from the sidebar's rendered pixels rather than computed
-  // here. The field is defined once, in CSS, and re-deriving it in C++ would
-  // make this the second place that decides what the shell looks like — so the
-  // two would drift the first time a colour changed. Sampling cannot drift.
-  //
-  // The probe sits in the sidebar's right margin, a few pixels in from its edge
-  // and clear of the address pill and the favourites, so what comes back is the
-  // field and not a control that happens to be in the way.
-  const CefRect sidebar = SurfaceBoundsDip(SurfaceId::kSidebar);
-  if (sidebar.width < 6 || sidebar.height < 12) {
-    return;
-  }
   constexpr int kProbeInset = 4;
-  const int probe_x = sidebar.width - kProbeInset;
-
   COLORREF sampled = 0;
-  if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
-                         (dip.y - sidebar.y) + kProbeInset, &sampled)) {
-    out[0] = sampled;  // CornerMask::kTopLeft
+
+  // Left-hand corners, probed in the sidebar's right margin: a few pixels in
+  // from its edge and clear of the address pill and the favourites, so what
+  // comes back is the field and not a control that happens to be in the way.
+  const CefRect sidebar = SurfaceBoundsDip(SurfaceId::kSidebar);
+  if (sidebar.width >= 6 && sidebar.height >= 12) {
+    const int probe_x = sidebar.width - kProbeInset;
+    if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
+                           (dip.y - sidebar.y) + kProbeInset, &sampled)) {
+      out[0] = sampled;  // CornerMask::kTopLeft
+    }
+    if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
+                           (dip.y + dip.height - sidebar.y) - kProbeInset,
+                           &sampled)) {
+      out[2] = sampled;  // CornerMask::kBottomLeft
+    }
   }
-  if (SampleSurfacePixel(SurfaceId::kSidebar, probe_x,
-                         (dip.y + dip.height - sidebar.y) - kProbeInset,
-                         &sampled)) {
-    out[2] = sampled;  // CornerMask::kBottomLeft
+
+  // Top-right, probed in the topbar directly above it. That lands in the
+  // caption strip, which is safe because a caption button paints no background
+  // until it is hovered — hovering close while the window resizes could sample
+  // the hover tint, which costs one slightly wrong pixel until the next paint.
+  const CefRect topbar = SurfaceBoundsDip(SurfaceId::kTopbar);
+  if (topbar.height >= 6 && dip.x + dip.width <= topbar.width) {
+    if (SampleSurfacePixel(SurfaceId::kTopbar,
+                           (dip.x + dip.width) - kProbeInset,
+                           topbar.height - kProbeInset, &sampled)) {
+      out[1] = sampled;  // CornerMask::kTopRight
+    }
   }
+
+  // Bottom-right is not faked at all. Now that the page runs to the window's
+  // right and bottom edges, that corner IS the window's corner, and DWM has
+  // already rounded it — see ApplyRoundedCorners. Painting a wedge over it
+  // would put a notch on top of a curve that is drawn correctly without us.
+  out[3] = CLR_INVALID;  // CornerMask::kBottomRight
 }
 
 // --- navigation -----------------------------------------------------------

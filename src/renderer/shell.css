@@ -279,29 +279,28 @@ body::before {
   height: var(--win-h);
   pointer-events: none;
   background:
-    /* Listed first, so painted on top: the field settles back to exactly --bg
-     * along the right and bottom edges of the WINDOW. Those eight pixels are
-     * painted by the window itself with a solid GDI brush and can never hold a
-     * gradient, so instead the gradient is made to agree with them. That strip
-     * used to read as a hard black bar under the page.
+    /* No edge settle.
      *
-     * Measured from the edge in PIXELS, not in percent. The whole point is to
-     * land on --bg a few pixels BEFORE the shell inset begins, and the inset is
-     * a fixed 8px whatever the window size — as a percentage it would overshoot
-     * on a small window and fall short on a large one, which is the difference
-     * between an invisible join and a visible line. */
-    linear-gradient(to bottom,
-                    var(--bg-fade) calc(100% - 96px),
-                    var(--bg) calc(100% - 10px)),
-    linear-gradient(to right,
-                    var(--bg-fade) calc(100% - 112px),
-                    var(--bg) calc(100% - 10px)),
-
-    /* The field: a diagonal sweep across the whole window. */
+     * There used to be two linear gradients here fading the field down to --bg
+     * along the right and bottom, because those eight pixels were painted by
+     * GDI with one flat colour and the gradient had to meet it somewhere. The
+     * page now runs to the window edge (see MainWindow::ViewportDip) so there
+     * is no flat strip left to meet, and the fade was the more visible problem
+     * of the two: a dark vignette down two sides that belonged to no part of
+     * the palette.
+     *
+     * The field: a diagonal sweep across the whole window, full strength all
+     * the way to the edge. */
     radial-gradient(78% 62% at 8% -6%, var(--ambient-a), var(--bg-fade) 64%),
-    radial-gradient(64% 54% at 96% 12%, var(--ambient-c), var(--bg-fade) 68%),
-    radial-gradient(86% 66% at 58% 104%, var(--ambient-b), var(--bg-fade) 70%),
-    radial-gradient(130% 100% at 44% 46%, var(--ambient-deep), var(--bg-fade) 72%);
+    /* Taller and anchored on the edge itself, so the cyan carries down the
+     * right-hand side instead of stopping level with the tab strip. Without
+     * this the right edge is the one place no wash reaches and it reads as
+     * unlit — which is what the removed vignette used to be blamed for. */
+    radial-gradient(72% 92% at 100% 16%, var(--ambient-c), var(--bg-fade) 72%),
+    radial-gradient(86% 70% at 58% 104%, var(--ambient-b), var(--bg-fade) 72%),
+    /* Wide enough to still be carrying colour at every edge. This is the layer
+     * that decides what the corners look like. */
+    radial-gradient(150% 120% at 46% 48%, var(--ambient-deep), var(--bg-fade) 78%);
 }
 
 /* Grain.
@@ -326,18 +325,14 @@ body::after {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
 
-  /* Faded out over exactly the same two edges as the field's settle above, and
-   * for exactly the same reason.
+  /* Unmasked, now that the field is.
    *
-   * Noise averages to mid-grey, so at 4% it lifts near-black by about five
-   * levels. That is invisible in open space and glaring against a strip of
-   * GDI-painted #0b0b0d that has no grain on it — which is precisely the seam
-   * being closed here. Settling the field to --bg is not enough on its own if
-   * the grain keeps sitting on top of it. */
-  mask-image:
-    linear-gradient(to bottom, #000 calc(100% - 96px), transparent calc(100% - 10px)),
-    linear-gradient(to right, #000 calc(100% - 112px), transparent calc(100% - 10px));
-  mask-composite: intersect;
+   * The grain used to be faded out over the same two edges, because noise
+   * averages to mid-grey and at 4% it lifts near-black by about five levels —
+   * which was glaring against a strip of GDI-painted #0b0b0d with no grain on
+   * it. With the strip gone there is nothing for it to disagree with, and the
+   * dithering is wanted right up to the edge: that is where a large dark
+   * gradient bands worst. */
 }
 
 /* Everything a surface draws sits above the shell material.

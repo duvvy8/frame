@@ -157,6 +157,14 @@ void CornerMask::Layout(const layout::ViewportRect& viewport,
   // one of them does not cost a repaint of the other three.
   const bool radius_changed = radius != painted_radius_;
   for (int i = 0; i < kCount; ++i) {
+    // CLR_INVALID means "this corner does not need faking".
+    //
+    // A viewport corner that coincides with a corner of the WINDOW is already
+    // rounded by DWM, and covering it with our own wedge would only paint a
+    // notch over a curve that is being drawn correctly without us.
+    if (corner_colors[i] == CLR_INVALID) {
+      continue;
+    }
     if (!radius_changed && corner_colors[i] == painted_colors_[i]) {
       continue;
     }
@@ -175,6 +183,10 @@ void CornerMask::Layout(const layout::ViewportRect& viewport,
 
   for (int i = 0; i < kCount; ++i) {
     if (!windows_[i]) {
+      continue;
+    }
+    if (corner_colors[i] == CLR_INVALID) {
+      ::ShowWindow(windows_[i], SW_HIDE);
       continue;
     }
     // These are top-level windows, so client coordinates have to be converted.
