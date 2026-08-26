@@ -160,6 +160,30 @@ if (-not $background) {
     Record 'Selecting a sleeping tab wakes it' ($stillAsleep.Count -eq 0) `
       ("{0} still sleeping, {1} processes" -f $stillAsleep.Count, $woken.Count)
   }
+
+  # A sleeping tab can become the active one WITHOUT being selected: close the
+  # tab beside it and it is promoted. That path does not go through SelectTab,
+  # so it did not wake — leaving the browser showing an empty viewport with
+  # nothing to say why.
+  $tabs = @(Get-FrameTabs -Port $Port)
+  $background = $tabs | Where-Object { -not $_.active } | Select-Object -First 1
+  if ($background -and $tabs.Count -ge 2) {
+    Click-FrameMouse $h $background.cx $background.cy -Button Right -SettleMs 1400
+    [void](ChooseMenuItem $proc 'sleep')
+    Start-Sleep -Seconds 3
+
+    $sleeping = @(Get-FrameTabs -Port $Port | Where-Object { $_.asleep })
+    $active = Get-FrameTabs -Port $Port | Where-Object { $_.active } | Select-Object -First 1
+    if ($sleeping.Count -ge 1 -and $active) {
+      # Close the ACTIVE tab, which promotes the sleeping one next to it.
+      Click-FrameMouse $h $active.cx $active.cy -Button Middle -SettleMs 2500
+      Start-Sleep -Seconds 3
+      $nowActive = Get-FrameTabs -Port $Port | Where-Object { $_.active } | Select-Object -First 1
+      Record 'A sleeping tab promoted by a close is woken' `
+        ($nowActive -and -not $nowActive.asleep) `
+        $(if ($nowActive) { "active tab asleep = $($nowActive.asleep)" } else { 'no active tab' })
+    }
+  }
 }
 
 # --- close via menu --------------------------------------------------------

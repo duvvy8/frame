@@ -1800,6 +1800,16 @@ void MainWindow::OnPageClosed(int tab_id) {
     } else {
       const size_t next = std::min(index, tabs_.size() - 1);
       active_tab_id_ = tabs_[next].id;
+      // Deliberately NOT via SelectTab: this is not a selection, the previous
+      // tab has already gone. But the one thing SelectTab does that matters
+      // here is waking a sleeping tab — and a sleeping tab promoted to active
+      // without that shows an empty viewport with no way to tell why.
+      if (Tab* promoted = FindTab(active_tab_id_)) {
+        promoted->backgrounded_at_ms = 0;
+        if (promoted->asleep) {
+          WakeTab(active_tab_id_);
+        }
+      }
     }
     LayoutPages();
   }
