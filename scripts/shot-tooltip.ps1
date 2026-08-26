@@ -48,7 +48,7 @@ try {
 
     # So the tooltip is captured separately, by its own handle.
     $tip = [FrameDrive]::TopLevel([uint32]$app.Process.Id) |
-           Where-Object { [FrameDrive]::ClassOf($_) -eq 'FrameMenuSurface' -and
+           Where-Object { [FrameDrive]::ClassOf($_) -eq 'FrameTooltipSurface' -and
                           [FrameDrive]::IsWindowVisible($_) } |
            Select-Object -First 1
     if ($tip) {

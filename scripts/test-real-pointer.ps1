@@ -55,6 +55,10 @@ public class RealPointer {
       var cls = new StringBuilder(256);
       GetClassName(h, cls, cls.Capacity);
       string c = cls.ToString();
+      // Frame's own popup is deliberately excluded: its class contains
+      // "Tooltip" because that is what it is, and this function exists to
+      // find a PLATFORM tooltip competing with it.
+      if (c == "FrameTooltipSurface") return true;
       if (c.IndexOf("tooltip", StringComparison.OrdinalIgnoreCase) >= 0) {
         var txt = new StringBuilder(512);
         GetWindowText(h, txt, txt.Capacity);
@@ -147,7 +151,7 @@ try {
 
   # Frame draws its own, in a popup of its own class — so a system tooltip
   # window is exactly what should NOT be there. What should is a visible
-  # FrameMenuSurface rendering frame://tooltip with the title's text in it.
+  # FrameTooltipSurface rendering frame://tooltip with the title's text in it.
   $tipTarget = Get-FrameTarget -UrlLike 'frame://tooltip*' -Port $Port
   $shown = ''
   $visible = $false
@@ -160,7 +164,7 @@ try {
 })()
 "@
     $wins = [FrameDrive]::TopLevel([uint32]$app.Process.Id) |
-            Where-Object { [FrameDrive]::ClassOf($_) -eq 'FrameMenuSurface' -and
+            Where-Object { [FrameDrive]::ClassOf($_) -eq 'FrameTooltipSurface' -and
                            [FrameDrive]::IsWindowVisible($_) }
     $visible = @($wins).Count -ge 1
   }

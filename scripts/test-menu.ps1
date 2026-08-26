@@ -140,24 +140,40 @@ Write-Host ("tabs: {0} ({1} active)" -f $tabs.Count,
 if (-not $background) {
   Record 'Sleep tab' $false 'no background tab to sleep'
 } else {
+  # The number of WEB PAGES with a live renderer, which is the quantity sleep
+  # claims to reduce.
+  #
+  # Counting OS processes was the first attempt and it is too blunt: Frame's
+  # own surfaces come and go — the tooltip creates a renderer the first time
+  # one is shown — so a page renderer going away at the same moment a chrome
+  # renderer appears nets to zero and the measurement says nothing happened.
+  # Live http(s) DevTools targets counts exactly the thing under test.
+  function LivePages {
+    return @(Get-FramePageTarget -Port $Port | Where-Object { $_.url -like 'http*' }).Count
+  }
+
+  $pagesBefore = LivePages
   $statsBefore = Get-FrameProcessStats
-  Write-Host ("before sleep: {0} processes, {1} MB" -f $statsBefore.Count, $statsBefore.TotalMB)
+  Write-Host ("before sleep: {0} live page(s), {1} processes, {2} MB" -f
+              $pagesBefore, $statsBefore.Count, $statsBefore.TotalMB)
 
   Click-FrameMouse $h $background.cx $background.cy -Button Right -SettleMs 1400
   $r = ChooseMenuItem $proc 'sleep'
   Start-Sleep -Seconds 3
 
+  $pagesAfter = LivePages
   $statsAfter = Get-FrameProcessStats
   $asleep = @(Get-FrameTabs -Port $Port | Where-Object { $_.asleep })
-  Write-Host ("after sleep:  {0} processes, {1} MB" -f $statsAfter.Count, $statsAfter.TotalMB)
+  Write-Host ("after sleep:  {0} live page(s), {1} processes, {2} MB" -f
+              $pagesAfter, $statsAfter.Count, $statsAfter.TotalMB)
 
   Record 'Sleep tab marks it asleep' ($asleep.Count -ge 1) `
     ("{0} sleeping tab(s) ({1})" -f $asleep.Count, $r)
-  # The claim the feature makes, tested as a claim: a renderer process has to
-  # actually go, not merely a class name to appear.
-  Record 'Sleep releases a renderer process' ($statsAfter.Count -lt $statsBefore.Count) `
-    ("{0} -> {1} processes, {2} -> {3} MB" -f $statsBefore.Count, $statsAfter.Count,
-     $statsBefore.TotalMB, $statsAfter.TotalMB)
+  # The claim the feature makes, tested as a claim: the page's renderer has to
+  # actually GO, not merely a class name to appear on a tab.
+  Record 'Sleep releases the page renderer' ($pagesAfter -eq $pagesBefore - 1) `
+    ("{0} -> {1} live page(s); {2} -> {3} MB across the process tree" -f
+     $pagesBefore, $pagesAfter, $statsBefore.TotalMB, $statsAfter.TotalMB)
 
   if ($asleep.Count -ge 1) {
     Click-FrameMouse $h $asleep[0].cx $asleep[0].cy -SettleMs 3000

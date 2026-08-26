@@ -16,7 +16,14 @@
 namespace frame {
 namespace {
 
+// TWO classes, one implementation. The menu and the tooltip are both
+// MenuSurface, and giving them the same window class made them
+// indistinguishable from outside the process — which is a real problem for
+// anything that has to find one of them, and the reason a test that looked up
+// "the popup" started clicking on whichever happened to be created first.
+// Two things that behave differently should not look identical to the platform.
 const wchar_t kMenuClass[] = L"FrameMenuSurface";
+const wchar_t kTooltipClass[] = L"FrameTooltipSurface";
 
 // Bridge channels, named as constants for the same reason as everywhere else.
 const char kQueryModel[] = "menu:model";
@@ -189,14 +196,19 @@ bool MenuSurface::Create(HWND owner,
   page_url_ = page_url;
   click_through_ = click_through;
 
-  static bool registered = false;
+  // The class a click-through popup registers is the tooltip one; everything
+  // else is a menu. Each is registered once.
+  const wchar_t* class_name = click_through_ ? kTooltipClass : kMenuClass;
+  static bool menu_registered = false;
+  static bool tooltip_registered = false;
+  bool& registered = click_through_ ? tooltip_registered : menu_registered;
   if (!registered) {
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
     wc.lpfnWndProc = &MenuSurface::WndProc;
     wc.hInstance = instance;
     wc.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
-    wc.lpszClassName = kMenuClass;
+    wc.lpszClassName = class_name;
     ::RegisterClassExW(&wc);
     registered = true;
   }
@@ -215,7 +227,7 @@ bool MenuSurface::Create(HWND owner,
     // control it is describing and swallows the press that was meant for it.
     ex |= WS_EX_TRANSPARENT;
   }
-  hwnd_ = ::CreateWindowExW(ex, kMenuClass, L"", WS_POPUP, 0, 0, 1, 1, owner,
+  hwnd_ = ::CreateWindowExW(ex, class_name, L"", WS_POPUP, 0, 0, 1, 1, owner,
                             nullptr, instance, this);
   return hwnd_ != nullptr;
 }
