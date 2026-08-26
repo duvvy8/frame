@@ -24,6 +24,8 @@ set(FRAME_SRCS
   frame_scheme.h
   corner_mask.cc
   corner_mask.h
+  content_filter.cc
+  content_filter.h
   page_client.cc
   page_client.h
   chrome_surface.cc

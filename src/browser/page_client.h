@@ -4,11 +4,15 @@
 #include <string>
 #include <vector>
 
+#include <atomic>
+
 #include "include/cef_client.h"
 #include "include/cef_display_handler.h"
 #include "include/cef_keyboard_handler.h"
 #include "include/cef_life_span_handler.h"
 #include "include/cef_load_handler.h"
+#include "include/cef_request_handler.h"
+#include "include/cef_resource_request_handler.h"
 
 namespace frame {
 
@@ -25,15 +29,45 @@ class PageClient : public CefClient,
                    public CefLifeSpanHandler,
                    public CefLoadHandler,
                    public CefDisplayHandler,
-                   public CefKeyboardHandler {
+                   public CefKeyboardHandler,
+                   public CefRequestHandler,
+                   public CefResourceRequestHandler {
  public:
   PageClient(MainWindow* window, int tab_id);
+
+  // How many requests this tab has had blocked. Written on the IO thread,
+  // read on the UI thread, so it is atomic rather than merely an int.
+  std::size_t blocked_count() const {
+    return blocked_count_.load(std::memory_order_relaxed);
+  }
 
   // CefClient
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
   CefRefPtr<CefLoadHandler> GetLoadHandler() override { return this; }
   CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
   CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override { return this; }
+  CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
+
+  // CefRequestHandler — IO THREAD.
+  CefRefPtr<CefResourceRequestHandler> GetResourceRequestHandler(
+      CefRefPtr<CefBrowser> browser,
+      CefRefPtr<CefFrame> frame,
+      CefRefPtr<CefRequest> request,
+      bool is_navigation,
+      bool is_download,
+      const CefString& request_initiator,
+      bool& disable_default_handling) override;
+
+  // CefResourceRequestHandler — IO THREAD.
+  //
+  // This is where a tracker is stopped: before the request is issued, rather
+  // than by hiding its result afterwards. Nothing is injected into the page to
+  // achieve it, so pages carry no per-request script cost.
+  cef_return_value_t OnBeforeResourceLoad(
+      CefRefPtr<CefBrowser> browser,
+      CefRefPtr<CefFrame> frame,
+      CefRefPtr<CefRequest> request,
+      CefRefPtr<CefCallback> callback) override;
 
   // CefKeyboardHandler
   //
@@ -74,6 +108,7 @@ class PageClient : public CefClient,
  private:
   MainWindow* window_;  // Not owned; cleared by Detach() during teardown.
   const int tab_id_;
+  std::atomic<std::size_t> blocked_count_{0};
 
   IMPLEMENT_REFCOUNTING(PageClient);
   DISALLOW_COPY_AND_ASSIGN(PageClient);

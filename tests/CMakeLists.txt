@@ -17,6 +17,7 @@ add_executable(frame_tests
   url_util_test.cpp
   internal_pages_test.cpp
   shortcuts_test.cpp
+  tracker_filter_test.cpp
 )
 
 target_link_libraries(frame_tests

@@ -1,9 +1,60 @@
 #include "browser/page_client.h"
 
+#include "browser/content_filter.h"
 #include "browser/main_window.h"
 #include "shared/shortcuts.h"
+#include "shared/tracker_filter.h"
 
 namespace frame {
+
+CefRefPtr<CefResourceRequestHandler> PageClient::GetResourceRequestHandler(
+    CefRefPtr<CefBrowser> browser,
+    CefRefPtr<CefFrame> frame,
+    CefRefPtr<CefRequest> request,
+    bool is_navigation,
+    bool is_download,
+    const CefString& request_initiator,
+    bool& disable_default_handling) {
+  // Navigations are never filtered. A blocking rule exists to stop a page
+  // fetching a tracker, not to stop someone typing a URL and going there —
+  // and a list that can silently refuse top-level navigation is a list that
+  // can make the browser look broken with no way to tell why.
+  if (is_navigation || is_download) {
+    return nullptr;
+  }
+  return this;
+}
+
+cef_return_value_t PageClient::OnBeforeResourceLoad(
+    CefRefPtr<CefBrowser> browser,
+    CefRefPtr<CefFrame> frame,
+    CefRefPtr<CefRequest> request,
+    CefRefPtr<CefCallback> callback) {
+  // IO thread. The engine is immutable after startup, so this needs no lock;
+  // see the comment in content_filter.h.
+  const std::string url = request->GetURL().ToString();
+
+  // Frame's own pages are never filtered, whatever a list says about them.
+  if (frame::url::StartsWith(url, "frame://")) {
+    return RV_CONTINUE;
+  }
+
+  // The document doing the asking, for first- vs third-party. GetFirstPartyURL
+  // is what CEF fills in for the top-level document of the request.
+  std::string document = request->GetFirstPartyForCookies().ToString();
+  if (document.empty() && frame) {
+    document = frame->GetURL().ToString();
+  }
+  const std::string document_host = filter::Engine::HostOfUrl(document);
+
+  if (!content_filter::Get().ShouldBlock(url, document_host)) {
+    return RV_CONTINUE;
+  }
+
+  blocked_count_.fetch_add(1, std::memory_order_relaxed);
+  content_filter::note_blocked();
+  return RV_CANCEL;
+}
 
 bool PageClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
                                const CefKeyEvent& event,

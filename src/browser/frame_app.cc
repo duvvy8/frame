@@ -6,6 +6,8 @@
 #include <string>
 
 #include "browser/chrome_surface.h"
+#include "browser/content_filter.h"
+#include "browser/favorites.h"
 #include "browser/frame_scheme.h"
 #include "browser/main_window.h"
 #include "browser/window_list.h"
@@ -114,6 +116,11 @@ void FrameApp::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) 
 void FrameApp::OnContextInitialized() {
   // The factory can only be installed once CEF is up.
   InstallFrameSchemeHandler();
+
+  // Loaded BEFORE any browser exists, and never touched again. CEF consults
+  // the filter on the IO thread for every subresource, so the one moment it is
+  // safe to write to is right here, while nothing can be asking.
+  content_filter::Load(ProfileDir());
 
   CefRefPtr<CefCommandLine> cmd = CefCommandLine::GetGlobalCommandLine();
 
