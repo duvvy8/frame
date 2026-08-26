@@ -1,4 +1,4 @@
-<#
+﻿<#
   Synthetic input harness for Frame.
 
   Drives a running Frame window ENTIRELY through posted window messages. The
@@ -328,8 +328,25 @@ function Get-FrameProcessStats {
 }
 
 function Stop-Frame {
-  Get-Process frame -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-  Start-Sleep -Milliseconds 600
+  param([int]$TimeoutSec = 12)
+  Get-Process frame -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+
+  # WAITED FOR, not slept past. A browser is a process tree, and the last
+  # renderer to die is still holding the debugging port for a moment after the
+  # browser process has gone. A fixed sleep was sometimes long enough and
+  # sometimes not: the next Start-Frame would come up unable to bind, and the
+  # suite that followed died with "No DevTools endpoint".
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  while ((Get-Date) -lt $deadline) {
+    if (-not (Get-Process frame -ErrorAction SilentlyContinue)) {
+      break
+    }
+    Start-Sleep -Milliseconds 150
+  }
+  # A short settle even once the processes are gone: the port is released by
+  # the kernel a beat after the socket's owner does.
+  Start-Sleep -Milliseconds 400
 }
 
 <#
@@ -362,6 +379,29 @@ function Start-Frame {
   if (-not $hwnd) { throw "Frame window never appeared (pid $($p.Id))" }
   # The chrome surfaces are separate browsers and paint a beat after the window.
   Start-Sleep -Milliseconds 2200
+
+  # If a debugging port was asked for, WAIT FOR IT rather than assuming the
+  # window appearing means it is listening. The two are not the same event, and
+  # a caller that queried too early got "No DevTools endpoint" and took its
+  # whole suite down with it.
+  $portArg = $ExtraArgs | Where-Object { $_ -like '--remote-debugging-port=*' } |
+             Select-Object -First 1
+  if ($portArg) {
+    $port = [int]($portArg -replace '.*=', '')
+    $deadline = (Get-Date).AddSeconds(20)
+    $up = $false
+    while ((Get-Date) -lt $deadline) {
+      try {
+        [void](Invoke-RestMethod -Uri "http://127.0.0.1:$port/json/list" -TimeoutSec 3)
+        $up = $true
+        break
+      } catch { Start-Sleep -Milliseconds 300 }
+    }
+    if (-not $up) {
+      throw "Frame started (pid $($p.Id)) but nothing is listening on port $port"
+    }
+  }
+
   return [pscustomobject]@{ Process = $p; Hwnd = $hwnd }
 }
 
@@ -750,5 +790,68 @@ function Unhover-FrameSurface {
     -Method 'Input.dispatchMouseEvent' -Params @{
       type = 'mouseMoved'; x = -50; y = -50; buttons = 0
     })
+  Start-Sleep -Milliseconds $SettleMs
+}
+
+<#
+  Sends a key that reaches the PAGE'S DOM, not just the browser's shortcut
+  handling.
+
+  Send-FrameChord dispatches `rawKeyDown`, which is the pre-dispatch phase CEF
+  offers OnPreKeyEvent from — exactly right for testing a browser shortcut, and
+  exactly wrong for testing a keydown listener on an input field, because Blink
+  raises no DOM event for it. A real press produces RAWKEYDOWN, then KEYDOWN,
+  then CHAR; this sends the second of those.
+
+  Use it for keys a page or surface handles itself (Enter in a text field);
+  use Send-FrameChord for keys the browser handles.
+#>
+function Send-FrameDomKey {
+  param([string]$Key, [switch]$Ctrl, [switch]$Shift, [switch]$Alt,
+        [ValidateSet('page','topbar','sidebar')][string]$Surface = 'sidebar',
+        [int]$Port = 9333, [int]$SettleMs = 500)
+
+  $target = switch ($Surface) {
+    'topbar'  { Get-FrameTarget -UrlLike 'frame://topbar*'  -Port $Port }
+    'sidebar' { Get-FrameTarget -UrlLike 'frame://sidebar*' -Port $Port }
+    default   { Get-FramePageTarget -Port $Port | Select-Object -First 1 }
+  }
+  if (-not $target) { throw "No $Surface target on port $Port" }
+
+  $vk = VkOf $Key
+  $mods = 0
+  if ($Ctrl)  { $mods = $mods -bor $script:CDP_CTRL }
+  if ($Shift) { $mods = $mods -bor $script:CDP_SHIFT }
+  if ($Alt)   { $mods = $mods -bor $script:CDP_ALT }
+
+  # `key` has to be the DOM key NAME, not the virtual-key letter: a listener
+  # comparing event.key === 'Enter' sees nothing if it is sent as 'RETURN'.
+  $domKey = switch ($Key.ToUpper()) {
+    'RETURN' { 'Enter' }
+    'ESCAPE' { 'Escape' }
+    'TAB'    { 'Tab' }
+    'LEFT'   { 'ArrowLeft' }
+    'RIGHT'  { 'ArrowRight' }
+    'UP'     { 'ArrowUp' }
+    'DOWN'   { 'ArrowDown' }
+    default  { $Key }
+  }
+
+  $common = @{
+    modifiers             = $mods
+    windowsVirtualKeyCode = $vk
+    nativeVirtualKeyCode  = $vk
+    key                   = $domKey
+  }
+  # keyDown and keyUp ONLY — no rawKeyDown. Blink raises a DOM keydown for
+  # both rawKeyDown and keyDown, so sending the pair fired every field-level
+  # listener twice: one Enter in the find bar stepped two matches forward.
+  foreach ($type in 'keyDown', 'keyUp') {
+    try {
+      [void](Invoke-FrameCdp -WsUrl $target.webSocketDebuggerUrl `
+        -Method 'Input.dispatchKeyEvent' -Params ($common + @{ type = $type }))
+    } catch { }
+    Start-Sleep -Milliseconds 20
+  }
   Start-Sleep -Milliseconds $SettleMs
 }

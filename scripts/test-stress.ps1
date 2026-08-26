@@ -1,4 +1,4 @@
-<#
+﻿<#
   Stress and resource behaviour.
 
   Everything here is deliberately harder than ordinary use: no settling time

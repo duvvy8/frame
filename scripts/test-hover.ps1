@@ -1,4 +1,4 @@
-<#
+﻿<#
   Drives the pointer across every hover-sensitive surface and checks the states
   it is meant to produce.
 
@@ -231,6 +231,34 @@ if ($menuTarget -and $menuWin) {
     if ($ShotDir) { [void](Save-FrameShot $menuWin (Join-Path $ShotDir 'hover-menu.png')) }
   }
   Send-FrameKey $h 'ESCAPE'
+}
+
+# --- tooltips must not take the browser down ------------------------------
+#
+# A REGRESSION TEST, for a crash that lasted one build.
+#
+# CEF asks for a tooltip from inside its own input dispatch, and the first
+# version opened one there and then — creating a browser re-entrantly, which
+# takes the browser process down with an access violation inside libcef. The
+# fix is a dwell timer, which is what a tooltip should have anyway.
+#
+# The shape of the test is: rest on a control that has a title, wait past the
+# dwell, then click it. On the broken build the process is gone before the
+# click lands.
+if (Test-FrameAlive $h) {
+  $plus = Get-FrameTopbarRects '.new-tab' -Port $Port | Select-Object -First 1
+  $survived = $true
+  for ($i = 0; $i -lt 4; $i++) {
+    Move-FrameMouse $h $plus.cx $plus.cy
+    Start-Sleep -Milliseconds 900      # past the 450ms dwell
+    if (-not (Test-FrameAlive $h)) { $survived = $false; break }
+    Click-FrameMouse $h $plus.cx $plus.cy -SettleMs 700
+    if (-not (Test-FrameAlive $h)) { $survived = $false; break }
+  }
+  Record 'Resting on a control then clicking it does not crash' $survived `
+    $(if ($survived) {
+        "4 dwell-and-click cycles, {0} tabs" -f @(Get-FrameTopbarRects '.tab:not(.is-leaving)' -Port $Port).Count
+      } else { "browser died on cycle $($i + 1)" })
 }
 
 Write-Host "`n=== summary ===" -ForegroundColor Cyan

@@ -1,4 +1,4 @@
-<#
+﻿<#
   Every browser command, pressed and then checked for its effect.
 
   shortcuts_test.cpp already proves the chord table maps correctly. This is the

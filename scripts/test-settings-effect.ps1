@@ -1,4 +1,4 @@
-<#
+﻿<#
   The specific claim the settings page makes: a switch changes what the
   BROWSER does, not merely what the page or the file says.
 

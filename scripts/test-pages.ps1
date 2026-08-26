@@ -1,4 +1,4 @@
-<#
+﻿<#
   Checks that Frame's internal pages DO something rather than merely render.
 
   The bar each case holds to is the same: not "the control exists", not "the

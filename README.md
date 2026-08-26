@@ -67,10 +67,18 @@ Three kinds of surface, and the difference matters:
 - **The topbar and sidebar** are off-screen browsers. Frame owns their pixels
   and composites them in `WM_PAINT`, which is what lets the window be assembled
   from independently rendered pieces.
-- **The context menu and the corner masks** are owned top-level layered
-  windows. They have to be: the page carries `WS_EX_NOREDIRECTIONBITMAP`, so
-  nothing composited beneath or beside it can draw over it, and an owned
-  top-level window is the only layer DWM puts above it.
+- **The context menu, the tooltips and the corner masks** are owned top-level
+  layered windows. They have to be: the page carries
+  `WS_EX_NOREDIRECTIONBITMAP`, so nothing composited beneath or beside it can
+  draw over it, and an owned top-level window is the only layer DWM puts above
+  it. The menu and the tooltip are the same class — `MenuSurface`, pointed at a
+  different page, one of them click-through — because the hard part is the
+  window plumbing and there should be one copy of it.
+
+Tooltips are worth a note. Frame's chrome carries ordinary `title` attributes,
+and they drew nothing at all, because CEF is explicit: *"When window rendering
+is disabled the application is responsible for drawing tooltips and the return
+value is ignored."* Every one of them was decorative until something drew them.
 
 ## Running
 
@@ -108,8 +116,15 @@ powershell -ExecutionPolicy Bypass -File scripts\test-all.ps1
 | `test-pages.ps1` | settings, history, downloads and favourites doing real work |
 | `test-settings-effect.ps1` | each switch changing behaviour, not just the file |
 | `test-shortcuts.ps1` | every command pressed, and its effect observed |
+| `test-find.ps1` | find in page: real match counts, stepping, dismissal |
 | `test-hover.ps1` | hover and transition states across every surface |
 | `test-stress.ps1` | twenty tabs, rapid churn, renderer and memory behaviour |
+
+One script is **not** in `test-all.ps1` and moves the physical cursor:
+`test-real-pointer.ps1`. It exists for the two questions a synthetic pointer
+cannot answer — whether hover works through Frame's own routing under a real
+pointer, and whether tooltips appear — and it puts the cursor back where it
+found it, including when it fails part-way.
 
 `scripts/drive.ps1` is the harness they share. It is worth knowing how it
 works before adding to it:
@@ -147,6 +162,7 @@ unit-tested, so a binding can be checked without starting a browser.
 | `Ctrl+R`, `F5` / `Ctrl+Shift+R`, `Ctrl+F5` / `Esc` | reload / reload ignoring cache / stop |
 | `Ctrl+L`, `Alt+D`, `F6` | focus the address field and select it |
 | `Ctrl+B` / `Ctrl+D` | toggle sidebar / bookmark this page |
+| `Ctrl+F`, `F3` | find in page |
 | `Ctrl+J` / `Ctrl+H` / `Ctrl+I`, `Ctrl+,` / `Ctrl+Shift+O` | downloads / history / settings / favourites |
 | `Ctrl+0` / `Ctrl+±` | reset / adjust zoom |
 | `F11` / `F12`, `Ctrl+Shift+I` / `Ctrl+P` | fullscreen / DevTools / print |
@@ -164,8 +180,15 @@ each: on a page Chromium already implements it correctly and is left alone, whil
 an off-screen surface routes it to `CefFrame` explicitly, because Blink's editing
 shortcuts do not fire reliably for synthesised events.
 
-Not yet bound: find-in-page and save-page, neither of which has anything behind
+Not yet bound: save-page and view-source, neither of which has anything behind
 it yet. Binding a key to a no-op is worse than leaving it free.
+
+`Ctrl+F` puts a find field in the **sidebar** rather than in a bar floating over
+the page. The sidebar already holds the address field, and it is already a
+focusable surface with working text input, selection and clipboard — a floating
+find bar needs an overlay that can accept typing, which is migration step 8.
+The search itself is Chromium's, so the match count and the highlighting are
+the real ones.
 
 ## Status
 
@@ -181,6 +204,8 @@ Migration sequencing follows the project spec.
 - [x] **6b. Tab lifecycle** — see below; closing a tab no longer closes the browser
 - [x] **6c. Tab context menu** — its own layered popup, above the page
 - [x] **6d. Sleep Tab** — a background tab's renderer is discarded, not throttled
+- [x] **6e. Tooltips** — drawn by Frame, because a windowless browser's are its own
+- [x] **6f. Find in page** — Chromium's search, with the field in the sidebar
 - [ ] 7. Privacy layer
 
 ### Tab lifecycle

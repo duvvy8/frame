@@ -1,4 +1,4 @@
-<#
+﻿<#
   Drives the tab context menu end to end.
 
   The menu is its own top-level window, so mouse messages are posted to IT
@@ -61,7 +61,14 @@ function ChooseMenuItem($proc, $command) {
   $raw = Invoke-FrameEval -WsUrl $t.webSocketDebuggerUrl -Expression $js
   if (-not $raw) { throw "no menu item '$command'" }
   $rect = $raw | ConvertFrom-Json
-  if ($rect.disabled) { return 'disabled' }
+  if ($rect.disabled) {
+    # Dismissed rather than left standing. A menu still up when this returns
+    # is one the NEXT click has to spend itself closing, which is how a caller
+    # that clicks in a loop makes no progress at all.
+    Send-FrameKey $h 'ESCAPE'
+    Start-Sleep -Milliseconds 400
+    return 'disabled'
+  }
   Click-FrameMouse $menu $rect.cx $rect.cy -SettleMs 1200
   return 'clicked'
 }
@@ -190,7 +197,11 @@ if (-not $background) {
 #
 # Two tabs first. Closing the last one closes the WINDOW, which is correct
 # behaviour and not what this case is checking.
-while (@(TabRects).Count -lt 2) {
+# Guarded. An unbounded loop in a test does not fail, it HANGS — and a suite
+# that hangs takes the whole run with it and reports nothing at all.
+$guard = 0
+while (@(TabRects).Count -lt 2 -and $guard -lt 6 -and (Test-FrameAlive $h)) {
+  $guard++
   $plus = Get-FrameTopbarRects '.new-tab' -Port $Port | Select-Object -First 1
   Click-FrameMouse $h $plus.cx $plus.cy -SettleMs 900
 }

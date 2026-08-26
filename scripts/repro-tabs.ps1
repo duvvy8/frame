@@ -1,4 +1,4 @@
-<#
+﻿<#
   Reproduces the reported tab-lifecycle bugs against a running Frame.
 
   Input is synthetic throughout: posted window messages for the mouse, and
