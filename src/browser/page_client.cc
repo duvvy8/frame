@@ -513,6 +513,17 @@ void PageClient::OnDownloadUpdated(CefRefPtr<CefBrowser> browser,
   Downloads().Upsert(record);
 }
 
+void PageClient::OnFindResult(CefRefPtr<CefBrowser> browser,
+                              int identifier,
+                              int count,
+                              const CefRect& selection_rect,
+                              int active_match_ordinal,
+                              bool final_update) {
+  if (window()) {
+    window()->OnFindResult(tab_id_, count, active_match_ordinal, final_update);
+  }
+}
+
 void PageClient::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
                                      CefRefPtr<CefFrame> frame,
                                      CefRefPtr<CefContextMenuParams> params,

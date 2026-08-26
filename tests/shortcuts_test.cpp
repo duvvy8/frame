@@ -135,9 +135,24 @@ TEST_CASE("Unmapped chords stay unmapped", "[shortcuts]") {
   CHECK(Match({0, false, false, false}) == Command::kNone);
   CHECK(Match({0, true, true, true}) == Command::kNone);
 
-  // Not claimed on purpose: find-in-page has no UI yet, and binding Ctrl+F to
-  // nothing is worse than leaving it free.
-  CHECK(Ctrl(0x46 /* 'F' */) == Command::kNone);
+  // Ctrl+F stood here, unclaimed, while find-in-page had no UI — binding a key
+  // to nothing being worse than leaving it free. It has one now, so it proves
+  // nothing about refusal and has moved to the case below.
+  //
+  // These are the chords still deliberately free. Ctrl+S has no save-page
+  // behind it, and Ctrl+U no view-source.
+  CHECK(Ctrl(0x53 /* 'S' */) == Command::kNone);
+  CHECK(Ctrl(0x55 /* 'U' */) == Command::kNone);
+}
+
+TEST_CASE("Find in page is bound", "[shortcuts]") {
+  CHECK(Ctrl(vk::kF) == Command::kFindInPage);
+  CHECK(Bare(vk::kF3) == Command::kFindInPage);
+
+  // Near-misses that must NOT open find: Ctrl+Shift+F is a different chord
+  // everywhere, and a bare F is a letter someone is typing.
+  CHECK(CtrlShift(vk::kF) == Command::kNone);
+  CHECK(Bare(vk::kF) == Command::kNone);
 }
 
 TEST_CASE("The editing group is identified as such", "[shortcuts][editing]") {

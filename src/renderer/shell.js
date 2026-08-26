@@ -34,7 +34,11 @@
     navGo: 'nav:go:',
     favoriteAdd: 'favorite:add:',
     favoriteRemove: 'favorite:remove:',
-    favoriteMove: 'favorite:move:'
+    favoriteMove: 'favorite:move:',
+    findText: 'find:text:',
+    findNext: 'find:next',
+    findPrev: 'find:prev',
+    findClose: 'find:close'
   };
 
   function query(request) {
@@ -167,6 +171,16 @@
   // browser process can call it unconditionally without knowing which surface
   // owns the address field.
   function onFocusAddress() {}
+  // Find in page, implemented by the sidebar for the same reason the address
+  // field is: it is the surface that can take the keyboard.
+  function onFindOpen() {}
+  function onFindClose() {}
+  function onFindResult() {}
+  // Find in page, implemented by the sidebar for the same reason the address
+  // field is: it is the surface that can take the keyboard.
+  function onFindOpen() {}
+  function onFindClose() {}
+  function onFindResult() {}
 
   // Fire-and-forget command. Nothing useful comes back from these beyond
   // acknowledgement, and a failed command should not break the surface.
@@ -184,6 +198,12 @@
     onShellMetrics: onShellMetrics,
     onWindowState: onWindowState,
     onBrowserState: onBrowserState,
-    onFocusAddress: onFocusAddress
+    onFocusAddress: onFocusAddress,
+    onFindOpen: onFindOpen,
+    onFindClose: onFindClose,
+    onFindResult: onFindResult,
+    onFindOpen: onFindOpen,
+    onFindClose: onFindClose,
+    onFindResult: onFindResult
   };
 })(window);

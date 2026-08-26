@@ -247,3 +247,123 @@
 .is-rail .sidebar {
   overflow: hidden;
 }
+
+/* --- find in page --------------------------------------------------------
+ *
+ * Sits between the address field and the favourites, hidden until Ctrl+F.
+ * Two rows rather than one because the sidebar is 168px wide: a query field,
+ * a match count and three buttons do not fit on a single line at a size
+ * anyone would want to read.
+ */
+
+.find {
+  flex: 0 0 auto;
+  display: grid;
+  /* minmax(0, 1fr), not the default auto: a text input has an intrinsic
+   * minimum width of about twenty characters, and an auto track honours it —
+   * which pushed the field and its close button off the right-hand edge of a
+   * 168px sidebar. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  min-width: 0;
+  /* No margin. The sidebar is a flex column with its own padding and gap;
+   * adding margin here inset it twice. */
+  animation: find-in var(--dur-2) var(--ease) both;
+}
+
+.find[hidden] {
+  display: none;
+}
+
+@keyframes find-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.find-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 7px;
+  background: var(--glass-fill);
+  color: var(--text-faint);
+  transition:
+    border-color var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease);
+}
+
+.find-field:focus-within {
+  border-color: rgba(98, 168, 255, .55);
+  background: var(--glass-fill-hover);
+  color: var(--text-dim);
+}
+
+.find-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11.5px;
+  /* The one place in this surface where text is selectable: it is a field. */
+  user-select: text;
+}
+
+.find-field input::placeholder {
+  color: var(--text-faint);
+}
+
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.find-count {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  /* Tabular figures, so "9 of 47" and "10 of 47" do not shift the buttons
+   * beside them as the count ticks over. */
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.find-count.is-empty {
+  color: #ff9f8c;
+}
+
+.find-step {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.find-step:hover {
+  background: var(--glass-fill-hover);
+  color: var(--text);
+}
+
+/* Collapsed to a rail, there is nothing to show a find bar in. */
+.is-rail .find {
+  display: none;
+}

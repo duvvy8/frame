@@ -41,6 +41,7 @@ inline constexpr int kA = 0x41;
 inline constexpr int kB = 0x42;
 inline constexpr int kC = 0x43;
 inline constexpr int kD = 0x44;
+inline constexpr int kF = 0x46;
 inline constexpr int kH = 0x48;
 inline constexpr int kI = 0x49;
 inline constexpr int kJ = 0x4A;
@@ -59,6 +60,7 @@ inline constexpr int kZ = 0x5A;
 inline constexpr int kAdd = 0x6B;       // numpad +
 inline constexpr int kSubtract = 0x6D;  // numpad -
 
+inline constexpr int kF3 = 0x72;
 inline constexpr int kF4 = 0x73;
 inline constexpr int kF5 = 0x74;
 inline constexpr int kF6 = 0x75;
@@ -117,6 +119,7 @@ enum class Command {
   kOpenHistory,
   kOpenBookmarks,
   kOpenSettings,
+  kFindInPage,
   kDevTools,
   kPrint,
 
@@ -197,6 +200,8 @@ inline constexpr Binding kBindings[] = {
     {vk::kH, true, false, false, Command::kOpenHistory},
     {vk::kI, true, false, false, Command::kOpenSettings},
     {vk::kOemComma, true, false, false, Command::kOpenSettings},
+    {vk::kF, true, false, false, Command::kFindInPage},
+    {vk::kF3, false, false, false, Command::kFindInPage},
     {vk::kF12, false, false, false, Command::kDevTools},
     {vk::kI, true, true, false, Command::kDevTools},
     {vk::kP, true, false, false, Command::kPrint},

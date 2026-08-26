@@ -210,6 +210,33 @@ class MainWindow {
   bool sleep_enabled() const { return sleep_enabled_; }
   unsigned long long sleep_idle_ms() const { return sleep_idle_ms_; }
 
+  // --- find in page ---
+  //
+  // The find UI lives in the SIDEBAR rather than in a floating bar over the
+  // page. Frame already puts the address field there, so a search field
+  // beside it belongs to the same idea — and the sidebar is a focusable
+  // off-screen surface with working text input, selection and clipboard,
+  // which a new overlay would have to earn from scratch. A floating find bar
+  // is migration step 8 territory; this is the version that works now.
+  void ShowFind();
+  void FindText(const std::string& query, bool forward, bool find_next);
+  void CloseFind();
+  bool find_open() const { return find_open_; }
+  const std::string& find_query() const { return find_query_; }
+  void OnFindResult(int tab_id, int count, int active_ordinal, bool final_update);
+
+  // --- tooltips ---
+  //
+  // Empty text hides. Called from a chrome surface, which is where a title
+  // attribute lives; the tooltip itself is drawn by a popup surface, because
+  // a 32px topbar has nowhere to put one and only an owned top-level window
+  // can draw over the page.
+  void ShowTooltip(const std::string& text);
+  void HideTooltip();
+  // Fired by the dwell timer. See the comment in ShowTooltip for why the two
+  // are separate.
+  void OpenPendingTooltip();
+
   // --- context menu ---
   void ShowTabContextMenu(int tab_id, int surface_x_dip, int surface_y_dip);
   void CloseContextMenu();
@@ -448,6 +475,25 @@ class MainWindow {
   // One menu surface per window, reused for every opening — creating a
   // renderer per right-click would put a visible delay in front of a menu.
   std::unique_ptr<MenuSurface> menu_;
+
+  // Same machinery as the menu, pointed at a different page and made
+  // click-through. See MenuSurface::Create.
+  std::unique_ptr<MenuSurface> tooltip_;
+
+  // Where the pointer last was, in CLIENT pixels. OnTooltip carries no
+  // position — Chromium assumes the platform knows where the cursor is — so
+  // the window has to remember it.
+  POINT last_mouse_ = {0, 0};
+  std::string tooltip_text_;
+
+  // Find in page. The query is kept so a follow-up (Enter, Shift+Enter) can
+  // repeat it — CEF's Find takes the text every time, not a handle to a
+  // search already running.
+  bool find_open_ = false;
+  std::string find_query_;
+  // Whether the opening search for the current query has already been stepped
+  // once to select its first match. See OnFindResult.
+  bool find_auto_stepped_ = false;
 
   // Drives automatic sleep. Only running while there is something that could
   // eventually be slept, so an idle window with one tab has no timer at all.

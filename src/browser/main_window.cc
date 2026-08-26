@@ -56,6 +56,12 @@ const UINT kSidebarTimerMs = 8;
 const UINT_PTR kSleepTimerId = 2;
 const UINT kSleepTimerMs = 15000;
 
+// The tooltip dwell. 450ms is close to the platform's own delay: long enough
+// that crossing a toolbar shows nothing, short enough that pausing on a
+// control feels like it answered.
+const UINT_PTR kTooltipTimerId = 3;
+const UINT kTooltipDelayMs = 450;
+
 // GetTickCount64, not the wall clock. Idle time must not jump when the system
 // clock is corrected or a DST change lands, and it must not go backwards.
 unsigned long long NowMs() {
@@ -195,6 +201,14 @@ bool MainWindow::Create(HINSTANCE instance) {
   // A close in progress may be waiting on the menu's browser, and this is how
   // it learns that browser has gone.
   menu_->set_closed_handler([this]() { MaybeFinishClose(); });
+
+  // The same surface, pointed at a different page and made click-through.
+  // Frame's chrome is off-screen rendered, and CEF is explicit that a
+  // windowless browser's tooltips are the application's to draw — so without
+  // this every title attribute on the topbar was decorative.
+  tooltip_.reset(new MenuSurface());
+  tooltip_->Create(hwnd_, instance, "frame://tooltip", /*click_through=*/true);
+  tooltip_->set_closed_handler([this]() { MaybeFinishClose(); });
 
   if (options_.incognito) {
     // An empty cache_path is what makes the context in-memory. Nothing this
@@ -390,6 +404,9 @@ int MainWindow::LiveBrowserCount() const {
   if (menu_ && menu_->has_browser()) {
     ++live;
   }
+  if (tooltip_ && tooltip_->has_browser()) {
+    ++live;
+  }
   return live;
 }
 
@@ -441,6 +458,9 @@ void MainWindow::BeginClose() {
 
   if (menu_) {
     menu_->CloseBrowser();
+  }
+  if (tooltip_) {
+    tooltip_->CloseBrowser();
   }
 
   in_begin_close_ = false;
@@ -711,8 +731,15 @@ bool MainWindow::ExecuteCommand(shortcuts::Command command) {
       ReloadIgnoringCache();
       return true;
     case Command::kStop:
-      // Escape is only ours while something is actually loading. Otherwise it
-      // belongs to the page, which uses it to dismiss its own dialogs.
+      // Escape closes the find bar first. It is the most recently opened
+      // thing, so it is the thing Escape means — and a find bar that will not
+      // close on Escape is one people trap themselves in.
+      if (find_open_) {
+        CloseFind();
+        return true;
+      }
+      // Otherwise it is only ours while something is actually loading. Beyond
+      // that it belongs to the page, which uses it to dismiss its own dialogs.
       if (const Tab* active = FindTab(active_tab_id_)) {
         if (active->loading) {
           StopLoad();
@@ -742,6 +769,9 @@ bool MainWindow::ExecuteCommand(shortcuts::Command command) {
       return true;
     case Command::kOpenBookmarks:
       CreateTab("frame://bookmarks", /*activate=*/true);
+      return true;
+    case Command::kFindInPage:
+      ShowFind();
       return true;
     case Command::kOpenSettings:
       CreateTab("frame://settings", /*activate=*/true);
@@ -1315,6 +1345,197 @@ void MainWindow::OnTabSleepProbe(int tab_id, bool audible, bool unsaved_input) {
 }
 
 // --- context menu ---------------------------------------------------------
+
+// --- find in page ---------------------------------------------------------
+
+void MainWindow::ShowFind() {
+  if (closing_) {
+    return;
+  }
+  // The find field lives in the sidebar, so a collapsed sidebar has to open
+  // before there is anywhere to type. Opening it is the lesser surprise:
+  // Ctrl+F doing nothing because a panel is collapsed would be the worse one.
+  if (!sidebar_open_) {
+    ToggleSidebar();
+  }
+  find_open_ = true;
+
+  // The sidebar gets the keyboard, exactly as it does for Ctrl+L. Without
+  // this the caret stays with the page and the query is typed into the
+  // document.
+  FocusSurface(SurfaceId::kSidebar);
+
+  Layer& side = layer(SurfaceId::kSidebar);
+  if (!side.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = side.browser->GetMainFrame();
+  if (main_frame) {
+    main_frame->ExecuteJavaScript("window.FrameShell && FrameShell.onFindOpen();",
+                                  main_frame->GetURL(), 0);
+  }
+}
+
+void MainWindow::FindText(const std::string& query,
+                          bool forward,
+                          bool find_next) {
+  // A new query gets a fresh auto-step. Without this, only the first search of
+  // a session would take the user to its first match.
+  if (!find_next) {
+    find_auto_stepped_ = false;
+  }
+  find_query_ = query;
+  CefRefPtr<CefBrowser> browser = ActiveBrowser();
+  if (!browser) {
+    return;
+  }
+  if (query.empty()) {
+    // CEF stops the search for empty text on its own, but the highlight it
+    // leaves behind does not go with it.
+    browser->GetHost()->StopFinding(/*clearSelection=*/true);
+    OnFindResult(active_tab_id_, 0, 0, /*final_update=*/true);
+    return;
+  }
+  browser->GetHost()->Find(query, forward, /*matchCase=*/false, find_next);
+}
+
+void MainWindow::CloseFind() {
+  find_open_ = false;
+  find_query_.clear();
+  if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
+    browser->GetHost()->StopFinding(/*clearSelection=*/true);
+  }
+  // The keyboard goes back to the page, which is where it was before Ctrl+F.
+  FocusSurface(SurfaceId::kCount);
+  if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
+    browser->GetHost()->SetFocus(true);
+  }
+
+  Layer& side = layer(SurfaceId::kSidebar);
+  if (!side.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = side.browser->GetMainFrame();
+  if (main_frame) {
+    main_frame->ExecuteJavaScript("window.FrameShell && FrameShell.onFindClose();",
+                                  main_frame->GetURL(), 0);
+  }
+}
+
+void MainWindow::OnFindResult(int tab_id,
+                              int count,
+                              int active_ordinal,
+                              bool final_update) {
+  // Results for a tab that is no longer the one being searched are stale — a
+  // background tab can report a late final update after the user has switched.
+  if (tab_id != active_tab_id_ || !find_open_) {
+    return;
+  }
+
+  // Take the user TO the first match, which is what typing into a find bar
+  // means everywhere else.
+  //
+  // The opening search counts matches without activating one, so it settles on
+  // "N matches" with no position — technically true and practically useless,
+  // because nothing on the page has moved or highlighted. One follow-up step
+  // selects the first. Guarded on final_update and on having not stepped
+  // already, so it happens once per query rather than chasing its own results
+  // round in a loop.
+  if (final_update && count > 0 && active_ordinal == 0 &&
+      !find_auto_stepped_ && !find_query_.empty()) {
+    find_auto_stepped_ = true;
+    if (CefRefPtr<CefBrowser> browser = ActiveBrowser()) {
+      browser->GetHost()->Find(find_query_, /*forward=*/true,
+                               /*matchCase=*/false, /*findNext=*/true);
+    }
+    return;
+  }
+  Layer& side = layer(SurfaceId::kSidebar);
+  if (!side.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = side.browser->GetMainFrame();
+  if (!main_frame) {
+    return;
+  }
+  std::ostringstream js;
+  js << "window.FrameShell && FrameShell.onFindResult({count:" << count
+     << ",index:" << active_ordinal << ",final:"
+     << (final_update ? "true" : "false") << "});";
+  main_frame->ExecuteJavaScript(js.str(), main_frame->GetURL(), 0);
+}
+
+// --- tooltips -------------------------------------------------------------
+
+void MainWindow::HideTooltip() {
+  tooltip_text_.clear();
+  if (hwnd_) {
+    // Cancels a dwell that has not fired yet, as well as hiding one that has.
+    ::KillTimer(hwnd_, kTooltipTimerId);
+  }
+  if (tooltip_) {
+    tooltip_->Close();
+  }
+}
+
+void MainWindow::ShowTooltip(const std::string& text) {
+  if (!tooltip_ || closing_ || !hwnd_) {
+    return;
+  }
+  if (text.empty()) {
+    HideTooltip();
+    return;
+  }
+  // Chromium re-reports the same tooltip as the pointer moves within one
+  // control. Reopening for each of those would reload the page and replay the
+  // fade several times a second while the pointer sits still.
+  if (text == tooltip_text_ && tooltip_->visible()) {
+    return;
+  }
+  // A menu is up: a tooltip over it would describe the thing behind it.
+  if (context_menu_open()) {
+    return;
+  }
+
+  // Moving to a DIFFERENT control hides the old label at once rather than
+  // leaving it sitting over the new one for the length of the next dwell.
+  if (tooltip_->visible()) {
+    tooltip_->Close();
+  }
+  tooltip_text_ = text;
+
+  // NOTHING IS OPENED HERE. This is called from inside CEF, while it is
+  // dispatching input to the surface that owns the tooltip, and creating a
+  // browser from inside that re-enters CEF and takes the browser process down
+  // with an access violation in libcef — the same hazard OnLoadError already
+  // documents a few hundred lines up, and it fails the same way.
+  //
+  // Deferring is also what a tooltip should do regardless: one that appears
+  // the instant the pointer crosses a control flickers along the toolbar as
+  // you move. The timer is the dwell.
+  ::SetTimer(hwnd_, kTooltipTimerId, kTooltipDelayMs, nullptr);
+}
+
+void MainWindow::OpenPendingTooltip() {
+  ::KillTimer(hwnd_, kTooltipTimerId);
+  if (!tooltip_ || closing_ || tooltip_text_.empty() || context_menu_open()) {
+    return;
+  }
+  // Below and slightly right of the pointer, which is where the platform puts
+  // one — above it and the cursor covers the word. PositionForAnchor still
+  // flips it at a screen edge.
+  POINT anchor = last_mouse_;
+  ::ClientToScreen(hwnd_, &anchor);
+  anchor.y += ToPhysical(18);
+
+  MenuSurface::Context context;
+  context.tab_id = 0;
+  context.anchor = anchor;
+
+  std::ostringstream json;
+  json << "{\"text\":\"" << JsonEscape(tooltip_text_) << "\"}";
+  tooltip_->Open(json.str(), context, DeviceScale());
+}
 
 bool MainWindow::context_menu_open() const {
   return menu_ && menu_->visible();
@@ -2627,6 +2848,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
         SweepSleepableTabs();
         return 0;
       }
+      if (wparam == kTooltipTimerId) {
+        OpenPendingTooltip();
+        return 0;
+      }
       break;
 
     case kMsgFlushBrowserState:
@@ -2645,6 +2870,7 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     }
 
     case WM_SIZE:
+      HideTooltip();
       // The menu is anchored to a point on screen, not to the window. Once the
       // window moves or resizes under it that anchor means nothing, so it is
       // dismissed rather than left pointing somewhere it no longer is.
@@ -2665,6 +2891,7 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       return 0;
 
     case WM_MOVE:
+      HideTooltip();
       CloseContextMenu();
       // Same reason: the masks are positioned in screen coordinates, so moving
       // the window has to drag them along with it.
@@ -2676,6 +2903,7 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     // be dismissed before anything else can be clicked.
     case WM_ACTIVATE:
       if (LOWORD(wparam) == WA_INACTIVE) {
+        HideTooltip();
         CloseContextMenu();
       }
       break;
@@ -2714,12 +2942,21 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
         ::TrackMouseEvent(&track);
         tracking_mouse_ = true;
       }
-      ForwardMouseMove(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), wparam);
+      // Remembered because OnTooltip carries no position: Chromium assumes the
+      // platform knows where the cursor is, and for a windowless browser the
+      // platform is us.
+      last_mouse_.x = GET_X_LPARAM(lparam);
+      last_mouse_.y = GET_Y_LPARAM(lparam);
+      ForwardMouseMove(last_mouse_.x, last_mouse_.y, wparam);
       return 0;
     }
 
     case WM_MOUSELEAVE:
       tracking_mouse_ = false;
+      // The pointer has left the window, so anything it was pointing at is no
+      // longer under it. Chromium sends an empty OnTooltip for a control the
+      // pointer leaves, but not for the window itself.
+      HideTooltip();
       SendMouseLeaveToAll();
       return 0;
 
@@ -2728,6 +2965,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       // A click anywhere in the window dismisses an open menu, and does NOT
       // also do whatever it was pointing at. That is what every other menu on
       // the platform does: the first click outside closes, the second acts.
+      // Clicking dismisses a tooltip unconditionally: the thing it described
+      // is about to do something, and a label left hanging over the result is
+      // the wrong kind of persistent.
+      HideTooltip();
       if (message == WM_LBUTTONDOWN && context_menu_open()) {
         CloseContextMenu();
         return 0;
@@ -2779,6 +3020,7 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       return TRUE;
 
     case WM_MOUSEWHEEL:
+      HideTooltip();
       ForwardMouseWheel(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam),
                         GET_WHEEL_DELTA_WPARAM(wparam),
                         GET_KEYSTATE_WPARAM(wparam));

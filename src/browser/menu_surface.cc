@@ -182,7 +182,13 @@ MenuSurface::~MenuSurface() {
   }
 }
 
-bool MenuSurface::Create(HWND owner, HINSTANCE instance) {
+bool MenuSurface::Create(HWND owner,
+                         HINSTANCE instance,
+                         const char* page_url,
+                         bool click_through) {
+  page_url_ = page_url;
+  click_through_ = click_through;
+
   static bool registered = false;
   if (!registered) {
     WNDCLASSEXW wc = {};
@@ -203,9 +209,14 @@ bool MenuSurface::Create(HWND owner, HINSTANCE instance) {
   // that takes the caret and gives it back is a menu that loses the user's
   // place in a text field. It is deliberately NOT WS_EX_TRANSPARENT, unlike
   // the corner masks: this one exists to be clicked.
-  hwnd_ = ::CreateWindowExW(
-      WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, kMenuClass, L"",
-      WS_POPUP, 0, 0, 1, 1, owner, nullptr, instance, this);
+  DWORD ex = WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+  if (click_through_) {
+    // A tooltip must never take a click. Without this it sits over the very
+    // control it is describing and swallows the press that was meant for it.
+    ex |= WS_EX_TRANSPARENT;
+  }
+  hwnd_ = ::CreateWindowExW(ex, kMenuClass, L"", WS_POPUP, 0, 0, 1, 1, owner,
+                            nullptr, instance, this);
   return hwnd_ != nullptr;
 }
 
@@ -246,8 +257,8 @@ void MenuSurface::Open(const std::string& model_json,
     // Transparent, not a colour: the alpha in this bitmap becomes the window's
     // alpha, which is where the rounded corners and the shadow come from.
     settings.background_color = CefColorSetARGB(0, 0, 0, 0);
-    CefBrowserHost::CreateBrowser(window_info, client_, "frame://menu",
-                                  settings, nullptr, nullptr);
+    CefBrowserHost::CreateBrowser(window_info, client_, page_url_, settings,
+                                  nullptr, nullptr);
     return;  // Shown once it has loaded, measured and painted.
   }
 
@@ -256,7 +267,7 @@ void MenuSurface::Open(const std::string& model_json,
   // the first opening and every one after it.
   browser_->GetHost()->WasHidden(false);
   browser_->GetHost()->WasResized();
-  browser_->GetMainFrame()->LoadURL("frame://menu");
+  browser_->GetMainFrame()->LoadURL(page_url_);
 }
 
 void MenuSurface::OnBrowserCreated(CefRefPtr<CefBrowser> browser) {

@@ -1,0 +1,63 @@
+/* Frame — tooltips.
+ *
+ * Same surface as the context menu, and for the same reason: the chrome is
+ * off-screen rendered, and CEF is explicit about what that means —
+ * "when window rendering is disabled the application is responsible for
+ * drawing tooltips". Nothing was, so ten title attributes on the topbar were
+ * decorative. This is what draws them.
+ *
+ * The material is deliberately QUIETER than the menu's. A menu is a thing you
+ * operate and it should feel substantial; a tooltip is a label that appears
+ * because you paused, and it should be over as soon as you have read it.
+ */
+
+.tip {
+  /* Matches PAD in tooltip.html. */
+  --tip-shadow-pad: 14px;
+
+  position: absolute;
+  left: var(--tip-shadow-pad);
+  top: var(--tip-shadow-pad);
+  max-width: 260px;
+  padding: 5px 9px;
+  border-radius: 7px;
+
+  background: #1c1c22;
+  color: rgba(255, 255, 255, .90);
+  font-family: var(--font);
+  /* 11.5px: a size below the tab titles, because a tooltip is an aside and
+   * should not compete with the thing it describes. */
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: nowrap;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .08),
+    inset 0 1px 0 rgba(255, 255, 255, .07),
+    0 2px 5px rgba(0, 0, 0, .34),
+    0 8px 18px rgba(0, 0, 0, .34);
+
+  /* Fades and lifts one pixel. No scale: a tooltip that grows draws the eye to
+   * the animation instead of to the word it is showing. */
+  opacity: 0;
+  transform: translateY(2px);
+  will-change: opacity, transform;
+}
+
+.tip.is-open {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 90ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip {
+    transform: none;
+  }
+  .tip.is-open {
+    transition: opacity 1ms linear;
+  }
+}

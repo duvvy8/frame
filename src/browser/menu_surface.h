@@ -59,7 +59,20 @@ class MenuSurface {
   MenuSurface(const MenuSurface&) = delete;
   MenuSurface& operator=(const MenuSurface&) = delete;
 
-  bool Create(HWND owner, HINSTANCE instance);
+  // `page_url` is the frame:// page this popup renders. Parameterised because
+  // a tooltip is the same machinery as a menu — an owned layered window, an
+  // off-screen browser, a page that measures itself — differing only in what
+  // it draws and whether it can be clicked. Duplicating the window plumbing to
+  // get a tooltip would be two copies of the hardest part.
+  //
+  // `click_through` adds WS_EX_TRANSPARENT: the window is drawn but passes
+  // every click to whatever is beneath it. Right for a tooltip, wrong for a
+  // menu, and the two must not be confused — a click-through menu is a menu
+  // you cannot use.
+  bool Create(HWND owner,
+              HINSTANCE instance,
+              const char* page_url = "frame://menu",
+              bool click_through = false);
 
   // Opens the menu at the anchor with the given model.
   //
@@ -121,6 +134,8 @@ class MenuSurface {
 
   HWND owner_ = nullptr;
   HWND hwnd_ = nullptr;
+  std::string page_url_ = "frame://menu";
+  bool click_through_ = false;
   CefRefPtr<CefBrowser> browser_;
   CefRefPtr<MenuClient> client_;
 

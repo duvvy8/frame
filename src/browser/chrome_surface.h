@@ -77,8 +77,17 @@ class ChromeSurface : public CefClient,
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
   void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
 
-  // CefDisplayHandler. A chrome surface is our own code, so anything it logs
-  // is a bug worth seeing rather than page noise to ignore.
+  // CefDisplayHandler.
+  //
+  // CEF: "When window rendering is disabled the application is responsible
+  // for drawing tooltips and the return value is ignored." These surfaces are
+  // off-screen, so nothing drew them and every title attribute on the chrome
+  // was decorative. This hands the text to the window, which has the surface
+  // that can draw over the page.
+  bool OnTooltip(CefRefPtr<CefBrowser> browser, CefString& text) override;
+
+  // A chrome surface is our own code, so anything it logs is a bug worth
+  // seeing rather than page noise to ignore.
   bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
                         cef_log_severity_t level,
                         const CefString& message,

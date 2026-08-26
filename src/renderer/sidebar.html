@@ -26,6 +26,51 @@
       </button>
     </div>
 
+    <!-- Find in page.
+         Hidden until Ctrl+F. In the sidebar rather than floating over the
+         page, because this is already the surface that holds the address
+         field and already the one that can take the keyboard — a floating
+         find bar needs an overlay that can accept text input, which is
+         migration step 8. -->
+    <div class="find" id="find" hidden>
+      <div class="find-field">
+        <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor"
+                  stroke-width="1.3"/>
+          <path d="M10.4 10.4 L14 14" stroke="currentColor" stroke-width="1.3"
+                stroke-linecap="round"/>
+        </svg>
+        <input id="find-input" type="text" placeholder="Find in page"
+               autocomplete="off" spellcheck="false" aria-label="Find in page">
+      </div>
+      <div class="find-row">
+        <span class="find-count" id="find-count"></span>
+        <button class="find-step" id="find-prev" title="Previous match"
+                aria-label="Previous match">
+          <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+            <path d="M4 10 L8 6 L12 10" fill="none" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round"
+                  stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="find-step" id="find-next" title="Next match"
+                aria-label="Next match">
+          <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+            <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round"
+                  stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="find-step" id="find-close" title="Close (Esc)"
+                aria-label="Close find">
+          <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+            <path d="M4 4 L12 12 M12 4 L4 12" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Rendered from the favourites the browser process holds. This markup is
          never the source of truth for what is pinned. -->
     <div class="favorites" id="favorites"></div>
@@ -84,6 +129,90 @@
         address.focus();
         address.select();
       };
+
+      // --- find in page ---------------------------------------------------
+
+      var findPanel = document.getElementById('find');
+      var findInput = document.getElementById('find-input');
+      var findCount = document.getElementById('find-count');
+
+      FrameShell.onFindOpen = function () {
+        findPanel.hidden = false;
+        // Reopening with a query already there selects it, so the next thing
+        // typed replaces the search rather than extending it — the same
+        // reasoning as Ctrl+L on the address field.
+        findInput.focus();
+        findInput.select();
+        if (findInput.value) {
+          runFind(findInput.value);
+        }
+      };
+
+      FrameShell.onFindClose = function () {
+        findPanel.hidden = true;
+        findCount.textContent = '';
+      };
+
+      FrameShell.onFindResult = function (result) {
+        // CEF reports PROGRESSIVELY as it searches, and the interim updates
+        // are not all meaningful:
+        //
+        //   count 0, not final   — "not found yet", not "not found"
+        //   count n, index 0     — n matches counted, none selected yet
+        //
+        // Rendering the second of those verbatim produced "0 of 2", which is
+        // not a position anyone is at. The count is worth showing as soon as
+        // it is known; the position is only shown once there is one.
+        if (!result.count) {
+          if (result.final) {
+            findCount.textContent = 'No matches';
+            findCount.classList.add('is-empty');
+          }
+          return;
+        }
+        findCount.classList.remove('is-empty');
+        findCount.textContent = result.index > 0
+          ? result.index + ' of ' + result.count
+          : result.count + (result.count === 1 ? ' match' : ' matches');
+      };
+
+      function runFind(query) {
+        FrameShell.send(C.findText, query);
+        if (!query) {
+          findCount.textContent = '';
+          findCount.classList.remove('is-empty');
+        }
+      }
+
+      // Debounced. A find per keystroke restarts the search across the whole
+      // document each time, which on a long page is the browser doing the same
+      // work five times to answer a question that changed five times.
+      var findTimer = 0;
+      findInput.addEventListener('input', function () {
+        clearTimeout(findTimer);
+        var query = findInput.value;
+        findTimer = setTimeout(function () { runFind(query); }, 130);
+      });
+
+      findInput.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          // Enter steps; Shift+Enter steps back. Both go straight out rather
+          // than waiting for the debounce, because the query has not changed.
+          clearTimeout(findTimer);
+          FrameShell.send(event.shiftKey ? C.findPrev : C.findNext);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          FrameShell.send(C.findClose);
+        }
+      });
+
+      document.getElementById('find-next').addEventListener('click',
+        function () { FrameShell.send(C.findNext); findInput.focus(); });
+      document.getElementById('find-prev').addEventListener('click',
+        function () { FrameShell.send(C.findPrev); findInput.focus(); });
+      document.getElementById('find-close').addEventListener('click',
+        function () { FrameShell.send(C.findClose); });
 
       document.getElementById('copy').addEventListener('click', function () {
         address.select();

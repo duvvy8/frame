@@ -15,6 +15,7 @@
 #include "include/cef_load_handler.h"
 #include "include/cef_context_menu_handler.h"
 #include "include/cef_download_handler.h"
+#include "include/cef_find_handler.h"
 #include "include/cef_request_handler.h"
 #include "include/cef_resource_request_handler.h"
 #include "include/wrapper/cef_message_router.h"
@@ -38,7 +39,8 @@ class PageClient : public CefClient,
                    public CefRequestHandler,
                    public CefResourceRequestHandler,
                    public CefDownloadHandler,
-                   public CefContextMenuHandler {
+                   public CefContextMenuHandler,
+                   public CefFindHandler {
  public:
   PageClient(CefRefPtr<WindowRef> window, int tab_id);
 
@@ -55,6 +57,7 @@ class PageClient : public CefClient,
   CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override { return this; }
   CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
   CefRefPtr<CefDownloadHandler> GetDownloadHandler() override { return this; }
+  CefRefPtr<CefFindHandler> GetFindHandler() override { return this; }
   CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() override {
     return this;
   }
@@ -99,6 +102,18 @@ class PageClient : public CefClient,
   void OnDownloadUpdated(CefRefPtr<CefBrowser> browser,
                          CefRefPtr<CefDownloadItem> download_item,
                          CefRefPtr<CefDownloadItemCallback> callback) override;
+
+  // CefFindHandler
+  //
+  // Where "3 of 47" comes from. CEF reports find results asynchronously and
+  // repeatedly as a search progresses, with `final_update` marking the last
+  // one for a query.
+  void OnFindResult(CefRefPtr<CefBrowser> browser,
+                    int identifier,
+                    int count,
+                    const CefRect& selection_rect,
+                    int active_match_ordinal,
+                    bool final_update) override;
 
   // CefContextMenuHandler
   //

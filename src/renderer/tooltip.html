@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame tooltip</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="menu.css">
+  <link rel="stylesheet" href="tooltip.css">
+</head>
+<body class="menu-body">
+  <div class="tip" id="tip"></div>
+
+  <script>
+    (function () {
+      var tip = document.getElementById('tip');
+
+      // Same shadow allowance as the menu, and the same reason: the window is
+      // exactly this document, so a shadow at the very edge is clipped off.
+      var PAD = 14;
+
+      function send(request) {
+        return new Promise(function (resolve, reject) {
+          if (typeof window.cefQuery !== 'function') {
+            reject(new Error('bridge unavailable'));
+            return;
+          }
+          window.cefQuery({
+            request: request,
+            persistent: false,
+            onSuccess: function (response) {
+              try { resolve(JSON.parse(response)); }
+              catch (err) { resolve(response); }
+            },
+            onFailure: function (code, message) {
+              reject(new Error(message + ' (' + code + ')'));
+            }
+          });
+        });
+      }
+
+      send('menu:model')
+        .then(function (model) {
+          var text = model && typeof model === 'object' ? model.text : '';
+          if (!text) {
+            throw new Error('no tooltip text');
+          }
+          // textContent, never innerHTML. The text reaches here from a title
+          // attribute, and a page can put anything in one of those.
+          tip.textContent = text;
+
+          var rect = tip.getBoundingClientRect();
+          return send('menu:size:' + (Math.ceil(rect.width) + PAD * 2) + 'x' +
+                      (Math.ceil(rect.height) + PAD * 2));
+        })
+        .then(function () {
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { tip.classList.add('is-open'); });
+          });
+        })
+        .catch(function () {
+          // An empty tooltip is worse than none: it is a small grey rectangle
+          // following the pointer for no reason.
+          send('menu:dismiss');
+        });
+    })();
+  </script>
+</body>
+</html>

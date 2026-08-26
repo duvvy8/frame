@@ -35,6 +35,11 @@ inline constexpr Resource kResources[] = {
     // off-screen into a layered popup window rather than into a tab.
     {"menu.html", "text/html"},
     {"menu.css", "text/css"},
+    // Tooltips, drawn by the same kind of popup. CEF leaves a windowless
+    // browser's tooltips entirely to the application, and Frame's chrome is
+    // windowless — so without these the title attributes on it drew nothing.
+    {"tooltip.html", "text/html"},
+    {"tooltip.css", "text/css"},
     {"shell.css", "text/css"},
     {"shell.js", "text/javascript"},
     {"newtab.css", "text/css"},

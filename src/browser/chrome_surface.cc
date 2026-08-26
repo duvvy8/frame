@@ -54,6 +54,12 @@ const char kCommandNavGo[] = "nav:go:";
 const char kCommandFavoriteAdd[] = "favorite:add:";
 const char kCommandFavoriteRemove[] = "favorite:remove:";
 const char kCommandFavoriteMove[] = "favorite:move:";
+// Find in page. "find:text:<q>" starts or restarts a search; "find:next" and
+// "find:prev" step through the matches CEF already found.
+const char kCommandFindText[] = "find:text:";
+const char kCommandFindNext[] = "find:next";
+const char kCommandFindPrev[] = "find:prev";
+const char kCommandFindClose[] = "find:close";
 
 bool StartsWith(const std::string& value, const char* prefix) {
   return value.rfind(prefix, 0) == 0;
@@ -269,6 +275,26 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
         callback->Success("ok");
         return true;
       }
+      if (StartsWith(name, kCommandFindText)) {
+        window()->FindText(name.substr(std::strlen(kCommandFindText)),
+                           /*forward=*/true, /*find_next=*/false);
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandFindNext || name == kCommandFindPrev) {
+        // The query is the one the window already has: CEF's Find takes the
+        // text every time rather than a handle to a running search, and
+        // re-sending it from the page would be a second copy of the truth.
+        window()->FindText(window()->find_query(), name == kCommandFindNext,
+                           /*find_next=*/true);
+        callback->Success("ok");
+        return true;
+      }
+      if (name == kCommandFindClose) {
+        window()->CloseFind();
+        callback->Success("ok");
+        return true;
+      }
       if (StartsWith(name, kCommandFavoriteMove)) {
         // "favorite:move:<from>:<to>"
         const std::string payload =
@@ -368,7 +394,13 @@ bool ChromeSurface::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
   // Escape while typing in the address bar belongs to the surface, which uses
   // it to abandon the edit and restore the real URL. Only the surface knows
   // whether an edit is in progress, so the window never gets a look at it.
-  if (command == shortcuts::Command::kStop && id_ == SurfaceId::kSidebar) {
+  //
+  // UNLESS find is open. The find field lives in this same surface, and
+  // Escape there means "close find" — which only the window can do, since it
+  // owns the search. Without this exception Escape was swallowed here and the
+  // find bar could not be closed from the field it puts the caret in.
+  if (command == shortcuts::Command::kStop && id_ == SurfaceId::kSidebar &&
+      !(window() && window()->find_open())) {
     return false;
   }
 
@@ -424,6 +456,17 @@ void ChromeSurface::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
     // clearing the pointer alone tells it nothing about that.
     window()->OnSurfaceClosed(id_);
   }
+}
+
+bool ChromeSurface::OnTooltip(CefRefPtr<CefBrowser> browser, CefString& text) {
+  if (window()) {
+    // An empty string is Chromium saying the pointer has left whatever had a
+    // title, which is the only "hide" signal there is.
+    window()->ShowTooltip(text.ToString());
+  }
+  // The return value is ignored for a windowless browser, per CEF's own
+  // documentation. Returning true states the intent anyway: this is handled.
+  return true;
 }
 
 bool ChromeSurface::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
