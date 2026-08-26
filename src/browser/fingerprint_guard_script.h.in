@@ -1,0 +1,19 @@
+// GENERATED — do not edit.
+//
+// CMake embeds src/renderer/fingerprint_guard.js here so the script has one
+// source of truth: a real .js file that can be read, linted and diffed, rather
+// than a hundred lines of JavaScript hidden inside a C++ string literal.
+//
+// The delimiter is FRAMEJS rather than the default, so a )" sequence in the
+// script cannot terminate the literal early.
+
+#ifndef FRAME_BROWSER_FINGERPRINT_GUARD_SCRIPT_H_
+#define FRAME_BROWSER_FINGERPRINT_GUARD_SCRIPT_H_
+
+namespace frame {
+
+inline constexpr char kFingerprintGuardScript[] = R"FRAMEJS(@FRAME_FINGERPRINT_GUARD_JS@)FRAMEJS";
+
+}  // namespace frame
+
+#endif  // FRAME_BROWSER_FINGERPRINT_GUARD_SCRIPT_H_

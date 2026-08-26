@@ -10,6 +10,7 @@
 #include "browser/favorites.h"
 #include "browser/frame_scheme.h"
 #include "browser/main_window.h"
+#include "fingerprint_guard_script.h"
 #include "browser/window_list.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
@@ -163,6 +164,32 @@ void FrameApp::OnContextCreated(CefRefPtr<CefBrowser> browser,
   if (renderer_router_) {
     renderer_router_->OnContextCreated(browser, frame, context);
   }
+
+  // Fingerprint minimisation, in the RENDERER, at context creation.
+  //
+  // This is the earliest point at which JavaScript can run in a document, so
+  // the values are already corrected before any page script observes them —
+  // there is no window in which the real ones are visible, and no observer or
+  // timer left running afterwards. One evaluation per context; nothing per
+  // request, and nothing added to the page's own DOM for it to notice.
+  //
+  // Frame's own pages are skipped. They have no fingerprinting to defend
+  // against and the guard would only be one more thing loaded on a new tab.
+  if (!frame) {
+    return;
+  }
+  const std::string url = frame->GetURL().ToString();
+  if (url.rfind("frame://", 0) == 0 || url.rfind("devtools://", 0) == 0) {
+    return;
+  }
+
+  CefRefPtr<CefV8Value> ignored;
+  CefRefPtr<CefV8Exception> exception;
+  // Failure is survivable and must never take the page with it: if the guard
+  // throws, the page keeps its real values rather than getting a broken
+  // navigator.
+  context->Eval(kFingerprintGuardScript, "frame://fingerprint-guard", 0,
+                ignored, exception);
 }
 
 void FrameApp::OnContextReleased(CefRefPtr<CefBrowser> browser,

@@ -13,6 +13,21 @@ find_package(CEF REQUIRED)
 # Builds the C++ convenience layer over CEF's C API.
 add_subdirectory("${CEF_LIBCEF_DLL_WRAPPER_PATH}" libcef_dll_wrapper)
 
+# The fingerprint guard is written as a real .js file and embedded here, so it
+# stays lintable and diffable instead of living inside a C++ string literal.
+#
+# Read at CONFIGURE time, so CMAKE_CONFIGURE_DEPENDS is what makes editing the
+# script re-run configure; without it a change to the .js would build cleanly
+# and change nothing, which is a genuinely confusing way to lose an afternoon.
+set(FRAME_FINGERPRINT_GUARD_SRC
+    "${CMAKE_SOURCE_DIR}/src/renderer/fingerprint_guard.js")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+             "${FRAME_FINGERPRINT_GUARD_SRC}")
+file(READ "${FRAME_FINGERPRINT_GUARD_SRC}" FRAME_FINGERPRINT_GUARD_JS)
+configure_file(fingerprint_guard_script.h.in
+               "${CMAKE_CURRENT_BINARY_DIR}/generated/fingerprint_guard_script.h"
+               @ONLY)
+
 set(FRAME_SRCS
   frame_app.cc
   frame_app.h
@@ -64,8 +79,11 @@ target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper
                       ${CEF_STANDARD_LIBS}
                       dwmapi)
 
-# Our own headers ("browser/...", "shared/...") alongside CEF's.
-target_include_directories(${CEF_TARGET} PRIVATE "${CMAKE_SOURCE_DIR}/src")
+# Our own headers ("browser/...", "shared/...") alongside CEF's, plus the
+# generated fingerprint-guard script.
+target_include_directories(${CEF_TARGET} PRIVATE
+                           "${CMAKE_SOURCE_DIR}/src"
+                           "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 # CEF's own binaries and .pak resources.
 COPY_FILES("${CEF_TARGET}" "${CEF_BINARY_FILES}" "${CEF_BINARY_DIR}"
