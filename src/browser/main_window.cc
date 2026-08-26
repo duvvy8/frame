@@ -49,6 +49,10 @@ const UINT_PTR kSidebarTimerId = 1;
 // coalesced timer message shortens the animation instead of stretching it.
 const UINT kSidebarTimerMs = 8;
 
+// Posted to collapse a burst of browser-state changes into one push. See
+// MainWindow::PushBrowserState.
+const UINT kMsgFlushBrowserState = WM_APP + 1;
+
 // A new tab opens on Frame's own page, not a blank one.
 
 int MouseModifiers(WPARAM wparam) {
@@ -311,6 +315,11 @@ void MainWindow::SetSurfaceBrowser(SurfaceId id,
   if (browser) {
     PushShellMetrics();
     PushWindowState();
+    // A surface that has just attached believes nothing yet, so the dedup in
+    // FlushBrowserState must not decide it is already up to date. It would
+    // recover on its own — shell.js pulls the state during bootstrap — but only
+    // by accident, and a surface reattaching later would not be so lucky.
+    last_pushed_state_.clear();
     PushBrowserState();
   }
 }
@@ -1234,7 +1243,37 @@ std::string MainWindow::BuildBrowserStateJson() const {
 }
 
 void MainWindow::PushBrowserState() {
+  // Coalesced, not sent.
+  //
+  // This is called from every page callback there is: loading state, title,
+  // address, favicon. A page that rewrites location.hash — which is what a
+  // client-side router does on every interaction — drives it continuously.
+  // Measured on Speedometer 3.0: 939 pushes in a 16 second run, about 59 a
+  // second, each one serialising the whole browser state (including the base64
+  // favicon data URLs) and running JavaScript in BOTH off-screen surfaces,
+  // which then restyle, repaint and get blitted. The browser process was
+  // burning 4.78 CPU seconds against the page renderer's 20.97 doing it.
+  //
+  // A window message rather than a posted CEF task: it cannot outlive the
+  // window, so there is no way to run this against a destroyed MainWindow.
+  if (state_push_pending_ || !hwnd_) {
+    return;
+  }
+  state_push_pending_ = true;
+  ::PostMessage(hwnd_, kMsgFlushBrowserState, 0, 0);
+}
+
+void MainWindow::FlushBrowserState() {
+  state_push_pending_ = false;
+
   const std::string state = BuildBrowserStateJson();
+
+  // Identical state is not worth a renderer round trip. Loading-state and
+  // favicon callbacks in particular fire repeatedly with nothing new to say.
+  if (state == last_pushed_state_) {
+    return;
+  }
+  last_pushed_state_ = state;
   // Both surfaces get the same payload: the topbar draws the tab strip from
   // it, the sidebar its address field. One state, no divergence.
   for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
@@ -1782,6 +1821,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
         return 0;
       }
       break;
+
+    case kMsgFlushBrowserState:
+      FlushBrowserState();
+      return 0;
 
     case WM_ERASEBKGND:
       return 1;

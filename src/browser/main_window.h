@@ -192,6 +192,8 @@ class MainWindow {
   void PushWindowState();
   void PushShellMetrics();
   void PushPageShellMetrics();
+  // Does the work PushBrowserState defers. See the comment there.
+  void FlushBrowserState();
   void PushBrowserState();
   std::string BuildBrowserStateJson() const;
 
@@ -278,6 +280,12 @@ class MainWindow {
   // Ctrl+Shift+T, most recent first. Bounded, because an unbounded undo stack
   // for tabs is a slow leak of every URL the user has ever closed.
   std::vector<std::string> closed_urls_;
+
+  // Browser-state push coalescing. state_push_pending_ means a flush is
+  // already queued and further requests can be dropped; last_pushed_state_ is
+  // what the surfaces currently believe, so an unchanged state costs nothing.
+  bool state_push_pending_ = false;
+  std::string last_pushed_state_;
 
   // Physical dots per inch for the monitor this window is on. CEF makes the
   // process PER_MONITOR_AWARE, so Windows does not scale anything for us and
