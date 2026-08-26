@@ -203,6 +203,17 @@
             // Staggered, so a row of tiles arrives as a row rather than all at
             // once. Capped, or a long list would end on a noticeable wait.
             el.style.animationDelay = Math.min(i, 7) * 34 + 'ms';
+            // Dropped again the moment it lands. This is not tidiness: the
+            // entrance fills BOTH, so while the class is present the
+            // animation's final `transform: none` keeps being applied — and an
+            // animation outranks a rule in the cascade, so it silently beat
+            // the hover lift and the tiles stopped responding to the pointer.
+            el.addEventListener('animationend', function (event) {
+              if (event.animationName === 'favorite-in') {
+                event.currentTarget.classList.remove('is-entering');
+                event.currentTarget.style.animationDelay = '';
+              }
+            });
           }
           seen[item.url] = true;
 
