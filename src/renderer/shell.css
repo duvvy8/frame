@@ -47,18 +47,45 @@
 
   /* Ambient shell light — the aurora.
    *
-   * Four wide, low-alpha washes laid across the whole window rather than one
-   * glow in a corner. Low alpha and low saturation are what keep it reading as
-   * atmosphere behind glass instead of as a coloured background: past roughly
-   * .32 any one of these stops being light and starts being paint.
+   * Wide washes laid across the whole window rather than one glow in a corner,
+   * and deliberately SATURATED. An earlier version capped these around .30 to
+   * keep the field reading as atmosphere behind glass; the result was polite
+   * and slightly grey, with colour pooled in the top-left and nothing much
+   * happening anywhere else.
    *
-   * Hue order matters more than the individual values — blue into cyan into
-   * violet is what gives it depth. For a warmer palette, rotate all four
-   * together; changing one leaves the field muddy where they overlap. */
-  --ambient-a: rgba(58, 118, 255, .30);   /* blue, upper left */
-  --ambient-b: rgba(104, 74, 226, .22);   /* violet, lower middle */
-  --ambient-c: rgba(72, 200, 224, .13);   /* cyan, upper right */
-  --ambient-deep: rgba(20, 34, 78, .55);  /* navy wash under all of it */
+   * These are strong enough to be a composition. What keeps that from becoming
+   * noise is that they are still LAYERED rather than mixed: a small number of
+   * large, soft masses that overlap into secondary hues, instead of many small
+   * ones competing.
+   *
+   * Hue order carries the depth — electric blue into cyan at the top, through
+   * violet, into magenta low and right. Rotate all of them together for a
+   * different palette; changing one leaves the field muddy where they overlap.
+   *
+   * --ambient-core is the bright one, and the only one that lifts luminance
+   * rather than adding colour. It is placed away from the wordmark and the
+   * search pill on purpose: it is what makes the field look lit from inside,
+   * and it would ruin the contrast of anything sitting on top of it. */
+  --ambient-a: rgba(60, 126, 255, .52);    /* electric blue, upper left */
+  --ambient-b: rgba(140, 62, 236, .46);    /* violet, sweeping low */
+  --ambient-c: rgba(56, 214, 238, .30);    /* cyan, upper right */
+  --ambient-hot: rgba(232, 70, 186, .38);  /* magenta, the warm counterweight */
+  /* Warm, not neutral.
+   *
+   * A white core over violet reads as a grey smudge sitting on top of the
+   * field. Tinting it toward the hue it sits inside makes the same shape read
+   * as that colour being lit — which is how the reference images do it: the
+   * hot centre is always the middle of a warm mass, never a separate light. */
+  --ambient-core: rgba(255, 226, 246, .44);/* the lit core */
+  /* Deliberately weak.
+   *
+   * This was .66 and it was lifting the ENTIRE window into mid-tone, which
+   * killed the contrast the composition depends on. Saturation alone does not
+   * make a gradient read as vivid — dynamic range does. The reference images
+   * are mostly near-black, and their colour pops because of what surrounds it.
+   * The base is therefore kept dark and the light comes only from the masses,
+   * which leaves genuine darkness between them. */
+  --ambient-deep: rgba(18, 22, 70, .34);   /* indigo under all of it */
 
   /* Accent — state only. */
   --accent: #62a8ff;
@@ -291,16 +318,58 @@ body::before {
      *
      * The field: a diagonal sweep across the whole window, full strength all
      * the way to the edge. */
-    radial-gradient(78% 62% at 8% -6%, var(--ambient-a), var(--bg-fade) 64%),
-    /* Taller and anchored on the edge itself, so the cyan carries down the
-     * right-hand side instead of stopping level with the tab strip. Without
-     * this the right edge is the one place no wash reaches and it reads as
-     * unlit — which is what the removed vignette used to be blamed for. */
-    radial-gradient(72% 92% at 100% 16%, var(--ambient-c), var(--bg-fade) 72%),
-    radial-gradient(86% 70% at 58% 104%, var(--ambient-b), var(--bg-fade) 72%),
-    /* Wide enough to still be carrying colour at every edge. This is the layer
-     * that decides what the corners look like. */
-    radial-gradient(150% 120% at 46% 48%, var(--ambient-deep), var(--bg-fade) 78%);
+    /* The lit core. First in the list so it sits on top of the colour and
+     * reads as light rather than as another hue. Small and offset to the
+     * lower right of centre — clear of the wordmark and the search pill,
+     * which have to stay readable over whatever happens here. */
+    /* Sits INSIDE the magenta mass below, not beside it, and carries an
+     * intermediate stop so it has no discernible edge — a single stop to
+     * transparent leaves a visible ellipse, which is the one thing that gives
+     * away a gradient as a shape rather than as light. */
+    radial-gradient(30% 26% at 76% 82%,
+                    var(--ambient-core) 0%,
+                    rgba(244, 150, 220, .20) 46%,
+                    var(--bg-fade) 78%),
+
+    /* The sheen: a soft diagonal band of light crossing the whole window.
+     *
+     * This is the one layer that is not a mass, and it is what makes the field
+     * read as lit from a direction rather than as coloured fog. A radial
+     * cannot do it — CSS radial gradients cannot be rotated — but a linear
+     * gradient with a bright band between two transparent stops is exactly a
+     * beam, and it runs on the same 118deg axis as the sweep below so the two
+     * reinforce each other instead of crossing. */
+    linear-gradient(118deg,
+                    var(--bg-fade) 34%,
+                    rgba(196, 224, 255, .10) 50%,
+                    rgba(150, 190, 255, .05) 58%,
+                    var(--bg-fade) 72%),
+
+    /* The masses. Large, soft, and anchored mostly off-canvas so what shows is
+     * the middle of a wash rather than a circle with a visible edge — the
+     * difference between a mesh gradient and a set of dots.
+     *
+     * Sized so they do NOT all overlap. Where two meet they mix into a
+     * secondary hue, and where none reaches, the base stays dark; those gaps
+     * are load-bearing, not wasted space. */
+    radial-gradient(56% 46% at 2% -12%, var(--ambient-a), var(--bg-fade) 68%),
+    radial-gradient(50% 62% at 106% 6%, var(--ambient-c), var(--bg-fade) 70%),
+    radial-gradient(58% 50% at 94% 92%, var(--ambient-hot), var(--bg-fade) 68%),
+    radial-gradient(72% 58% at 30% 112%, var(--ambient-b), var(--bg-fade) 70%),
+
+    /* A slow diagonal sweep, low-left to high-right. This is what stops the
+     * composition reading as four separate blobs: it gives them one direction
+     * of flow, the way the reference images do. Weak on purpose — it is a
+     * current through the field, not another mass. */
+    linear-gradient(118deg,
+                    rgba(84, 30, 180, .22) 0%,
+                    var(--bg-fade) 38%,
+                    var(--bg-fade) 64%,
+                    rgba(28, 92, 210, .20) 100%),
+
+    /* Carries a little colour to every edge so no side reads as unlit, without
+     * lifting the whole field off the floor. */
+    radial-gradient(150% 120% at 46% 48%, var(--ambient-deep), var(--bg-fade) 82%);
 }
 
 /* Grain.
@@ -321,7 +390,11 @@ body::after {
   width: var(--win-w);
   height: var(--win-h);
   pointer-events: none;
-  opacity: .04;
+  /* Raised from .04 now that the field underneath is saturated rather than
+   * near-grey. A stronger field bands harder, and the texture is also wanted
+   * for its own sake here — the reference images carry a visible tooth, and a
+   * perfectly smooth gradient reads as synthetic next to them. */
+  opacity: .062;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
 

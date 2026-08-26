@@ -100,8 +100,8 @@
   height: 104%;
   background:
       radial-gradient(closest-side,
-                      rgba(66, 128, 255, .38),
-                      rgba(66, 128, 255, 0) 100%);
+                      rgba(70, 134, 255, .52),
+                      rgba(70, 134, 255, 0) 100%);
   animation-name: veil-a;
   animation-duration: 68s;
 }
@@ -113,8 +113,8 @@
   height: 92%;
   background:
       radial-gradient(closest-side,
-                      rgba(74, 206, 226, .20),
-                      rgba(74, 206, 226, 0) 100%);
+                      rgba(70, 212, 236, .34),
+                      rgba(70, 212, 236, 0) 100%);
   animation-name: veil-b;
   animation-duration: 92s;
 }
@@ -126,8 +126,8 @@
   height: 96%;
   background:
       radial-gradient(closest-side,
-                      rgba(112, 78, 232, .30),
-                      rgba(112, 78, 232, 0) 100%);
+                      rgba(206, 68, 202, .40),
+                      rgba(206, 68, 202, 0) 100%);
   animation-name: veil-c;
   animation-duration: 116s;
 }
