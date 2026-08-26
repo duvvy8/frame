@@ -30,6 +30,11 @@ inline constexpr Resource kResources[] = {
     {"settings.html", "text/html"},
     {"history.html", "text/html"},
     {"downloads.html", "text/html"},
+    {"bookmarks.html", "text/html"},
+    // The tab context menu. An ordinary internal page like any other, rendered
+    // off-screen into a layered popup window rather than into a tab.
+    {"menu.html", "text/html"},
+    {"menu.css", "text/css"},
     {"shell.css", "text/css"},
     {"shell.js", "text/javascript"},
     {"newtab.css", "text/css"},
@@ -37,6 +42,8 @@ inline constexpr Resource kResources[] = {
     {"sidebar.css", "text/css"},
     {"unreachable.css", "text/css"},
     {"internal.css", "text/css"},
+    {"pages.css", "text/css"},
+    {"internal.js", "text/javascript"},
     {"logo.svg", "image/svg+xml"},
     // Bundled, never fetched. A Google Fonts <link> would make Frame's own new
     // tab page phone home to a third party on every open, which is the exact

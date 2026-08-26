@@ -38,6 +38,15 @@ inline constexpr int kBookmarksHeight = 30;       // BOOKMARKS_HEIGHT
 inline constexpr int kSidebarTransitionMs = 210;  // SIDEBAR_TRANSITION_MS
 
 inline constexpr int kTabMinWidth = 95;           // TAB_MIN_WIDTH
+
+// NEW in the CEF implementation, with no counterpart in chrome-layout.js.
+//
+// kTabMinWidth is the width a tab PREFERS. It was being applied as a hard
+// floor, and eight tabs at 95px do not fit a 750px strip — so the strip
+// overflowed and carried the new-tab button out of the window with it. This is
+// the real floor: below it a tab stops being a target worth aiming at, so the
+// strip scrolls instead of shrinking further.
+inline constexpr int kTabFloorWidth = 54;
 inline constexpr int kTabMaxWidth = 190;          // TAB_MAX_WIDTH
 inline constexpr int kTabGap = 8;                 // TAB_GAP
 inline constexpr int kNewTabWidth = 34;           // NEW_TAB_WIDTH

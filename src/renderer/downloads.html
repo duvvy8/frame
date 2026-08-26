@@ -5,29 +5,186 @@
   <title>Downloads</title>
   <link rel="stylesheet" href="shell.css">
   <link rel="stylesheet" href="internal.css">
+  <link rel="stylesheet" href="pages.css">
 </head>
 <body class="internal">
-  <main class="sheet">
-    <p class="sheet-eyebrow">Frame</p>
-    <h1 class="sheet-title">Downloads</h1>
-    <p class="sheet-lede">
-      There is no download manager yet. Frame has no CefDownloadHandler, which
-      means a download is currently declined rather than saved somewhere you
-      cannot see.
-    </p>
+  <main class="page">
+    <div class="page-head">
+      <div class="page-titles">
+        <h1 class="page-title">Downloads</h1>
+        <p class="page-count" id="count"></p>
+      </div>
+      <button class="button" id="clear" type="button">Clear list</button>
+    </div>
 
-    <ul class="sheet-list">
-      <li><b>Where</b> Will ask, or use the system Downloads folder — decided
-        once, visibly, rather than silently.</li>
-      <li><b>Progress</b> Will live here and in the sidebar, not in a floating
-        shelf.</li>
-      <li><b>Incognito</b> Files are files; they persist. Only the record of
-        them will not.</li>
-    </ul>
-
-    <p class="sheet-note">
-      Ctrl+J opens this page.
-    </p>
+    <div id="list"></div>
   </main>
+
+  <script src="internal.js"></script>
+  <script>
+    (function () {
+      var F = window.FrameInternal;
+      var list = document.getElementById('list');
+      var count = document.getElementById('count');
+      var clear = document.getElementById('clear');
+
+      var STATE_LABEL = {
+        'in-progress': 'Downloading',
+        'complete': 'Complete',
+        'cancelled': 'Cancelled',
+        'interrupted': 'Interrupted'
+      };
+
+      // A downloads list is the one page here that changes while you are
+      // looking at it, so it polls — but only while something is actually in
+      // flight. A finished list costs nothing.
+      var poll = 0;
+
+      function icon() {
+        var box = F.el('div', 'row-icon');
+        box.setAttribute('aria-hidden', 'true');
+        box.innerHTML =
+          '<svg viewBox="0 0 16 16" width="12" height="12" ' +
+          'style="margin:3px;color:var(--text-faint)">' +
+          '<path d="M8 2.5 V10 M4.8 7 8 10.3 11.2 7" fill="none" ' +
+          'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" ' +
+          'stroke-linejoin="round"/>' +
+          '<path d="M3 12.5 h10" stroke="currentColor" stroke-width="1.3" ' +
+          'stroke-linecap="round"/></svg>';
+        return box;
+      }
+
+      function action(title, svg, danger, onClick) {
+        var button = F.el('button', 'row-action' + (danger ? ' is-danger' : ''));
+        button.type = 'button';
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.innerHTML = svg;
+        button.addEventListener('click', function (event) {
+          event.stopPropagation();
+          onClick();
+        });
+        return button;
+      }
+
+      function buildRow(item) {
+        var row = F.el('div', 'row');
+        row.appendChild(icon());
+
+        var main = F.el('div', 'row-main');
+        main.appendChild(F.el('div', 'row-title', item.filename || item.path));
+
+        var sub = item.state === 'in-progress' && item.total > 0
+          ? F.formatBytes(item.received) + ' of ' + F.formatBytes(item.total)
+          : (item.state === 'complete'
+              ? F.formatBytes(item.received) + ' · ' + F.hostOf(item.url)
+              : F.hostOf(item.url));
+        main.appendChild(F.el('div', 'row-sub', sub));
+
+        if (item.state === 'in-progress') {
+          var bar = F.el('div', 'progress');
+          var fill = F.el('div', 'progress-fill');
+          // scaleX, not width — see the note in pages.css. A total of zero is
+          // a download whose size the server never declared; the bar sits at
+          // zero rather than pretending to a percentage nobody knows.
+          var ratio = item.total > 0 ? Math.min(1, item.received / item.total) : 0;
+          fill.style.transform = 'scaleX(' + ratio + ')';
+          bar.appendChild(fill);
+          main.appendChild(bar);
+        }
+        row.appendChild(main);
+
+        var pill = F.el('span', 'state-pill', STATE_LABEL[item.state] || item.state);
+        if (item.state === 'complete') { pill.classList.add('is-complete'); }
+        if (item.state === 'cancelled' || item.state === 'interrupted') {
+          pill.classList.add('is-failed');
+        }
+        row.appendChild(pill);
+
+        var actions = F.el('div', 'row-actions');
+        if (item.state === 'complete') {
+          actions.appendChild(action('Open file',
+            '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 8 h8 M9 5 12 8 9 11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            false,
+            function () { F.query('frame:downloads:open:' + item.path); }));
+          actions.appendChild(action('Show in folder',
+            '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M2 4.5 h4 l1.4 1.6 H14 v6.4 a1 1 0 0 1 -1 1 H3 a1 1 0 0 1 -1 -1 Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+            false,
+            function () { F.query('frame:downloads:reveal:' + item.path); }));
+        }
+        actions.appendChild(action('Remove from list',
+          '<svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 4 L12 12 M12 4 L4 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+          true,
+          function () {
+            row.classList.add('is-leaving');
+            row.addEventListener('animationend', function () { row.remove(); });
+            F.query('frame:downloads:forget:' + item.path).then(load);
+          }));
+        row.appendChild(actions);
+
+        // The whole row opens the file, once there is one.
+        if (item.state === 'complete') {
+          row.addEventListener('dblclick', function () {
+            F.query('frame:downloads:open:' + item.path);
+          });
+        }
+        return row;
+      }
+
+      function render(data) {
+        F.clear(list);
+        var items = (data && data.items) || [];
+        var active = 0;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].state === 'in-progress') { active++; }
+        }
+
+        count.textContent = items.length
+          ? (active ? active + ' in progress · ' + items.length + ' total'
+                    : items.length + (items.length === 1 ? ' file' : ' files'))
+          : '';
+        clear.disabled = items.length === 0;
+
+        if (!items.length) {
+          F.emptyState(list, 'Nothing downloaded yet',
+            'Files you download are saved to your system Downloads folder and ' +
+            'listed here. Clearing this list never deletes the files.');
+        } else {
+          var rows = F.el('div', 'rows');
+          for (var j = 0; j < items.length; j++) {
+            rows.appendChild(buildRow(items[j]));
+          }
+          list.appendChild(rows);
+        }
+
+        // Polling only while something is moving. A page that keeps asking
+        // after everything has finished is exactly the kind of idle work the
+        // rest of this browser goes out of its way to avoid.
+        clearTimeout(poll);
+        if (active) {
+          poll = setTimeout(load, 600);
+        }
+      }
+
+      function load() {
+        return F.query('frame:downloads:list')
+          .then(render)
+          .catch(function (err) {
+            clearTimeout(poll);
+            F.errorState(list, err.message);
+            count.textContent = '';
+          });
+      }
+
+      clear.addEventListener('click', function () {
+        // Records only. The files stay where they were saved — they are the
+        // user's, and tidying a list is not a request to delete them. The
+        // empty state says so, so this needs no confirmation.
+        F.query('frame:downloads:clear').then(load);
+      });
+
+      load();
+    })();
+  </script>
 </body>
 </html>

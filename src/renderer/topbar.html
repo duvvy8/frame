@@ -70,8 +70,17 @@
     </div>
 
     <!-- Tabs are rendered from the state the browser process pushes. This
-         markup is never the source of truth for what is open. -->
+         markup is never the source of truth for what is open.
+
+         The + button is a SIBLING of the scrolling list, not a child of it.
+         It used to be the last item in the same flex line as the tabs, and
+         tabs cannot shrink past their minimum — so once enough were open the
+         line overflowed and pushed the button out from under the pointer and
+         eventually off the window entirely. It did not stop working; it
+         stopped being anywhere you could click. Outside the scroller it is
+         pinned, and no number of tabs can move it. -->
     <div class="tabs" id="tabs">
+      <div class="tab-list" id="tab-list"></div>
       <button class="new-tab glass-button" id="new-tab" title="New tab"
               aria-label="New tab">
         <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
@@ -118,6 +127,7 @@
     (function () {
       var root = document.documentElement;
       var tabsEl = document.getElementById('tabs');
+      var listEl = document.getElementById('tab-list');
       var newTabButton = document.getElementById('new-tab');
       var C = FrameShell.CHANNEL;
 
@@ -132,10 +142,14 @@
         // flexible and spans most of the topbar, so reporting it whole would
         // leave almost nowhere to grab the window. The gaps between tabs stay
         // draggable, as they are in every other browser.
-        var controls = tabsEl.querySelectorAll('.tab, .new-tab');
-        for (var i = 0; i < controls.length; i++) {
-          list.push(controls[i]);
+        //
+        // Each tab is reported clipped to the scroller, so a tab that is half
+        // scrolled out cannot claim the pixels next to the strip.
+        var tabs = listEl.querySelectorAll('.tab');
+        for (var i = 0; i < tabs.length; i++) {
+          list.push({ el: tabs[i], clip: listEl });
         }
+        list.push(newTabButton);
         return list;
       }
 
@@ -154,12 +168,12 @@
 
       function tabStep() {
         var gap = parseFloat(
-          getComputedStyle(tabsEl).getPropertyValue('gap')) || 0;
+          getComputedStyle(listEl).getPropertyValue('gap')) || 0;
         return drag.el.getBoundingClientRect().width + gap;
       }
 
       function targetIndex(dx) {
-        var count = tabsEl.querySelectorAll('.tab').length;
+        var count = listEl.querySelectorAll('.tab').length;
         var delta = Math.round(dx / tabStep());
         return Math.max(0, Math.min(drag.index + delta, count - 1));
       }
@@ -169,7 +183,7 @@
       function applyDragTransforms(dx) {
         var step = tabStep();
         var target = targetIndex(dx);
-        var tabs = tabsEl.querySelectorAll('.tab');
+        var tabs = listEl.querySelectorAll('.tab');
 
         for (var i = 0; i < tabs.length; i++) {
           var el = tabs[i];
@@ -196,7 +210,7 @@
         var target = drag.target;
         var id = drag.id;
 
-        var tabs = tabsEl.querySelectorAll('.tab');
+        var tabs = listEl.querySelectorAll('.tab');
         for (var i = 0; i < tabs.length; i++) {
           tabs[i].style.transform = '';
           tabs[i].classList.remove('is-dragging', 'is-shifting');
@@ -232,7 +246,7 @@
           }
           drag.moved = true;
           drag.el.classList.add('is-dragging');
-          var all = tabsEl.querySelectorAll('.tab');
+          var all = listEl.querySelectorAll('.tab');
           for (var i = 0; i < all.length; i++) {
             if (all[i] !== drag.el) {
               all[i].classList.add('is-shifting');
@@ -283,6 +297,24 @@
         });
         el.appendChild(close);
 
+        // The tab context menu.
+        //
+        // Only the anchor is sent. WHICH items the menu contains, and which of
+        // them are enabled, is a fact about the browser's state — deciding it
+        // here would decide it from a copy of that state which is by
+        // definition a push behind.
+        el.addEventListener('contextmenu', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          // Anchored to the tab's bottom-left rather than to the pointer, so
+          // repeated right-clicks put the menu in the same place and the first
+          // item is never under the cursor that opened it.
+          var rect = el.getBoundingClientRect();
+          FrameShell.send(C.tabMenu,
+                          tab.id + ':' + Math.round(rect.left) + ':' +
+                          Math.round(rect.bottom + 2));
+        });
+
         el.addEventListener('mousedown', function (event) {
           // Middle-click closes, as everywhere else.
           if (event.button === 1) {
@@ -296,12 +328,19 @@
           // Select on press, not on release: it matches every other browser,
           // and it means a tab you start dragging is already the active one
           // rather than snapping active when you let go.
-          if (!isActive) {
+          //
+          // Read from the ELEMENT, not from the isActive this handler was
+          // built with. Tabs are reconciled in place rather than rebuilt, so
+          // that value is frozen at the moment the element was created — a tab
+          // that was active then and is not now had a handler permanently
+          // convinced it was still active, and clicking it did nothing at all.
+          // Most visibly on a sleeping tab, which then could not be woken.
+          if (!el.classList.contains('is-active')) {
             FrameShell.send(C.tabSelect, tab.id);
           }
 
           var index = Array.prototype.indexOf.call(
-            tabsEl.querySelectorAll('.tab'), el);
+            listEl.querySelectorAll('.tab'), el);
           drag = {
             id: tab.id,
             el: el,
@@ -324,10 +363,25 @@
         if (titleEl.textContent !== title) {
           titleEl.textContent = title;
         }
-        if (el.title !== title) {
-          el.title = title;
+        // The tooltip says WHY a tab looks different, which the dimming on its
+        // own cannot. A sleeping tab that just looks faded reads as broken.
+        var hint = tab.asleep ? title + ' — sleeping' : title;
+        if (tab.muted) {
+          hint += ' — muted';
+        }
+        if (el.title !== hint) {
+          el.title = hint;
+        }
+        // Mirrored onto the element so anything reading the strip - the drag
+        // logic, and the test harness - can tell which tab is which without a
+        // second source of truth for it.
+        if (el.dataset.tabUrl !== tab.url) {
+          el.dataset.tabUrl = tab.url || '';
         }
         el.classList.toggle('is-active', isActive);
+        el.classList.toggle('is-asleep', !!tab.asleep);
+        el.classList.toggle('is-muted', !!tab.muted);
+        el.classList.toggle('is-pinned-awake', !!tab.neverSleep);
         el.querySelector('.tab-dot').classList.toggle('is-loading', !!tab.loading);
       }
 
@@ -345,7 +399,7 @@
       // a background tab happens to finish loading.
       function renderTabs(state) {
         var byId = {};
-        var present = tabsEl.querySelectorAll('.tab');
+        var present = listEl.querySelectorAll('.tab');
         var i;
         for (i = 0; i < present.length; i++) {
           // Leaving already means gone as far as reconciliation is concerned;
@@ -372,6 +426,10 @@
           gone.classList.add('is-leaving');
           gone.addEventListener('animationend', function (event) {
             event.currentTarget.remove();
+            // The strip has just closed up by a whole tab's width, so how
+            // crowded it is and where the active tab sits have both changed.
+            applyDensity();
+            keepActiveTabVisible();
             publishDragRegions();
           });
         }
@@ -386,15 +444,30 @@
             syncTab(el, tab, isActive);
           } else {
             el = buildTab(tab, isActive);
+            // Through the same path an update takes, so a tab built from a
+            // push that already says it is asleep or muted looks right on its
+            // very first frame instead of correcting itself on the next one.
+            syncTab(el, tab, isActive);
             el.classList.add('is-entering');
             // One frame on the collapsed keyframe start, then release it —
             // without the reflow the element is born mid-animation and simply
             // appears.
             void el.offsetWidth;
             el.addEventListener('animationend', function (event) {
-              if (event.animationName === 'tab-in') {
-                event.currentTarget.classList.remove('is-entering');
+              if (event.animationName !== 'tab-in') {
+                return;
               }
+              event.currentTarget.classList.remove('is-entering');
+              // AGAIN, now that the tab has its real width.
+              //
+              // A tab enters by growing from zero, so at the moment it is
+              // inserted it takes no space and the strip has nothing to
+              // scroll for. On a full strip that left the tab just opened —
+              // which is the active one — scrolled off the right-hand end,
+              // showing a two-pixel sliver of its own accent border.
+              applyDensity();
+              keepActiveTabVisible();
+              publishDragRegions();
             });
           }
           // Reordering: only move an element that is not already in place, so
@@ -403,25 +476,77 @@
           // Tabs on their way out are stepped OVER rather than inserted
           // around, so they keep the slot they are collapsing out of and the
           // survivors close the gap as it shrinks.
-          var wanted = previous ? previous.nextSibling : tabsEl.firstChild;
+          var wanted = previous ? previous.nextSibling : listEl.firstChild;
           while (wanted && wanted.classList &&
                  wanted.classList.contains('is-leaving')) {
             wanted = wanted.nextSibling;
           }
           if (wanted !== el) {
-            tabsEl.insertBefore(el, wanted);
+            listEl.insertBefore(el, wanted);
           }
           previous = el;
         }
 
-        // The + button stays last however the strip was reordered above. A tab
-        // collapsing at the end of the strip is still before it, so the button
-        // slides left as that tab closes rather than waiting for it to vanish.
-        tabsEl.appendChild(newTabButton);
+        applyDensity();
+        keepActiveTabVisible();
 
         // Tab rectangles just moved, so the draggable strip did too.
         publishDragRegions();
       }
+
+      // How crowded the strip is, measured rather than guessed from a tab
+      // count — the same number of tabs is roomy in a wide window and cramped
+      // in a narrow one.
+      //
+      //   is-compact  tabs no longer fit; the strip scrolls, and inactive tabs
+      //               give up their close glyph
+      //   is-tight    tabs are down near the floor, where a title renders as
+      //               one letter and an ellipsis. The dot alone says more, so
+      //               the title goes and the dot centres — which is what every
+      //               other browser does with the favicon at this width.
+      function applyDensity() {
+        var overflowing = listEl.scrollWidth > listEl.clientWidth + 1;
+        listEl.classList.toggle('is-compact', overflowing);
+
+        var first = listEl.querySelector('.tab');
+        var width = first ? first.getBoundingClientRect().width : 999;
+        listEl.classList.toggle('is-tight', overflowing && width <= 76);
+      }
+
+      // A tab scrolled out of sight is a tab that cannot be clicked, and the
+      // active one is the one that must never be. Called after every render
+      // and after the strip resizes.
+      //
+      // MASK_EDGE is not slop: the strip fades its last pixels out, so a tab
+      // scrolled to exactly the edge is technically visible and practically
+      // invisible. Clearing the fade is what makes "in view" mean it.
+      var MASK_EDGE = 18;
+
+      function keepActiveTabVisible() {
+        var active = listEl.querySelector('.tab.is-active');
+        if (!active || drag) {
+          return;
+        }
+        var strip = listEl.getBoundingClientRect();
+        var rect = active.getBoundingClientRect();
+        if (rect.left < strip.left + MASK_EDGE) {
+          listEl.scrollLeft -= (strip.left + MASK_EDGE - rect.left);
+        } else if (rect.right > strip.right - MASK_EDGE) {
+          listEl.scrollLeft += (rect.right - strip.right + MASK_EDGE);
+        }
+      }
+
+      // The wheel over a crowded strip scrolls it, which is the only way to
+      // reach a tab that has scrolled off. deltaY, because a mouse has no
+      // horizontal wheel and this is the axis that exists.
+      listEl.addEventListener('wheel', function (event) {
+        if (listEl.scrollWidth <= listEl.clientWidth) {
+          return;
+        }
+        event.preventDefault();
+        listEl.scrollLeft += (event.deltaX || event.deltaY);
+        publishDragRegions();
+      }, { passive: false });
 
       function applyBrowserState(state) {
         renderTabs(state);
@@ -481,8 +606,15 @@
         }
       }).catch(function () { /* surface still renders without the bridge */ });
 
+      // A resize changes how crowded the strip is without any state push, so
+      // the density classes and the active tab's visibility have to be
+      // recomputed here too — not only when the tabs themselves change.
       if (typeof ResizeObserver === 'function') {
-        new ResizeObserver(publishDragRegions).observe(document.body);
+        new ResizeObserver(function () {
+          applyDensity();
+          keepActiveTabVisible();
+          publishDragRegions();
+        }).observe(document.body);
       }
     })();
   </script>

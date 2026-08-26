@@ -24,6 +24,9 @@
     tabClose: 'tab:close:',
     tabSelect: 'tab:select:',
     tabReorder: 'tab:reorder:',
+    tabMenu: 'tab:menu:',
+    tabSleep: 'tab:sleep:',
+    tabWake: 'tab:wake:',
     navBack: 'nav:back',
     navForward: 'nav:forward',
     navReload: 'nav:reload',
@@ -92,6 +95,7 @@
         px('--shell-inset', layout.shellInset);
         px('--viewport-radius', layout.viewportRadius);
         px('--tab-min-width', layout.tabMinWidth);
+        px('--tab-floor', layout.tabFloorWidth);
         px('--tab-max-width', layout.tabMaxWidth);
         px('--tab-gap', layout.tabGap);
         px('--new-tab-width', layout.newTabWidth);
@@ -114,19 +118,42 @@
   // Tells the window which parts of the caption strip must NOT drag it.
   // Only the surface knows where its controls ended up after layout, so it has
   // to report them rather than C++ guessing.
+  //
+  // An entry may be a bare element, or { el: node, clip: node } for one that
+  // lives inside a scroller. The clip matters: a tab scrolled half out of the
+  // tab strip still reports its full rectangle, and the part hanging outside
+  // would claim window-drag exclusion over whatever is next to the strip —
+  // which is the caption buttons. Intersecting with the scroller means a
+  // region is only ever claimed where the control is actually visible.
   function reportDragRegions(elements) {
     var parts = [];
     for (var i = 0; i < elements.length; i++) {
-      var el = elements[i];
+      var entry = elements[i];
+      if (!entry) {
+        continue;
+      }
+      var el = entry.el || entry;
+      var clip = entry.clip;
       if (!el) {
         continue;
       }
       var r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) {
+      var left = r.left;
+      var top = r.top;
+      var right = r.right;
+      var bottom = r.bottom;
+      if (clip) {
+        var c = clip.getBoundingClientRect();
+        left = Math.max(left, c.left);
+        top = Math.max(top, c.top);
+        right = Math.min(right, c.right);
+        bottom = Math.min(bottom, c.bottom);
+      }
+      if (right - left <= 0 || bottom - top <= 0) {
         continue;
       }
-      parts.push(Math.round(r.left) + ',' + Math.round(r.top) + ',' +
-                 Math.round(r.width) + ',' + Math.round(r.height));
+      parts.push(Math.round(left) + ',' + Math.round(top) + ',' +
+                 Math.round(right - left) + ',' + Math.round(bottom - top));
     }
     // Flat list rather than JSON so the browser process needs no parser.
     return query(CHANNEL.dragRegions + parts.join(';'));

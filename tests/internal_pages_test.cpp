@@ -72,11 +72,12 @@ TEST_CASE("Traversal cannot be expressed", "[scheme][security]") {
 
 TEST_CASE("Anything not named is refused", "[scheme][security]") {
   SECTION("an unknown host has no page") {
-    // settings and history used to stand here, as hosts that did not exist
-    // yet. They do now, so they prove nothing about refusal — these do.
-    CHECK(Lookup("bookmarks", "") == nullptr);
+    // settings, history and bookmarks have each stood here in turn, as hosts
+    // that did not exist yet. They all do now, so they prove nothing about
+    // refusal — these do.
     CHECK(Lookup("extensions", "") == nullptr);
     CHECK(Lookup("flags", "") == nullptr);
+    CHECK(Lookup("permissions", "") == nullptr);
     CHECK(Lookup("", "") == nullptr);
   }
 
@@ -87,7 +88,11 @@ TEST_CASE("Anything not named is refused", "[scheme][security]") {
     CHECK(Lookup("settings", "") != nullptr);
     CHECK(Lookup("history", "") != nullptr);
     CHECK(Lookup("downloads", "") != nullptr);
+    CHECK(Lookup("bookmarks", "") != nullptr);
     CHECK(Lookup("newtab", "") != nullptr);
+    // The context menu is served over frame:// like everything else, which is
+    // what gives it a real origin and access to the bridge.
+    CHECK(Lookup("menu", "") != nullptr);
   }
 
   SECTION("a real file that is simply not on the list") {

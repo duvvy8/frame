@@ -42,6 +42,10 @@ const char kCommandTabClose[] = "tab:close:";
 const char kCommandTabSelect[] = "tab:select:";
 // Followed by "<id>:<index>".
 const char kCommandTabReorder[] = "tab:reorder:";
+// Followed by "<id>:<x>:<y>", the anchor in SURFACE DIPs.
+const char kCommandTabMenu[] = "tab:menu:";
+const char kCommandTabSleep[] = "tab:sleep:";
+const char kCommandTabWake[] = "tab:wake:";
 const char kCommandNavBack[] = "nav:back";
 const char kCommandNavForward[] = "nav:forward";
 const char kCommandNavReload[] = "nav:reload";
@@ -80,8 +84,8 @@ std::vector<layout::IntRect> ParseRegions(const std::string& payload) {
 // Answers the two things a chrome surface cannot know on its own.
 class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
  public:
-  SurfaceQueryHandler(MainWindow* window, SurfaceId id)
-      : window_(window), id_(id) {}
+  SurfaceQueryHandler(CefRefPtr<WindowRef> window, SurfaceId id)
+      : window_ref_(window), id_(id) {}
 
   bool OnQuery(CefRefPtr<CefBrowser> browser,
                CefRefPtr<CefFrame> frame,
@@ -101,6 +105,7 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
            << ",\"viewportRadius\":" << layout::kViewportRadius
            << ",\"bookmarksHeight\":" << layout::kBookmarksHeight
            << ",\"tabMinWidth\":" << layout::kTabMinWidth
+           << ",\"tabFloorWidth\":" << layout::kTabFloorWidth
            << ",\"tabMaxWidth\":" << layout::kTabMaxWidth
            << ",\"tabGap\":" << layout::kTabGap
            << ",\"newTabWidth\":" << layout::kNewTabWidth
@@ -118,13 +123,13 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
       // at its own origin and the glow would visibly break at every seam.
       // Reported in DIPs, because these become CSS pixel values.
       const CefRect bounds =
-          window_ ? window_->SurfaceBoundsDip(id_) : CefRect(0, 0, 0, 0);
+          window() ? window()->SurfaceBoundsDip(id_) : CefRect(0, 0, 0, 0);
       std::ostringstream json;
       json << "{\"surfaceX\":" << bounds.x << ",\"surfaceY\":" << bounds.y
            << ",\"surfaceWidth\":" << bounds.width
            << ",\"surfaceHeight\":" << bounds.height << ",\"windowWidth\":"
-           << (window_ ? window_->ClientWidthDip() : 0) << ",\"windowHeight\":"
-           << (window_ ? window_->ClientHeightDip() : 0) << "}";
+           << (window() ? window()->ClientWidthDip() : 0) << ",\"windowHeight\":"
+           << (window() ? window()->ClientHeightDip() : 0) << "}";
       callback->Success(json.str());
       return true;
     }
@@ -132,51 +137,81 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
     // Window commands. These run on the CEF UI thread, which is the same
     // thread the window's message loop runs on, so touching the HWND directly
     // here is safe.
-    if (window_) {
+    if (window()) {
       if (name == kQueryWindowState) {
         std::ostringstream json;
         json << "{\"maximized\":"
-             << (window_->IsWindowMaximized() ? "true" : "false") << "}";
+             << (window()->IsWindowMaximized() ? "true" : "false") << "}";
         callback->Success(json.str());
         return true;
       }
       if (name == kCommandMinimize) {
-        window_->Minimize();
+        window()->Minimize();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandMaximize) {
-        window_->ToggleMaximize();
+        window()->ToggleMaximize();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandClose) {
-        window_->CloseWindow();
+        window()->CloseWindow();
         callback->Success("ok");
         return true;
       }
       if (name == kQueryBrowserState) {
-        callback->Success(window_->BrowserStateJson());
+        callback->Success(window()->BrowserStateJson());
         return true;
       }
       if (name == kCommandSidebarToggle) {
-        window_->ToggleSidebar();
+        window()->ToggleSidebar();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandTabCreate) {
-        window_->CreateTab(std::string(), /*activate=*/true);
+        window()->CreateTab(std::string(), /*activate=*/true);
         callback->Success("ok");
         return true;
       }
       if (StartsWith(name, kCommandTabClose)) {
-        window_->CloseTab(std::atoi(name.c_str() + std::strlen(kCommandTabClose)));
+        window()->CloseTab(std::atoi(name.c_str() + std::strlen(kCommandTabClose)));
         callback->Success("ok");
         return true;
       }
       if (StartsWith(name, kCommandTabSelect)) {
-        window_->SelectTab(
+        window()->SelectTab(
             std::atoi(name.c_str() + std::strlen(kCommandTabSelect)));
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandTabMenu)) {
+        // "<id>:<x>:<y>". Parsed defensively rather than trusted: this arrives
+        // from a renderer, and a malformed payload should cost one menu that
+        // did not open, never a crash.
+        const std::string payload = name.substr(std::strlen(kCommandTabMenu));
+        std::istringstream parts(payload);
+        std::string id_text;
+        std::string x_text;
+        std::string y_text;
+        if (std::getline(parts, id_text, ':') &&
+            std::getline(parts, x_text, ':') && std::getline(parts, y_text)) {
+          window()->ShowTabContextMenu(std::atoi(id_text.c_str()),
+                                       std::atoi(x_text.c_str()),
+                                       std::atoi(y_text.c_str()));
+        }
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandTabSleep)) {
+        window()->SleepTab(
+            std::atoi(name.c_str() + std::strlen(kCommandTabSleep)));
+        callback->Success("ok");
+        return true;
+      }
+      if (StartsWith(name, kCommandTabWake)) {
+        window()->WakeTab(
+            std::atoi(name.c_str() + std::strlen(kCommandTabWake)));
         callback->Success("ok");
         return true;
       }
@@ -185,34 +220,34 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
             name.substr(std::strlen(kCommandTabReorder));
         const size_t split = payload.find(':');
         if (split != std::string::npos) {
-          window_->ReorderTab(std::atoi(payload.substr(0, split).c_str()),
+          window()->ReorderTab(std::atoi(payload.substr(0, split).c_str()),
                               std::atoi(payload.substr(split + 1).c_str()));
         }
         callback->Success("ok");
         return true;
       }
       if (name == kCommandNavBack) {
-        window_->GoBack();
+        window()->GoBack();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandNavForward) {
-        window_->GoForward();
+        window()->GoForward();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandNavReload) {
-        window_->Reload();
+        window()->Reload();
         callback->Success("ok");
         return true;
       }
       if (name == kCommandNavStop) {
-        window_->StopLoad();
+        window()->StopLoad();
         callback->Success("ok");
         return true;
       }
       if (StartsWith(name, kCommandNavGo)) {
-        window_->Navigate(name.substr(std::strlen(kCommandNavGo)));
+        window()->Navigate(name.substr(std::strlen(kCommandNavGo)));
         callback->Success("ok");
         return true;
       }
@@ -222,15 +257,15 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
             name.substr(std::strlen(kCommandFavoriteAdd));
         const size_t tab = payload.find('\t');
         if (tab == std::string::npos) {
-          window_->AddFavorite(payload, std::string());
+          window()->AddFavorite(payload, std::string());
         } else {
-          window_->AddFavorite(payload.substr(0, tab), payload.substr(tab + 1));
+          window()->AddFavorite(payload.substr(0, tab), payload.substr(tab + 1));
         }
         callback->Success("ok");
         return true;
       }
       if (StartsWith(name, kCommandFavoriteRemove)) {
-        window_->RemoveFavorite(name.substr(std::strlen(kCommandFavoriteRemove)));
+        window()->RemoveFavorite(name.substr(std::strlen(kCommandFavoriteRemove)));
         callback->Success("ok");
         return true;
       }
@@ -240,7 +275,7 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
             name.substr(std::strlen(kCommandFavoriteMove));
         const size_t split = payload.find(':');
         if (split != std::string::npos) {
-          window_->MoveFavorite(std::atoi(payload.substr(0, split).c_str()),
+          window()->MoveFavorite(std::atoi(payload.substr(0, split).c_str()),
                                 std::atoi(payload.substr(split + 1).c_str()));
         }
         callback->Success("ok");
@@ -250,7 +285,7 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
         // Only the topbar owns the caption strip; a stray report from another
         // surface must not decide where the window can be dragged.
         if (id_ == SurfaceId::kTopbar) {
-          window_->SetDragExclusions(
+          window()->SetDragExclusions(
               ParseRegions(name.substr(std::strlen(kCommandDragRegions))));
         }
         callback->Success("ok");
@@ -262,14 +297,18 @@ class SurfaceQueryHandler : public CefMessageRouterBrowserSide::Handler {
   }
 
  private:
-  MainWindow* window_;  // Not owned; outlives the surface.
+  // Null once the window is gone. A query can be in flight across the
+  // window's destruction, so this is checked per call rather than cached.
+  MainWindow* window() const { return window_ref_->get(); }
+
+  CefRefPtr<WindowRef> window_ref_;
   const SurfaceId id_;
 };
 
 }  // namespace
 
-ChromeSurface::ChromeSurface(MainWindow* window, SurfaceId id)
-    : window_(window), id_(id) {
+ChromeSurface::ChromeSurface(CefRefPtr<WindowRef> window, SurfaceId id)
+    : window_ref_(window), id_(id) {
   CefMessageRouterConfig config;  // Defaults: window.cefQuery / cefQueryCancel.
   router_ = CefMessageRouterBrowserSide::Create(config);
   query_handler_.reset(new SurfaceQueryHandler(window, id));
@@ -333,15 +372,15 @@ bool ChromeSurface::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
     return false;
   }
 
-  return window_ && window_->ExecuteCommand(command);
+  return window() && window()->ExecuteCommand(command);
 }
 
 bool ChromeSurface::GetScreenInfo(CefRefPtr<CefBrowser> browser,
                                   CefScreenInfo& screen_info) {
-  if (!window_) {
+  if (!window()) {
     return false;
   }
-  screen_info.device_scale_factor = window_->DeviceScale();
+  screen_info.device_scale_factor = window()->DeviceScale();
   return true;
 }
 
@@ -349,7 +388,7 @@ void ChromeSurface::GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) {
   // DIPs, not pixels: CEF multiplies by the device scale factor above to get
   // the bitmap it hands back through OnPaint.
   const CefRect bounds =
-      window_ ? window_->SurfaceBoundsDip(id_) : CefRect(0, 0, 1, 1);
+      window() ? window()->SurfaceBoundsDip(id_) : CefRect(0, 0, 1, 1);
   // CEF rejects an empty view, so never report zero in either axis.
   rect.x = 0;
   rect.y = 0;
@@ -365,22 +404,25 @@ void ChromeSurface::OnPaint(CefRefPtr<CefBrowser> browser,
                             int height) {
   // PET_POPUP is for select dropdowns, composited separately. No surface uses
   // one yet.
-  if (type != PET_VIEW || !window_) {
+  if (type != PET_VIEW || !window()) {
     return;
   }
-  window_->OnSurfacePaint(id_, buffer, width, height);
+  window()->OnSurfacePaint(id_, buffer, width, height);
 }
 
 void ChromeSurface::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
-  if (window_) {
-    window_->SetSurfaceBrowser(id_, browser);
+  if (window()) {
+    window()->SetSurfaceBrowser(id_, browser);
   }
 }
 
 void ChromeSurface::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
   router_->OnBeforeClose(browser);
-  if (window_) {
-    window_->SetSurfaceBrowser(id_, nullptr);
+  if (window()) {
+    // Not SetSurfaceBrowser(nullptr): the window also has to learn that one
+    // more of the browsers it is waiting on during a close has finished, and
+    // clearing the pointer alone tells it nothing about that.
+    window()->OnSurfaceClosed(id_);
   }
 }
 

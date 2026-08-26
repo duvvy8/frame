@@ -133,6 +133,30 @@ const filter::Engine& Get() {
   return MutableEngine();
 }
 
+// The on/off switch, as an ATOMIC GATE rather than a mutable engine.
+//
+// The engine itself is deliberately immutable after startup — see the note in
+// the header: it is read from the IO thread on every request, so anything that
+// could rewrite it would be a data race per resource load. Clearing the rules
+// to "turn blocking off" would be exactly that.
+//
+// A bool checked before the engine is consulted has the same effect and none
+// of the hazard: the writer is the UI thread, the readers are IO threads, and
+// a request that straddles the flip is blocked or not blocked by whichever
+// value it happened to read. Both answers are correct for that instant.
+std::atomic<bool>& EnabledFlag() {
+  static std::atomic<bool> enabled{true};
+  return enabled;
+}
+
+bool enabled() {
+  return EnabledFlag().load(std::memory_order_relaxed);
+}
+
+void set_enabled(bool value) {
+  EnabledFlag().store(value, std::memory_order_relaxed);
+}
+
 std::size_t total_blocked() {
   return Counter().load(std::memory_order_relaxed);
 }

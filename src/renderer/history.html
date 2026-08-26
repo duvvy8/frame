@@ -5,29 +5,172 @@
   <title>History</title>
   <link rel="stylesheet" href="shell.css">
   <link rel="stylesheet" href="internal.css">
+  <link rel="stylesheet" href="pages.css">
 </head>
 <body class="internal">
-  <main class="sheet">
-    <p class="sheet-eyebrow">Frame</p>
-    <h1 class="sheet-title">History</h1>
-    <p class="sheet-lede">
-      Frame does not record browsing history yet. Not as a feature — there is
-      simply no store behind this page. Nothing has been kept, so there is
-      nothing to show you.
-    </p>
+  <main class="page">
+    <div class="page-head">
+      <div class="page-titles">
+        <h1 class="page-title">History</h1>
+        <p class="page-count" id="count"></p>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor"
+                  stroke-width="1.3"/>
+          <path d="M10.4 10.4 L14 14" stroke="currentColor" stroke-width="1.3"
+                stroke-linecap="round"/>
+        </svg>
+        <input id="search" type="search" placeholder="Search history"
+               autocomplete="off" spellcheck="false" aria-label="Search history">
+      </label>
+      <button class="button is-danger" id="clear" type="button">Clear…</button>
+    </div>
 
-    <ul class="sheet-list">
-      <li><b>Per tab</b> Back and forward already work, from Chromium's own
-        in-memory navigation list. Alt+Left and Alt+Right.</li>
-      <li><b>On disk</b> Nothing is written. When it is, it will be local,
-        readable, and deletable from here.</li>
-      <li><b>Incognito</b> Will never be recorded, whatever this page grows
-        into.</li>
-    </ul>
-
-    <p class="sheet-note">
-      Ctrl+H opens this page.
-    </p>
+    <div id="list"></div>
   </main>
+
+  <script src="internal.js"></script>
+  <script>
+    (function () {
+      var F = window.FrameInternal;
+      var list = document.getElementById('list');
+      var count = document.getElementById('count');
+      var search = document.getElementById('search');
+      var clear = document.getElementById('clear');
+
+      var DAY_MS = 86400000;
+      var lastQuery = '';
+
+      function icon(url) {
+        // The favicon is not fetched here. Frame caches icons for pinned sites
+        // only, and a history page that went and asked every domain in the
+        // list for its icon would make opening this page a burst of requests
+        // to everywhere you have ever been — which is the opposite of what a
+        // privacy-first browser's history page should do.
+        var box = F.el('div', 'row-icon');
+        box.setAttribute('aria-hidden', 'true');
+        return box;
+      }
+
+      function buildRow(entry) {
+        var row = F.el('div', 'row');
+
+        row.appendChild(icon(entry.url));
+
+        var main = F.el('div', 'row-main');
+        main.appendChild(F.el('div', 'row-title', entry.title || entry.url));
+        main.appendChild(F.el('div', 'row-sub', F.prettyUrl(entry.url)));
+        row.appendChild(main);
+
+        var meta = entry.visits > 1
+          ? F.formatWhen(entry.visitedAt) + ' · ' + entry.visits + '×'
+          : F.formatWhen(entry.visitedAt);
+        row.appendChild(F.el('div', 'row-meta', meta));
+
+        var actions = F.el('div', 'row-actions');
+        var forget = F.el('button', 'row-action is-danger');
+        forget.type = 'button';
+        forget.title = 'Remove from history';
+        forget.setAttribute('aria-label', 'Remove from history');
+        forget.innerHTML =
+          '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+          '<path d="M4 4 L12 12 M12 4 L4 12" stroke="currentColor" ' +
+          'stroke-width="1.4" stroke-linecap="round"/></svg>';
+        forget.addEventListener('click', function (event) {
+          event.stopPropagation();
+          // Removed from the view first, then from the store. The row
+          // collapsing immediately is what makes the list feel responsive;
+          // the reload afterwards is what makes it correct.
+          row.classList.add('is-leaving');
+          row.addEventListener('animationend', function () { row.remove(); });
+          F.query('frame:history:remove:' + entry.url).then(load);
+        });
+        actions.appendChild(forget);
+        row.appendChild(actions);
+
+        // The whole row navigates, which is what a history entry is for.
+        row.addEventListener('click', function () {
+          F.query('frame:open:' + entry.url);
+        });
+        return row;
+      }
+
+      function render(data) {
+        F.clear(list);
+        var entries = (data && data.entries) || [];
+        count.textContent = data
+          ? (lastQuery
+              ? entries.length + ' of ' + data.total + ' matching'
+              : data.total + (data.total === 1 ? ' page visited' : ' pages visited'))
+          : '';
+
+        if (!entries.length) {
+          F.emptyState(list,
+            lastQuery ? 'Nothing matches “' + lastQuery + '”' : 'No history yet',
+            lastQuery
+              ? 'Try a shorter search.'
+              : 'Pages you visit are recorded here. Private windows never are.');
+          return;
+        }
+
+        // Grouped by day, which is how anyone actually looks for something
+        // they saw earlier. The entries arrive newest-first, so a group starts
+        // wherever the day label changes.
+        var currentDay = null;
+        var rows = null;
+        for (var i = 0; i < entries.length; i++) {
+          var day = F.dayLabel(entries[i].visitedAt);
+          if (day !== currentDay) {
+            currentDay = day;
+            list.appendChild(F.el('h2', 'row-group', day));
+            rows = F.el('div', 'rows');
+            list.appendChild(rows);
+          }
+          rows.appendChild(buildRow(entries[i]));
+        }
+      }
+
+      function load() {
+        return F.query('frame:history:list:' + lastQuery)
+          .then(render)
+          .catch(function (err) {
+            F.errorState(list, err.message);
+            count.textContent = '';
+          });
+      }
+
+      search.addEventListener('input', F.debounce(function () {
+        lastQuery = search.value.trim();
+        load();
+      }, 140));
+
+      // Two-stage, and deliberately not a dialog.
+      //
+      // Frame's own pages cannot open a modal that the window would render
+      // correctly over the page, and a confirm() would be a system dialog in
+      // the middle of the browser's own UI. The button asking for a second
+      // click is the same protection with none of that — and it reverts on its
+      // own, so a stray first click does not leave a loaded gun on the page.
+      var armed = 0;
+      clear.addEventListener('click', function () {
+        if (Date.now() - armed > 4000) {
+          armed = Date.now();
+          clear.textContent = 'Clear everything?';
+          setTimeout(function () {
+            if (Date.now() - armed >= 4000) {
+              clear.textContent = 'Clear…';
+            }
+          }, 4100);
+          return;
+        }
+        armed = 0;
+        clear.textContent = 'Clear…';
+        F.query('frame:history:clear:0').then(load);
+      });
+
+      load();
+    })();
+  </script>
 </body>
 </html>

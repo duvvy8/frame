@@ -28,6 +28,16 @@ std::size_t Load(const std::string& profile_dir);
 /// The engine. Safe to call from any thread once Load() has returned.
 const filter::Engine& Get();
 
+/// Whether blocking is applied at all.
+///
+/// A GATE, not a way to empty the engine. The engine is read from the IO
+/// thread on every request and must never be written after startup — clearing
+/// its rules to "turn blocking off" would be a data race per resource load —
+/// so the switch is an atomic flag checked before the engine is consulted.
+/// Settable from the UI thread at any time; readable from any thread.
+bool enabled();
+void set_enabled(bool value);
+
 /// Total requests blocked since launch, across every tab.
 std::size_t total_blocked();
 void note_blocked();

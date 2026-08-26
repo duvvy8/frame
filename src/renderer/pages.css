@@ -1,0 +1,479 @@
+/* Frame — the real internal pages.
+ *
+ * internal.css styles the placeholder SHEETS these pages used to be — a title,
+ * a paragraph explaining what was coming, and a list of eventualities. This
+ * file styles what they became: settings that change behaviour, a history with
+ * entries in it, a downloads list backed by files on disk, and the pinned
+ * sites.
+ *
+ * The four share one shape deliberately — a header with a title and a single
+ * control, then one scrolling column of rows. Four pages that each invented
+ * their own layout would make the browser feel assembled rather than designed,
+ * which is the same argument shell.css makes about typefaces.
+ */
+
+.page {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(34px, 6vh, 64px) 28px 72px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.page-titles {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-title {
+  font-family: var(--font-brand);
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 300;
+  letter-spacing: .01em;
+  line-height: 1.05;
+  margin: 0;
+  color: var(--text);
+}
+
+.page-count {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- controls ----------------------------------------------------------- */
+
+.search {
+  flex: 0 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 16px;
+  background: var(--glass-fill);
+  transition:
+    border-color var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease);
+}
+
+.search:focus-within {
+  border-color: rgba(98, 168, 255, .55);
+  background: var(--glass-fill-hover);
+}
+
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  user-select: text;
+}
+
+.search input::placeholder {
+  color: var(--text-faint);
+}
+
+.button {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 15px;
+  background: var(--glass-fill);
+  color: var(--text-dim);
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease);
+}
+
+.button:hover {
+  background: var(--glass-fill-hover);
+  color: var(--text);
+}
+
+.button:active {
+  background: var(--glass-fill-strong);
+}
+
+.button:disabled {
+  opacity: .4;
+}
+
+.button.is-danger:hover {
+  border-color: rgba(255, 110, 90, .4);
+  background: rgba(255, 90, 70, .14);
+  color: #ff9f8c;
+}
+
+/* --- rows --------------------------------------------------------------- */
+
+.rows {
+  display: grid;
+  gap: 1px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  background: var(--glass-fill);
+  /* Colour only, and only on properties that are cheap to animate. These lists
+   * run to hundreds of rows; a transition on anything that triggers layout
+   * would make scrolling one of them visibly worse. */
+  transition: background var(--dur-1) var(--ease);
+}
+
+.row:hover {
+  background: var(--glass-fill-hover);
+}
+
+.row-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  /* An icon that has not loaded would leave a hole in the grid, so the box is
+   * always drawn even when it is empty. */
+  background: rgba(255, 255, 255, .05);
+}
+
+.row-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.row-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.row-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.row-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Row actions appear on hover, so a long list reads as content rather than as
+ * a column of buttons. They keep their space either way: revealing them by
+ * changing the layout would make every row jump as the pointer crossed it. */
+.row-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease);
+}
+
+.row:hover .row-actions,
+.row:focus-within .row-actions {
+  opacity: 1;
+}
+
+.row-action {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: default;
+  transition:
+    background var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease);
+}
+
+.row-action:hover {
+  background: rgba(255, 255, 255, .12);
+  color: var(--text);
+}
+
+.row-action.is-danger:hover {
+  background: rgba(255, 90, 70, .18);
+  color: #ff9f8c;
+}
+
+/* Day headings in the history list. */
+.row-group {
+  margin: 24px 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.row-group:first-child {
+  margin-top: 0;
+}
+
+/* --- progress ----------------------------------------------------------- */
+
+.progress {
+  position: relative;
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+
+.progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  /* transform, not width: this updates several times a second while a file is
+   * downloading, and animating width relayouts the row on every one. */
+  transform-origin: 0 50%;
+  transition: transform 180ms linear;
+}
+
+.state-pill {
+  padding: 2px 8px;
+  border-radius: 9px;
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, .07);
+  color: var(--text-faint);
+}
+
+.state-pill.is-complete { color: #7fd39a; background: rgba(70, 200, 120, .13); }
+.state-pill.is-failed   { color: #ff9f8c; background: rgba(255, 90, 70, .13); }
+
+/* --- settings ----------------------------------------------------------- */
+
+.section {
+  margin-top: 30px;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  background: var(--glass-fill);
+  transition: background var(--dur-1) var(--ease);
+}
+
+.setting:hover {
+  background: var(--glass-fill-hover);
+}
+
+.setting-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.setting-detail {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* A setting Frame does not yet let you change says so, rather than offering a
+ * control that moves and changes nothing. */
+.setting.is-readonly .setting-label {
+  color: var(--text-dim);
+}
+
+.setting-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* --- switch ------------------------------------------------------------- */
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 21px;
+  padding: 0;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .07);
+  cursor: default;
+  transition:
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  /* transform, so the knob slides on the compositor rather than relaying out
+   * the switch on every frame of the animation. */
+  transition:
+    transform var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease);
+}
+
+.switch[aria-checked="true"] {
+  background: rgba(98, 168, 255, .30);
+  border-color: rgba(98, 168, 255, .55);
+}
+
+.switch[aria-checked="true"]::after {
+  transform: translateX(17px);
+  background: var(--accent);
+}
+
+.switch:disabled {
+  opacity: .4;
+}
+
+/* --- number ------------------------------------------------------------- */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper input {
+  width: 56px;
+  height: 26px;
+  border: 1px solid var(--glass-hairline);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  outline: 0;
+  user-select: text;
+  transition: border-color var(--dur-2) var(--ease);
+}
+
+.stepper input:focus {
+  border-color: rgba(98, 168, 255, .55);
+}
+
+.stepper-unit {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* --- empty -------------------------------------------------------------- */
+
+.empty {
+  padding: 56px 20px;
+  text-align: center;
+  animation: sheet-rise var(--dur-4) var(--ease) both;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.empty-detail {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+.empty.is-error .empty-title {
+  color: #ff9f8c;
+}
+
+/* --- entrance ----------------------------------------------------------- */
+
+/* Rows arrive as one movement rather than as a queue. A stagger long enough to
+ * read across two hundred history entries would take most of a minute, so only
+ * the first handful are staggered and everything after them lands together. */
+.rows .row,
+.rows .setting {
+  animation: sheet-rise var(--dur-3) var(--ease) both;
+}
+
+.rows .row:nth-child(1), .rows .setting:nth-child(1) { animation-delay: 0ms; }
+.rows .row:nth-child(2), .rows .setting:nth-child(2) { animation-delay: 22ms; }
+.rows .row:nth-child(3), .rows .setting:nth-child(3) { animation-delay: 44ms; }
+.rows .row:nth-child(4), .rows .setting:nth-child(4) { animation-delay: 66ms; }
+.rows .row:nth-child(5), .rows .setting:nth-child(5) { animation-delay: 88ms; }
+.rows .row:nth-child(n+6),
+.rows .setting:nth-child(n+6) { animation-delay: 104ms; }
+
+/* A row being removed collapses rather than vanishing, so the list closing up
+ * reads as one thing leaving instead of everything below it jumping. */
+.row.is-leaving {
+  animation: row-out var(--dur-2) var(--ease-soft) both;
+  pointer-events: none;
+}
+
+@keyframes row-out {
+  from { opacity: 1; max-height: 64px; }
+  to   { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rows .row,
+  .rows .setting,
+  .empty {
+    animation: none;
+  }
+  .row.is-leaving {
+    animation-duration: 1ms;
+  }
+}

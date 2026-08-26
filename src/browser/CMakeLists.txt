@@ -47,6 +47,11 @@ set(FRAME_SRCS
   chrome_surface.h
   window_list.cc
   window_list.h
+  menu_surface.cc
+  menu_surface.h
+  browsing_data.cc
+  browsing_data.h
+  window_ref.h
   "${CMAKE_SOURCE_DIR}/src/frame_main_win.cc"
 )
 source_group(frame FILES ${FRAME_SRCS})
@@ -77,7 +82,10 @@ endif()
 add_dependencies(${CEF_TARGET} libcef_dll_wrapper)
 target_link_libraries(${CEF_TARGET} libcef_lib libcef_dll_wrapper
                       ${CEF_STANDARD_LIBS}
-                      dwmapi)
+                      dwmapi
+                      # ShellExecuteW: opening a downloaded file, and showing
+                      # one in Explorer, from the downloads page.
+                      shell32)
 
 # Our own headers ("browser/...", "shared/...") alongside CEF's, plus the
 # generated fingerprint-guard script.

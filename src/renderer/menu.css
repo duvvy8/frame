@@ -1,0 +1,214 @@
+/* Frame — the popup menu surface.
+ *
+ * Rendered off-screen and blitted into a layered window with per-pixel alpha,
+ * so everything here is really composited: the corner radius is a true
+ * antialiased curve and the shadow is a real shadow, not a painted rectangle.
+ *
+ * Two consequences follow from that and they drive the whole file:
+ *
+ *   1. The document background MUST be transparent. shell.css gives body an
+ *      opaque --bg, which would fill the layered window edge to edge and turn
+ *      the menu into a black box with a menu drawn inside it.
+ *   2. backdrop-filter has nothing to sample. A layered window composites over
+ *      the desktop, not over the page beneath it, so the blur the rest of
+ *      Frame's glass uses would blur nothing at all. This surface earns its
+ *      depth from an opaque, near-black fill with a lit rim instead — which is
+ *      the honest version of the same material rather than an effect that
+ *      silently does nothing.
+ *
+ * The structure follows Ember's menu — a 20px icon column, a flexible label, a
+ * right-aligned shortcut, 34px rows, hairline separators — because that
+ * structure is right and it is the one this user already reads fluently. The
+ * material is Frame's.
+ */
+
+html,
+body.menu-body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  /* See note 1. Nothing else may paint the document. */
+  background: transparent;
+}
+
+/* Kills the ambient shell field shell.css paints on every surface: it is a
+ * window-sized gradient and this window is 200px wide, so it arrives as a
+ * single flat colour with no relationship to anything. */
+body.menu-body::before,
+body.menu-body::after {
+  content: none;
+  display: none;
+}
+
+.menu-panel {
+  /* Matches PAD in menu.html. The window is the document, so the shadow needs
+   * room inside it or it is clipped off square at the edge. */
+  --menu-shadow-pad: 18px;
+
+  position: absolute;
+  left: var(--menu-shadow-pad);
+  top: var(--menu-shadow-pad);
+  min-width: 196px;
+  width: max-content;
+  max-width: 320px;
+  padding: 5px;
+  border-radius: 12px;
+
+  /* Opaque, and deliberately so — see note 2. Two stacked layers: a near-black
+   * base for legibility over anything, and a single soft highlight from the
+   * top-left so the panel reads as lit rather than as a flat swatch. */
+  background:
+    linear-gradient(148deg,
+                    rgba(255, 255, 255, .055) 0%,
+                    rgba(255, 255, 255, .012) 38%,
+                    rgba(255, 255, 255, 0) 62%),
+    #17171c;
+
+  box-shadow:
+    /* The rim. Brighter along the top edge, where the light is. */
+    inset 0 0 0 1px rgba(255, 255, 255, .085),
+    inset 0 1px 0 rgba(255, 255, 255, .10),
+    /* Two shadows, not one: a tight contact shadow that anchors the panel to
+     * whatever is under it, and a wide soft one that gives it height. A single
+     * shadow can do one or the other. */
+    0 2px 6px rgba(0, 0, 0, .34),
+    0 14px 34px rgba(0, 0, 0, .46);
+
+  /* The entrance. Scale from just under 1 with the origin at the anchor
+   * corner, so the panel grows out of the point that was clicked instead of
+   * appearing whole. Transform and opacity only — both composited, so this
+   * runs on the GPU and holds 60fps while a page is loading behind it. */
+  opacity: 0;
+  transform: translateY(-4px) scale(.965);
+  transform-origin: 6px 6px;
+  will-change: transform, opacity;
+}
+
+.menu-panel.is-open {
+  opacity: 1;
+  transform: none;
+  /* Ember's opening curve. A long tail with almost no overshoot: the panel
+   * arrives quickly and settles rather than springing, which is what keeps a
+   * menu feeling like a tool and not like a toy. */
+  transition:
+    opacity 150ms cubic-bezier(.16, 1, .3, 1),
+    transform 220ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.menu-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .88);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  cursor: default;
+  /* Colour only. A row that also moves makes the whole list feel loose as the
+   * pointer travels down it. */
+  transition:
+    background-color 90ms var(--ease),
+    color 90ms var(--ease);
+}
+
+/* One highlight rule for pointer and keyboard alike. is-focused is set by the
+ * script for both, so the two can never disagree about which row is current —
+ * which is what happens when :hover and a focus class are styled separately. */
+.menu-item.is-focused:not(:disabled) {
+  background: rgba(255, 255, 255, .085);
+  color: #fff;
+}
+
+.menu-item:active:not(:disabled) {
+  background: rgba(255, 255, 255, .13);
+}
+
+.menu-item:disabled {
+  color: rgba(255, 255, 255, .30);
+}
+
+/* Destructive rows read as destructive only once they are the one you are on.
+ * Colouring them permanently makes a menu look like a warning. */
+.menu-item.is-danger.is-focused:not(:disabled) {
+  background: rgba(255, 90, 70, .16);
+  color: #ff9f8c;
+}
+
+.menu-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 16px;
+  color: rgba(255, 255, 255, .62);
+}
+
+.menu-item.is-focused:not(:disabled) .menu-icon {
+  color: currentColor;
+}
+
+.menu-item:disabled .menu-icon {
+  color: rgba(255, 255, 255, .24);
+}
+
+.menu-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The shortcut is a reminder, not a control. Dimmer, smaller, and on the
+ * character grid so a column of them lines up. */
+.menu-shortcut {
+  padding-left: 16px;
+  color: rgba(255, 255, 255, .38);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.menu-item.is-focused:not(:disabled) .menu-shortcut {
+  color: rgba(255, 255, 255, .55);
+}
+
+.menu-item:disabled .menu-shortcut {
+  color: rgba(255, 255, 255, .20);
+}
+
+.menu-separator {
+  height: 7px;
+  display: grid;
+  place-items: center;
+}
+
+/* Fading at both ends rather than a full-width line: a hard rule to the edge
+ * cuts the panel in two, a fade groups without dividing. */
+.menu-separator::before {
+  content: '';
+  width: calc(100% - 18px);
+  height: 1px;
+  background: linear-gradient(90deg,
+                              rgba(255, 255, 255, 0),
+                              rgba(255, 255, 255, .10) 20%,
+                              rgba(255, 255, 255, .10) 80%,
+                              rgba(255, 255, 255, 0));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-panel {
+    transform: none;
+  }
+  .menu-panel.is-open {
+    transition: opacity 1ms linear;
+  }
+}

@@ -26,7 +26,7 @@ std::string SurfaceUrl(const char* host) {
 // One off-screen browser per chrome surface, composited by the window.
 // Independent surfaces mean one can repaint without touching the others.
 void CreateSurface(MainWindow* window, SurfaceId id, const char* host) {
-  CefRefPtr<ChromeSurface> surface(new ChromeSurface(window, id));
+  CefRefPtr<ChromeSurface> surface(new ChromeSurface(window->ref(), id));
 
   CefWindowInfo window_info;
   // Off-screen rendering: CEF hands us pixels instead of owning a child HWND,
@@ -80,6 +80,28 @@ MainWindow* Open(const MainWindow::Options& options) {
   CreateSurface(raw, SurfaceId::kTopbar, "topbar");
   CreateSurface(raw, SurfaceId::kSidebar, "sidebar");
   return raw;
+}
+
+void ForEach(const std::function<void(MainWindow*)>& fn) {
+  // Over a COPY of the raw pointers: `fn` may open or close a window, and
+  // either would invalidate an iterator over the list itself.
+  std::vector<MainWindow*> snapshot;
+  snapshot.reserve(All().size());
+  for (const std::unique_ptr<MainWindow>& item : All()) {
+    snapshot.push_back(item.get());
+  }
+  for (MainWindow* window : snapshot) {
+    // Re-checked against the live list: `fn` may have closed one of these.
+    const auto& list = All();
+    const bool alive = std::any_of(
+        list.begin(), list.end(),
+        [window](const std::unique_ptr<MainWindow>& item) {
+          return item.get() == window;
+        });
+    if (alive) {
+      fn(window);
+    }
+  }
 }
 
 void OnWindowDestroyed(MainWindow* window) {

@@ -18,6 +18,7 @@ add_executable(frame_tests
   internal_pages_test.cpp
   shortcuts_test.cpp
   tracker_filter_test.cpp
+  sleep_policy_test.cpp
 )
 
 target_link_libraries(frame_tests

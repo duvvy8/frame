@@ -5,32 +5,246 @@
   <title>Settings</title>
   <link rel="stylesheet" href="shell.css">
   <link rel="stylesheet" href="internal.css">
+  <link rel="stylesheet" href="pages.css">
 </head>
 <body class="internal">
-  <main class="sheet">
-    <p class="sheet-eyebrow">Frame</p>
-    <h1 class="sheet-title">Settings</h1>
-    <p class="sheet-lede">
-      Nothing here is configurable yet. What the browser already does, it does
-      because the code says so — these are the switches that will expose it.
-    </p>
+  <main class="page">
+    <div class="page-head">
+      <div class="page-titles">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-count" id="status">Reading current settings…</p>
+      </div>
+    </div>
 
-    <ul class="sheet-list">
-      <li><b>Telemetry</b> Already off, and never initialised rather than
-        disabled after the fact. This page will show exactly which Chromium
-        switches are applied.</li>
-      <li><b>Safe Browsing</b> Off. Its real-time mode sends visited URLs to
-        Google, so it will be an explicit opt-in with the tradeoff spelled
-        out — not a default.</li>
-      <li><b>Search engine</b> Google, hardcoded in the omnibox rule.</li>
-      <li><b>Tracker blocking</b> Part of the privacy layer, not yet built.</li>
-      <li><b>Request contexts</b> Per-tab isolation, not yet built. Incognito
-        windows already get their own in-memory context.</li>
-    </ul>
-
-    <p class="sheet-note">
-      Ctrl+I or Ctrl+Comma opens this page.
-    </p>
+    <!-- Rendered from what the browser process reports, never from markup.
+         A settings page whose controls are written in HTML shows the state the
+         page was authored with, not the state the browser is in — which is
+         exactly how a toggle ends up looking on while the thing it names is
+         off. Every row below is built from the reply to frame:settings:get. -->
+    <div id="sections"></div>
   </main>
+
+  <script src="internal.js"></script>
+  <script>
+    (function () {
+      var F = window.FrameInternal;
+      var sections = document.getElementById('sections');
+      var status = document.getElementById('status');
+
+      // The definition of every setting, in one place.
+      //
+      // `key` is what is stored and what is sent back; `effective` names the
+      // field in the browser's own report of what it is ACTUALLY doing. The
+      // two are shown together on purpose: a settings page that only echoes
+      // its own file cannot tell you that a setting failed to take effect.
+      var SETTINGS = [
+        {
+          section: 'Performance',
+          rows: [
+            {
+              key: 'sleep.enabled',
+              effective: 'sleepEnabled',
+              type: 'switch',
+              fallback: true,
+              label: 'Sleep inactive tabs',
+              detail: 'A sleeping tab loses its renderer process entirely, ' +
+                      'so the memory it held is returned. Selecting it loads ' +
+                      'the page again. Tabs playing audio, tabs with text ' +
+                      'typed into a form, and the tab you are looking at are ' +
+                      'never slept.'
+            },
+            {
+              key: 'sleep.idleMinutes',
+              effective: 'sleepIdleMinutes',
+              type: 'number',
+              fallback: 30,
+              min: 1,
+              max: 720,
+              unit: 'minutes',
+              label: 'Sleep after',
+              detail: 'How long a tab sits in the background before it is ' +
+                      'eligible.'
+            }
+          ]
+        },
+        {
+          section: 'Privacy',
+          rows: [
+            {
+              key: 'history.enabled',
+              effective: 'historyEnabled',
+              type: 'switch',
+              fallback: true,
+              label: 'Record browsing history',
+              detail: 'Visits are written to history.tsv in Frame’s ' +
+                      'profile folder — one tab-separated line each, ' +
+                      'readable and editable by hand. Private windows never ' +
+                      'record anything, whatever this is set to.'
+            },
+            {
+              key: 'trackers.enabled',
+              effective: 'trackersEnabled',
+              type: 'switch',
+              fallback: true,
+              label: 'Block trackers',
+              detail: 'Requests matching the bundled filter list are refused ' +
+                      'before they are made, rather than their results being ' +
+                      'hidden afterwards.'
+            }
+          ]
+        },
+        {
+          // Facts, not controls. Stated here because a settings page that
+          // silently omits what it cannot change leaves the user assuming the
+          // defaults are something else.
+          section: 'Already applied',
+          readonly: [
+            { label: 'Telemetry', value: 'Never initialised' },
+            { label: 'Safe Browsing', value: 'Off — its real-time mode sends visited URLs to Google' },
+            { label: 'Background networking', value: 'Disabled' },
+            { label: 'Hyperlink auditing', value: 'Disabled' },
+            { label: 'Search engine', value: 'Google' },
+            { label: 'Renderer sandbox', value: 'On' }
+          ]
+        }
+      ];
+
+      var state = { values: {}, effective: {} };
+
+      function currentValue(row) {
+        var stored = state.values[row.key];
+        if (stored === undefined) {
+          return row.fallback;
+        }
+        return row.type === 'number' ? Number(stored) : (stored === '1' || stored === 'true');
+      }
+
+      function write(key, value) {
+        status.textContent = 'Saving…';
+        return F.query('frame:settings:set:' + key + '=' + value)
+          .then(function (next) {
+            state = next || state;
+            render();
+            status.textContent = 'Saved.';
+          })
+          .catch(function (err) {
+            status.textContent = 'Could not save: ' + err.message;
+          });
+      }
+
+      function buildSwitch(row) {
+        var on = !!currentValue(row);
+        var button = F.el('button', 'switch');
+        button.type = 'button';
+        button.setAttribute('role', 'switch');
+        button.setAttribute('aria-checked', on ? 'true' : 'false');
+        button.setAttribute('aria-label', row.label);
+        button.addEventListener('click', function () {
+          // Flipped optimistically so the switch answers the pointer in the
+          // same frame it was clicked, then reconciled from the reply. A
+          // control that waits for a round trip before moving feels broken
+          // however fast the round trip is.
+          var next = button.getAttribute('aria-checked') !== 'true';
+          button.setAttribute('aria-checked', next ? 'true' : 'false');
+          write(row.key, next ? '1' : '0');
+        });
+        return button;
+      }
+
+      function buildNumber(row) {
+        var wrap = F.el('div', 'stepper');
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.min = row.min;
+        input.max = row.max;
+        input.value = currentValue(row);
+        input.setAttribute('aria-label', row.label);
+
+        function commit() {
+          var value = Math.round(Number(input.value));
+          if (!isFinite(value)) {
+            value = row.fallback;
+          }
+          value = Math.min(row.max, Math.max(row.min, value));
+          input.value = value;
+          write(row.key, String(value));
+        }
+        input.addEventListener('change', commit);
+        input.addEventListener('blur', commit);
+
+        wrap.appendChild(input);
+        if (row.unit) {
+          wrap.appendChild(F.el('span', 'stepper-unit', row.unit));
+        }
+        return wrap;
+      }
+
+      function buildRow(row) {
+        var el = F.el('div', 'setting');
+        var text = F.el('div');
+        text.appendChild(F.el('div', 'setting-label', row.label));
+        if (row.detail) {
+          text.appendChild(F.el('div', 'setting-detail', row.detail));
+        }
+
+        // What the browser is ACTUALLY doing, when it differs from what is
+        // stored. This is the row that would have caught a decorative toggle.
+        if (row.effective && state.effective) {
+          var live = state.effective[row.effective];
+          var stored = currentValue(row);
+          var agrees = row.type === 'number'
+            ? Number(live) === Number(stored)
+            : !!live === !!stored;
+          if (live !== undefined && !agrees) {
+            text.appendChild(F.el('div', 'setting-detail',
+              'Currently in effect: ' + live));
+          }
+        }
+
+        el.appendChild(text);
+        el.appendChild(row.type === 'number' ? buildNumber(row) : buildSwitch(row));
+        return el;
+      }
+
+      function buildReadonly(item) {
+        var el = F.el('div', 'setting is-readonly');
+        var text = F.el('div');
+        text.appendChild(F.el('div', 'setting-label', item.label));
+        el.appendChild(text);
+        el.appendChild(F.el('div', 'setting-value', item.value));
+        return el;
+      }
+
+      function render() {
+        F.clear(sections);
+        for (var i = 0; i < SETTINGS.length; i++) {
+          var group = SETTINGS[i];
+          var section = F.el('section', 'section');
+          section.appendChild(F.el('h2', 'section-title', group.section));
+          var rows = F.el('div', 'rows');
+          var list = group.rows || group.readonly || [];
+          for (var j = 0; j < list.length; j++) {
+            rows.appendChild(group.readonly ? buildReadonly(list[j])
+                                            : buildRow(list[j]));
+          }
+          section.appendChild(rows);
+          sections.appendChild(section);
+        }
+      }
+
+      F.query('frame:settings:get')
+        .then(function (next) {
+          state = next || state;
+          render();
+          status.textContent = state.effective && state.effective.incognito
+            ? 'Private window — history is never recorded here.'
+            : 'Changes apply immediately and survive a restart.';
+        })
+        .catch(function (err) {
+          F.errorState(sections, err.message);
+          status.textContent = '';
+        });
+    })();
+  </script>
 </body>
 </html>

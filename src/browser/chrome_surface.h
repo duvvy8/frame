@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "browser/window_ref.h"
 #include "include/cef_client.h"
 #include "include/cef_display_handler.h"
 #include "include/cef_keyboard_handler.h"
@@ -34,7 +35,7 @@ class ChromeSurface : public CefClient,
                       public CefDisplayHandler,
                       public CefKeyboardHandler {
  public:
-  ChromeSurface(MainWindow* window, SurfaceId id);
+  ChromeSurface(CefRefPtr<WindowRef> window, SurfaceId id);
 
   // CefClient
   CefRefPtr<CefRenderHandler> GetRenderHandler() override { return this; }
@@ -84,10 +85,13 @@ class ChromeSurface : public CefClient,
                         const CefString& source,
                         int line) override;
 
-  void Detach() { window_ = nullptr; }
-
  private:
-  MainWindow* window_;  // Not owned; cleared by Detach() during teardown.
+  // Null once the window is gone; see window_ref.h. A surface browser is
+  // off-screen, so its OnBeforeClose is the LAST thing CEF says about it and
+  // arrives well after the native window has stopped existing.
+  MainWindow* window() const { return window_ref_->get(); }
+
+  CefRefPtr<WindowRef> window_ref_;
   const SurfaceId id_;
   CefRefPtr<CefMessageRouterBrowserSide> router_;
   std::unique_ptr<CefMessageRouterBrowserSide::Handler> query_handler_;

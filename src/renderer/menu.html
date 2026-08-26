@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frame menu</title>
+  <link rel="stylesheet" href="shell.css">
+  <link rel="stylesheet" href="menu.css">
+</head>
+<body class="menu-body">
+  <!-- The panel is inset from the document edge so the shadow has somewhere to
+       fall. The window is exactly this document's size, so a shadow drawn at
+       the very edge would be clipped away by it. -->
+  <div class="menu-panel" id="panel" role="menu" aria-label="Tab menu"></div>
+
+  <script>
+    (function () {
+      var panel = document.getElementById('panel');
+      var C = {
+        model: 'menu:model',
+        size: 'menu:size:',
+        choose: 'menu:choose:',
+        dismiss: 'menu:dismiss'
+      };
+
+      // Its own query, deliberately NOT shell.js.
+      //
+      // shell.js exists to bootstrap a chrome SURFACE: its first act is to ask
+      // for the layout constants and the surface's position inside the window,
+      // over channels only the surface handler answers. The menu is not a
+      // surface — it is a popup window with its own tiny handler — so
+      // bootstrap() rejected, the whole promise chain fell into its catch, and
+      // the menu rendered nothing at all while still being shown. Ten lines of
+      // its own is the honest fix; adding surface channels to the menu's
+      // handler so an unused bootstrap could succeed would not be.
+      function send(request) {
+        return new Promise(function (resolve, reject) {
+          if (typeof window.cefQuery !== 'function') {
+            reject(new Error('bridge unavailable'));
+            return;
+          }
+          window.cefQuery({
+            request: request,
+            persistent: false,
+            onSuccess: function (response) {
+              try {
+                resolve(JSON.parse(response));
+              } catch (err) {
+                resolve(response);
+              }
+            },
+            onFailure: function (code, message) {
+              reject(new Error(message + ' (' + code + ')'));
+            }
+          });
+        });
+      }
+
+      // Shadow spread, matching --menu-shadow-pad in the stylesheet. The
+      // window has to be this much bigger than the panel in every direction or
+      // the shadow is cut off square, which is exactly what a shadow must not
+      // look like.
+      var PAD = 18;
+
+      var items = [];
+      var focused = -1;
+
+      // --- building -------------------------------------------------------
+
+      function buildSeparator() {
+        var el = document.createElement('div');
+        el.className = 'menu-separator';
+        el.setAttribute('role', 'separator');
+        return el;
+      }
+
+      function buildItem(item, index) {
+        var el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'menu-item';
+        el.setAttribute('role', 'menuitem');
+        el.dataset.index = index;
+        el.dataset.command = item.id;
+        if (item.enabled === false) {
+          el.disabled = true;
+          el.setAttribute('aria-disabled', 'true');
+        }
+        if (item.danger) {
+          el.classList.add('is-danger');
+        }
+
+        var icon = document.createElement('span');
+        icon.className = 'menu-icon';
+        // The icon set is a fixed table in this file, so nothing from the
+        // model reaches innerHTML — a tab title can end up in a label, and a
+        // label is never markup.
+        icon.innerHTML = ICONS[item.icon] || '';
+        el.appendChild(icon);
+
+        var label = document.createElement('span');
+        label.className = 'menu-label';
+        label.textContent = item.label || '';
+        el.appendChild(label);
+
+        var shortcut = document.createElement('span');
+        shortcut.className = 'menu-shortcut';
+        shortcut.textContent = item.shortcut || '';
+        el.appendChild(shortcut);
+
+        el.addEventListener('click', function () {
+          if (el.disabled) {
+            return;
+          }
+          send(C.choose + item.id);
+        });
+        // Hover moves the highlight, so pointer and keyboard cannot end up
+        // disagreeing about which row is current.
+        el.addEventListener('mouseenter', function () {
+          if (!el.disabled) {
+            setFocus(index);
+          }
+        });
+        return el;
+      }
+
+      var ICONS = {
+        reload: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M12.5 6.5 A5 5 0 1 0 12.8 9.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.9 3.2 V6.8 H9.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        duplicate: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="2.5" y="2.5" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 13.5 h6 a2 2 0 0 0 2-2 v-6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+        sleep: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M13 9.4 A5.4 5.4 0 0 1 6.6 3 A5.6 5.6 0 1 0 13 9.4 Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+        wake: '<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M12.8 3.2l-1.4 1.4M4.6 11.4l-1.4 1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+        pin: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M9.6 1.8 14.2 6.4 11.9 7 10.6 10.4 5.6 5.4 9 4.1 Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5.6 10.4 2.2 13.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+        newtab: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 3.5 V12.5 M3.5 8 H12.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+        reopen: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.5 7 A5 5 0 1 1 4 10.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M3.1 3.6 V7.2 H6.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        copy: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="5.5" y="2.5" width="8" height="8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 13.5 h-6 a2 2 0 0 1 -2 -2 v-6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+        bookmark: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 2.5 h8 v11 l-4 -3 -4 3 Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+        close: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4 L12 12 M12 4 L4 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+        closeothers: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="1.5" y="5.5" width="4" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8.5 6 L13 10.5 M13 6 L8.5 10.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+        closeright: '<svg viewBox="0 0 16 16" width="14" height="14"><rect x="1.5" y="5.5" width="4" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 8 h5 M10.6 5.6 13 8 10.6 10.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        mute: '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 6 h2.5 L9 3 v10 L5.5 10 H3 Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M11.2 6.2 L14 9 M14 6.2 L11.2 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>'
+      };
+
+      // --- focus ----------------------------------------------------------
+
+      function enabledItems() {
+        return panel.querySelectorAll('.menu-item:not(:disabled)');
+      }
+
+      function setFocus(index) {
+        focused = index;
+        var all = panel.querySelectorAll('.menu-item');
+        for (var i = 0; i < all.length; i++) {
+          all[i].classList.toggle('is-focused',
+                                  Number(all[i].dataset.index) === index);
+        }
+      }
+
+      function step(delta) {
+        var list = enabledItems();
+        if (!list.length) {
+          return;
+        }
+        var current = -1;
+        for (var i = 0; i < list.length; i++) {
+          if (Number(list[i].dataset.index) === focused) {
+            current = i;
+            break;
+          }
+        }
+        var next = current + delta;
+        if (next < 0) { next = list.length - 1; }
+        if (next >= list.length) { next = 0; }
+        setFocus(Number(list[next].dataset.index));
+      }
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowDown') { step(1); event.preventDefault(); }
+        else if (event.key === 'ArrowUp') { step(-1); event.preventDefault(); }
+        else if (event.key === 'Home') { step(1); setFocus(0); event.preventDefault(); }
+        else if (event.key === 'Enter' || event.key === ' ') {
+          var el = panel.querySelector('.menu-item.is-focused');
+          if (el && !el.disabled) {
+            send(C.choose + el.dataset.command);
+          }
+          event.preventDefault();
+        }
+      });
+
+      // --- open -----------------------------------------------------------
+
+      function render(model) {
+        panel.textContent = '';
+        items = (model && model.items) || [];
+        focused = -1;
+        for (var i = 0; i < items.length; i++) {
+          panel.appendChild(items[i].type === 'separator'
+            ? buildSeparator()
+            : buildItem(items[i], i));
+        }
+      }
+
+      // Measures the laid-out panel and hands the browser process the window
+      // size it needs. Nothing is on screen until this has happened, which is
+      // why the menu never appears at the wrong size and then corrects itself.
+      function reportSize() {
+        var rect = panel.getBoundingClientRect();
+        var width = Math.ceil(rect.width) + PAD * 2;
+        var height = Math.ceil(rect.height) + PAD * 2;
+        return send(C.size + width + 'x' + height).then(function () {
+          // One frame at the final size before the entrance runs, so the
+          // animation plays against the geometry it will finish at rather
+          // than against the provisional one.
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              panel.classList.add('is-open');
+            });
+          });
+        });
+      }
+
+      send(C.model)
+        .then(function (model) {
+          // A model that did not parse comes back as the raw string, and
+          // `model.items` is then simply undefined — which used to render a
+          // menu with no rows in it and no indication anything had gone wrong.
+          // An unusable model is a failure, so it is treated as one.
+          if (!model || typeof model !== 'object' ||
+              !Array.isArray(model.items) || !model.items.length) {
+            throw new Error('empty or unreadable menu model');
+          }
+          render(model);
+          return reportSize();
+        })
+        .catch(function () {
+          // A menu with nothing to show must not sit on screen as an empty
+          // panel. Dismissing leaves the click looking like it did nothing,
+          // which is bad — but a blank menu looks like the browser is broken,
+          // which is worse.
+          send(C.dismiss);
+        });
+    })();
+  </script>
+</body>
+</html>

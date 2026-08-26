@@ -46,6 +46,7 @@ inline constexpr int kI = 0x49;
 inline constexpr int kJ = 0x4A;
 inline constexpr int kL = 0x4C;
 inline constexpr int kN = 0x4E;
+inline constexpr int kO = 0x4F;
 inline constexpr int kP = 0x50;
 inline constexpr int kR = 0x52;
 inline constexpr int kT = 0x54;
@@ -114,6 +115,7 @@ enum class Command {
   kBookmarkPage,
   kOpenDownloads,
   kOpenHistory,
+  kOpenBookmarks,
   kOpenSettings,
   kDevTools,
   kPrint,
@@ -191,6 +193,7 @@ inline constexpr Binding kBindings[] = {
     {vk::kB, true, false, false, Command::kToggleSidebar},
     {vk::kD, true, false, false, Command::kBookmarkPage},
     {vk::kJ, true, false, false, Command::kOpenDownloads},
+    {vk::kO, true, true, false, Command::kOpenBookmarks},
     {vk::kH, true, false, false, Command::kOpenHistory},
     {vk::kI, true, false, false, Command::kOpenSettings},
     {vk::kOemComma, true, false, false, Command::kOpenSettings},

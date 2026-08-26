@@ -2,6 +2,7 @@
 #define FRAME_BROWSER_WINDOW_LIST_H_
 
 #include <cstddef>
+#include <functional>
 
 #include "browser/main_window.h"
 
@@ -17,6 +18,14 @@ namespace frame::windows {
 // Creates a window, registers it, and returns it. Null if the native window
 // could not be created, in which case nothing is registered.
 MainWindow* Open(const MainWindow::Options& options);
+
+// Runs `fn` for every open window.
+//
+// Settings are process-wide, so a change made in one window has to reach all
+// of them. Applying it only where it was clicked leaves a second window
+// running on the old value until it is restarted, which is exactly the kind of
+// half-applied setting this pass exists to remove.
+void ForEach(const std::function<void(MainWindow*)>& fn);
 
 // Called from WM_DESTROY. Deletion is POSTED rather than immediate: the
 // window's own window procedure is still on the stack at that point, and

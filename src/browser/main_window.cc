@@ -10,6 +10,7 @@
 #include <string>
 
 #include "browser/frame_scheme.h"
+#include "browser/content_filter.h"
 #include "browser/page_client.h"
 #include "browser/window_list.h"
 #include "include/cef_app.h"
@@ -49,6 +50,18 @@ const UINT_PTR kSidebarTimerId = 1;
 // coalesced timer message shortens the animation instead of stretching it.
 const UINT kSidebarTimerMs = 8;
 
+// Drives automatic tab sleep. Coarse on purpose: this decides whether a tab
+// has been idle for half an hour, so checking four times a minute is already
+// far more often than the answer can change.
+const UINT_PTR kSleepTimerId = 2;
+const UINT kSleepTimerMs = 15000;
+
+// GetTickCount64, not the wall clock. Idle time must not jump when the system
+// clock is corrected or a DST change lands, and it must not go backwards.
+unsigned long long NowMs() {
+  return ::GetTickCount64();
+}
+
 // Posted to collapse a burst of browser-state changes into one push. See
 // MainWindow::PushBrowserState.
 const UINT kMsgFlushBrowserState = WM_APP + 1;
@@ -68,6 +81,9 @@ int MouseModifiers(WPARAM wparam) {
   }
   if (wparam & MK_RBUTTON) {
     modifiers |= EVENTFLAG_RIGHT_MOUSE_BUTTON;
+  }
+  if (wparam & MK_MBUTTON) {
+    modifiers |= EVENTFLAG_MIDDLE_MOUSE_BUTTON;
   }
   if (::GetKeyState(VK_MENU) < 0) {
     modifiers |= EVENTFLAG_ALT_DOWN;
@@ -131,9 +147,15 @@ class LoadUrlTask : public CefTask {
 
 }  // namespace
 
-MainWindow::MainWindow(const Options& options) : options_(options) {}
+MainWindow::MainWindow(const Options& options)
+    : options_(options), self_ref_(new WindowRef(this)) {}
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow() {
+  // The one place a client's view of this window is revoked. After this, every
+  // PageClient and ChromeSurface still held by CEF sees null and does nothing,
+  // however long CEF keeps them alive. See window_ref.h.
+  self_ref_->Clear();
+}
 
 bool MainWindow::Create(HINSTANCE instance) {
   WNDCLASSEXW wc = {};
@@ -161,6 +183,19 @@ bool MainWindow::Create(HINSTANCE instance) {
   ApplyRoundedCorners();
   corner_mask_.Create(hwnd_, instance);
 
+  // Created up front, opened on demand. The browser inside it is only made the
+  // first time a menu is actually opened, so a window nobody right-clicks in
+  // never pays for one.
+  menu_.reset(new MenuSurface());
+  menu_->Create(hwnd_, instance);
+  menu_->set_choice_handler(
+      [this](const std::string& command, const MenuSurface::Context& context) {
+        OnMenuChoice(command, context.tab_id);
+      });
+  // A close in progress may be waiting on the menu's browser, and this is how
+  // it learns that browser has gone.
+  menu_->set_closed_handler([this]() { MaybeFinishClose(); });
+
   if (options_.incognito) {
     // An empty cache_path is what makes the context in-memory. Nothing this
     // window loads is written to the profile, and the whole context is
@@ -181,6 +216,16 @@ bool MainWindow::Create(HINSTANCE instance) {
 
   favicons_.reset(new FaviconCache(profile + "\\favicons"));
   favicons_->Load();
+
+  // Persisted settings become behaviour HERE, at startup, not only when the
+  // settings page is opened. A setting that only takes effect once you go and
+  // look at it is not a setting.
+  sleep_enabled_ = Settings().GetBool("sleep.enabled", true);
+  sleep_idle_ms_ = sleep::ClampIdleMs(
+      static_cast<unsigned long long>(
+          Settings().GetInt("sleep.idleMinutes", 30)) * 60ULL * 1000ULL);
+  history_enabled_ = Settings().GetBool("history.enabled", true);
+  content_filter::set_enabled(Settings().GetBool("trackers.enabled", true));
 
   // Ask each pinned site for its own icon, once. Nothing is asked of anyone
   // else — no third-party favicon service ever sees this list.
@@ -326,6 +371,98 @@ CefRect MainWindow::SurfaceBounds(SurfaceId id) const {
                  ToPhysical(dip.height));
 }
 
+// --- closing --------------------------------------------------------------
+
+int MainWindow::LiveBrowserCount() const {
+  int live = 0;
+  for (const Tab& tab : tabs_) {
+    if (tab.browser) {
+      ++live;
+    }
+  }
+  for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
+    if (layers_[i].browser) {
+      ++live;
+    }
+  }
+  // The menu keeps its browser alive between openings, so it is one of this
+  // window's browsers and the close has to wait for it too.
+  if (menu_ && menu_->has_browser()) {
+    ++live;
+  }
+  return live;
+}
+
+void MainWindow::BeginClose() {
+  if (closing_) {
+    return;  // Already going; a second WM_CLOSE changes nothing.
+  }
+  closing_ = true;
+
+  // MaybeFinishClose destroys the window, and several things below can reach
+  // it re-entrantly — a tab with no browser is dropped synchronously, and that
+  // path reports the close. Suppressing it until this function has finished
+  // asking everything to close means the window cannot be destroyed part-way
+  // through deciding what to close, which is the shape of the original bug.
+  in_begin_close_ = true;
+
+  // The masks are top-level windows of their own and are not children of this
+  // one, so nothing else takes them down. Hidden first so they cannot be left
+  // hanging over the desktop for the length of the teardown.
+  corner_mask_.Hide();
+
+  // Iterated over a COPY of the ids. CloseBrowser can complete synchronously
+  // for a browser that never finished being created, which re-enters
+  // OnPageClosed and mutates tabs_ underneath a live iterator.
+  std::vector<int> ids;
+  ids.reserve(tabs_.size());
+  for (const Tab& tab : tabs_) {
+    ids.push_back(tab.id);
+  }
+  for (int id : ids) {
+    Tab* tab = FindTab(id);
+    if (!tab) {
+      continue;
+    }
+    if (tab->browser) {
+      tab->browser->GetHost()->CloseBrowser(/*force_close=*/true);
+    } else {
+      // Never got a browser — nothing will ever report it closed, so it is
+      // dropped here rather than blocking the close forever.
+      OnPageClosed(id);
+    }
+  }
+
+  for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
+    if (layers_[i].browser) {
+      layers_[i].browser->GetHost()->CloseBrowser(/*force_close=*/true);
+    }
+  }
+
+  if (menu_) {
+    menu_->CloseBrowser();
+  }
+
+  in_begin_close_ = false;
+  MaybeFinishClose();
+}
+
+void MainWindow::MaybeFinishClose() {
+  if (in_begin_close_ || !closing_ || !hwnd_ || LiveBrowserCount() > 0) {
+    return;
+  }
+  // Every browser is gone, so nothing can call back into this window any more.
+  // NOW the native window can be destroyed.
+  HWND doomed = hwnd_;
+  hwnd_ = nullptr;
+  ::DestroyWindow(doomed);
+}
+
+void MainWindow::OnSurfaceClosed(SurfaceId id) {
+  layer(id).browser = nullptr;
+  MaybeFinishClose();
+}
+
 void MainWindow::SetSurfaceBrowser(SurfaceId id,
                                    CefRefPtr<CefBrowser> browser) {
   layer(id).browser = browser;
@@ -360,7 +497,11 @@ void MainWindow::ToggleMaximize() {
 }
 
 void MainWindow::CloseWindow() {
-  ::PostMessage(hwnd_, WM_CLOSE, 0, 0);
+  // hwnd_ is cleared the moment the destroy starts, so a close arriving from a
+  // surface mid-teardown lands here harmlessly instead of posting to null.
+  if (hwnd_) {
+    ::PostMessage(hwnd_, WM_CLOSE, 0, 0);
+  }
 }
 
 int MainWindow::SidebarWidthDip() const {
@@ -599,6 +740,9 @@ bool MainWindow::ExecuteCommand(shortcuts::Command command) {
     case Command::kOpenHistory:
       CreateTab("frame://history", /*activate=*/true);
       return true;
+    case Command::kOpenBookmarks:
+      CreateTab("frame://bookmarks", /*activate=*/true);
+      return true;
     case Command::kOpenSettings:
       CreateTab("frame://settings", /*activate=*/true);
       return true;
@@ -669,6 +813,12 @@ CefRefPtr<CefBrowser> MainWindow::ActiveBrowser() {
 }
 
 int MainWindow::CreateTab(const std::string& url, bool activate) {
+  // A window on its way out takes no more work. Without this a stray Ctrl+T
+  // during teardown creates a browser the close then waits on forever.
+  if (closing_ || !hwnd_) {
+    return 0;
+  }
+
   Tab tab;
   tab.id = next_tab_id_++;
   tab.url = url.empty() ? frame::url::kNewTabPage : url;
@@ -708,7 +858,7 @@ int MainWindow::CreateTab(const std::string& url, bool activate) {
   CefBrowserSettings settings;
   settings.background_color = CefColorSetARGB(255, 0, 0, 0);
 
-  CefRefPtr<PageClient> client(new PageClient(this, tab.id));
+  CefRefPtr<PageClient> client(new PageClient(self_ref_, tab.id));
   // request_context_ is null for an ordinary window, which means the global
   // context — exactly the behaviour before incognito existed.
   CefBrowserHost::CreateBrowser(window_info, client, NormalizeUrl(tab.url),
@@ -760,7 +910,25 @@ void MainWindow::SelectTab(int tab_id) {
   if (!FindTab(tab_id) || active_tab_id_ == tab_id) {
     return;
   }
+  // The tab being left starts its idle clock now. Without this a tab that has
+  // been open for hours but only just been switched away from would look
+  // immediately eligible for sleep.
+  if (Tab* leaving = FindTab(active_tab_id_)) {
+    leaving->backgrounded_at_ms = NowMs();
+  }
+
   active_tab_id_ = tab_id;
+
+  // Selecting a sleeping tab wakes it. That is the whole contract of the
+  // feature: sleeping is invisible except for the moment it takes to come
+  // back, and the user never has to know a tab was discarded.
+  if (Tab* selected = FindTab(tab_id)) {
+    selected->backgrounded_at_ms = 0;
+    if (selected->asleep) {
+      WakeTab(tab_id);
+    }
+  }
+
   LayoutPages();
   PushBrowserState();
 
@@ -815,6 +983,509 @@ void MainWindow::ReopenClosedTab() {
   const std::string url = closed_urls_.front();
   closed_urls_.erase(closed_urls_.begin());
   CreateTab(url, /*activate=*/true);
+}
+
+// --- tab operations from the context menu ---------------------------------
+
+void MainWindow::DuplicateTab(int tab_id) {
+  const Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  // The url, not the browser's history: a duplicate is a second copy of where
+  // you are, not a fork of how you got there. Chrome copies the history too,
+  // which CEF gives no supported way to do — and silently producing a tab with
+  // no Back button when the original had one would be worse than the
+  // documented behaviour of starting fresh.
+  const std::string url = tab->asleep || tab->url.empty()
+                              ? frame::url::kNewTabPage
+                              : tab->url;
+  CreateTab(url, /*activate=*/true);
+}
+
+void MainWindow::CloseOtherTabs(int tab_id) {
+  if (!FindTab(tab_id)) {
+    return;
+  }
+  // Collected first. CloseTab can complete synchronously for a tab that never
+  // got a browser, which mutates tabs_ underneath a live iterator.
+  std::vector<int> doomed;
+  for (const Tab& tab : tabs_) {
+    if (tab.id != tab_id) {
+      doomed.push_back(tab.id);
+    }
+  }
+  // The survivor becomes active BEFORE the others go, so the strip does not
+  // flicker through two or three interim selections on the way.
+  SelectTab(tab_id);
+  for (int id : doomed) {
+    CloseTab(id);
+  }
+}
+
+void MainWindow::CloseTabsToTheRight(int tab_id) {
+  size_t index = tabs_.size();
+  for (size_t i = 0; i < tabs_.size(); ++i) {
+    if (tabs_[i].id == tab_id) {
+      index = i;
+      break;
+    }
+  }
+  if (index == tabs_.size()) {
+    return;
+  }
+  std::vector<int> doomed;
+  for (size_t i = index + 1; i < tabs_.size(); ++i) {
+    doomed.push_back(tabs_[i].id);
+  }
+  if (doomed.empty()) {
+    return;
+  }
+  SelectTab(tab_id);
+  for (int id : doomed) {
+    CloseTab(id);
+  }
+}
+
+void MainWindow::ReloadTab(int tab_id) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  if (tab->asleep) {
+    // Reloading a sleeping tab is what waking it already does.
+    WakeTab(tab_id);
+    return;
+  }
+  if (tab->browser) {
+    tab->browser->Reload();
+  }
+}
+
+void MainWindow::ToggleTabMuted(int tab_id) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  tab->muted = !tab->muted;
+  if (tab->browser) {
+    tab->browser->GetHost()->SetAudioMuted(tab->muted);
+  }
+  PushBrowserState();
+}
+
+void MainWindow::SetTabNeverSleeps(int tab_id, bool never) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  tab->never_sleep = never;
+  PushBrowserState();
+}
+
+void MainWindow::CopyTabUrl(int tab_id) {
+  const Tab* tab = FindTab(tab_id);
+  if (!tab || tab->url.empty()) {
+    return;
+  }
+  // Through the topbar surface's own frame rather than the Win32 clipboard.
+  //
+  // The chrome surfaces are served over frame://, which is a real origin, so
+  // the async clipboard API is available to them — and using it keeps the one
+  // clipboard write in the same place as every other one Frame does, instead
+  // of adding a second mechanism with its own failure modes (OpenClipboard
+  // can be refused outright by whichever process currently holds it).
+  Layer& top = layer(SurfaceId::kTopbar);
+  if (!top.browser) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = top.browser->GetMainFrame();
+  if (!main_frame) {
+    return;
+  }
+  const std::string js = "navigator.clipboard && navigator.clipboard.writeText(\"" +
+                         JsonEscape(tab->url) + "\");";
+  main_frame->ExecuteJavaScript(js, main_frame->GetURL(), 0);
+}
+
+// --- sleep ----------------------------------------------------------------
+
+void MainWindow::SleepTab(int tab_id) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab || tab->asleep || tab->sleeping || !tab->browser) {
+    return;
+  }
+  // The active tab is never slept: discarding the page being looked at would
+  // blank it under the user's pointer.
+  if (tab->id == active_tab_id_) {
+    return;
+  }
+  if (!sleep::IsSleepableUrl(tab->url)) {
+    return;
+  }
+
+  // The flag is what makes OnPageClosed keep the tab instead of removing it.
+  // Both paths are the same CEF callback, and this is the only thing that
+  // distinguishes them.
+  tab->sleeping = true;
+  tab->browser->GetHost()->CloseBrowser(/*force_close=*/true);
+}
+
+void MainWindow::WakeTab(int tab_id) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab || !tab->asleep || closing_) {
+    return;
+  }
+  tab->asleep = false;
+  tab->loading = true;
+
+  const layout::ViewportRect viewport = layout::ViewportBounds(
+      {static_cast<double>(client_width_), static_cast<double>(client_height_),
+       sidebar_open_, /*bookmarks_visible=*/false});
+
+  CefWindowInfo window_info;
+  window_info.SetAsChild(hwnd_, CefRect(viewport.x, viewport.y,
+                                        viewport.width > 0 ? viewport.width : 1,
+                                        viewport.height > 0 ? viewport.height
+                                                            : 1));
+  window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+
+  CefBrowserSettings settings;
+  settings.background_color = CefColorSetARGB(255, 0, 0, 0);
+
+  // The SAME tab id. Waking is not a new tab: its position in the strip, its
+  // title and everything else about it survive, and only the renderer is
+  // rebuilt.
+  CefRefPtr<PageClient> client(new PageClient(self_ref_, tab->id));
+  CefBrowserHost::CreateBrowser(window_info, client, NormalizeUrl(tab->url),
+                                settings, nullptr, request_context_);
+  PushBrowserState();
+}
+
+void MainWindow::ToggleTabSleep(int tab_id) {
+  const Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  if (tab->asleep) {
+    WakeTab(tab_id);
+  } else {
+    SleepTab(tab_id);
+  }
+}
+
+sleep::Settings MainWindow::SleepSettings() const {
+  sleep::Settings settings;
+  // Off in an incognito window. A discarded private tab can only be restored
+  // from a note of where it was, and an incognito window writes nothing down —
+  // so sleeping one would lose the page outright.
+  settings.enabled = !options_.incognito && sleep_enabled_;
+  settings.idle_ms = sleep::ClampIdleMs(sleep_idle_ms_);
+  return settings;
+}
+
+void MainWindow::SweepSleepableTabs() {
+  if (closing_) {
+    return;
+  }
+  const sleep::Settings settings = SleepSettings();
+  if (!settings.enabled) {
+    return;
+  }
+  const unsigned long long now = NowMs();
+
+  // TWO passes, and they are not the same test.
+  //
+  // The first uses what the browser process already knows, which is everything
+  // except whether the page is making a sound or holds typed-in text. Those
+  // two are facts only the renderer has, so a candidate that survives the
+  // cheap checks is PROBED, and the sleep happens when the answer comes back.
+  // Probing every tab on every sweep would put work into exactly the tabs this
+  // feature exists to make cheaper.
+  std::vector<int> candidates;
+  for (const Tab& tab : tabs_) {
+    if (tab.probe_pending || tab.sleeping || !tab.browser) {
+      continue;
+    }
+    sleep::TabFacts facts;
+    facts.active = tab.id == active_tab_id_;
+    facts.asleep = tab.asleep;
+    facts.never_sleep = tab.never_sleep;
+    facts.loading = tab.loading;
+    // Deliberately the LAST known values rather than assumed false: a tab
+    // probed a moment ago and found noisy should not be slept because this
+    // sweep has not heard back yet.
+    facts.audible = tab.audible;
+    facts.has_unsaved_input = tab.has_unsaved_input;
+    facts.url = tab.url;
+    facts.backgrounded_at_ms = tab.backgrounded_at_ms;
+    if (sleep::MaySleep(facts, settings, now)) {
+      candidates.push_back(tab.id);
+    }
+  }
+
+  for (int id : candidates) {
+    ProbeTabForSleep(id);
+  }
+}
+
+void MainWindow::ProbeTabForSleep(int tab_id) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab || !tab->browser || tab->probe_pending) {
+    return;
+  }
+  CefRefPtr<CefFrame> main_frame = tab->browser->GetMainFrame();
+  if (!main_frame) {
+    return;
+  }
+  tab->probe_pending = true;
+
+  // Runs in the page, once, and only for a tab already judged sleepable. It
+  // reports two things nothing outside the renderer can see:
+  //
+  //   audible  any media element actually playing and not muted
+  //   dirty    any text input, textarea or contenteditable holding something
+  //            the user typed
+  //
+  // The reply carries no tab id. The client answering is bound to one tab
+  // already, so a page cannot claim to be a different one — the most it can do
+  // is lie about itself, which it could equally do by playing a silent sound.
+  const std::string js = R"JS((function () {
+  try {
+    var audible = false;
+    var media = document.querySelectorAll('audio,video');
+    for (var i = 0; i < media.length; i++) {
+      var m = media[i];
+      if (!m.paused && !m.ended && !m.muted && m.currentTime > 0) { audible = true; break; }
+    }
+    var dirty = false;
+    var fields = document.querySelectorAll(
+      'input:not([type=hidden]):not([type=submit]):not([type=button]),textarea,[contenteditable=""],[contenteditable="true"]');
+    for (var j = 0; j < fields.length; j++) {
+      var f = fields[j];
+      if (f.type === 'checkbox' || f.type === 'radio') {
+        if (f.checked !== f.defaultChecked) { dirty = true; break; }
+      } else if (f.isContentEditable) {
+        if ((f.textContent || '').trim()) { dirty = true; break; }
+      } else if ((f.value || '') !== (f.defaultValue || '')) {
+        dirty = true; break;
+      }
+    }
+    window.cefQuery({
+      request: 'tab:sleepprobe:' + (audible ? '1' : '0') + ':' + (dirty ? '1' : '0'),
+      persistent: false, onSuccess: function () {}, onFailure: function () {}
+    });
+  } catch (err) {
+    // A page that throws is a page we know nothing about, so say the safe
+    // thing rather than nothing at all — no answer would leave the probe
+    // pending and the tab awake forever.
+    window.cefQuery({ request: 'tab:sleepprobe:1:1', persistent: false,
+                      onSuccess: function () {}, onFailure: function () {} });
+  }
+})();)JS";
+
+  main_frame->ExecuteJavaScript(js, main_frame->GetURL(), 0);
+}
+
+void MainWindow::OnTabSleepProbe(int tab_id, bool audible, bool unsaved_input) {
+  Tab* tab = FindTab(tab_id);
+  if (!tab) {
+    return;
+  }
+  tab->probe_pending = false;
+  tab->audible = audible;
+  tab->has_unsaved_input = unsaved_input;
+
+  // Re-tested against the SAME policy rather than trusted from the sweep that
+  // asked. A probe is a round trip through another process; the tab can have
+  // been selected, started loading or been closed while it was in flight.
+  sleep::TabFacts facts;
+  facts.active = tab->id == active_tab_id_;
+  facts.asleep = tab->asleep;
+  facts.never_sleep = tab->never_sleep;
+  facts.loading = tab->loading;
+  facts.audible = audible;
+  facts.has_unsaved_input = unsaved_input;
+  facts.url = tab->url;
+  facts.backgrounded_at_ms = tab->backgrounded_at_ms;
+
+  if (sleep::MaySleep(facts, SleepSettings(), NowMs())) {
+    SleepTab(tab_id);
+  }
+}
+
+// --- context menu ---------------------------------------------------------
+
+bool MainWindow::context_menu_open() const {
+  return menu_ && menu_->visible();
+}
+
+void MainWindow::CloseContextMenu() {
+  if (menu_) {
+    menu_->Close();
+  }
+}
+
+void MainWindow::ShowTabContextMenu(int tab_id,
+                                    int surface_x_dip,
+                                    int surface_y_dip) {
+  const Tab* tab = FindTab(tab_id);
+  if (!tab || !menu_ || closing_) {
+    return;
+  }
+
+  const bool has_others = tabs_.size() > 1;
+  bool has_right = false;
+  for (size_t i = 0; i < tabs_.size(); ++i) {
+    if (tabs_[i].id == tab_id) {
+      has_right = i + 1 < tabs_.size();
+      break;
+    }
+  }
+  const bool sleepable = sleep::IsSleepableUrl(tab->url);
+
+  // Built here rather than in the page: which items exist and which are
+  // enabled is a fact about the browser's state, and a renderer that decided
+  // it for itself would be deciding from a copy that can be stale.
+  //
+  // Assembled through Item/Separator rather than by streaming JSON fragments.
+  // The first version did stream them, and three of the separators were
+  // written without their leading comma — which produced invalid JSON, made
+  // JSON.parse throw in the page, and rendered a menu with nothing in it. The
+  // separators are exactly the places a hand-placed comma is easiest to lose,
+  // so the comma is no longer hand-placed.
+  std::ostringstream json;
+  json << "{\"items\":[";
+  bool first = true;
+  const auto separate = [&json, &first]() {
+    if (!first) {
+      json << ',';
+    }
+    first = false;
+  };
+  const auto item = [&json, &separate](const char* id, const std::string& label,
+                                       const char* icon, const char* shortcut,
+                                       bool enabled, bool danger) {
+    separate();
+    json << R"({"id":")" << id << R"(","label":")" << JsonEscape(label)
+         << R"(","icon":")" << icon << R"(")";
+    if (shortcut && *shortcut) {
+      json << R"(,"shortcut":")" << shortcut << R"(")";
+    }
+    if (!enabled) {
+      json << R"(,"enabled":false)";
+    }
+    if (danger) {
+      json << R"(,"danger":true)";
+    }
+    json << '}';
+  };
+  const auto rule = [&json, &separate]() {
+    separate();
+    json << R"({"type":"separator"})";
+  };
+
+  item("reload", "Reload", "reload", "Ctrl+R", true, false);
+  item("duplicate", "Duplicate tab", "duplicate", "", true, false);
+  item("copy-url", "Copy address", "copy", "", !tab->url.empty(), false);
+  rule();
+
+  if (tab->asleep) {
+    item("wake", "Wake tab", "wake", "", true, false);
+  } else {
+    item("sleep", "Sleep tab now", "sleep", "",
+         sleepable && tab->id != active_tab_id_, false);
+  }
+  if (tab->never_sleep) {
+    item("allow-sleep", "Allow this tab to sleep", "sleep", "", true, false);
+  } else {
+    item("never-sleep", "Never sleep this tab", "pin", "", sleepable, false);
+  }
+  item("mute", tab->muted ? "Unmute tab" : "Mute tab", "mute", "", true, false);
+  rule();
+
+  item("bookmark", "Add to favourites", "bookmark", "", sleepable, false);
+  item("new-tab", "New tab", "newtab", "Ctrl+T", true, false);
+  item("reopen", "Reopen closed tab", "reopen", "Ctrl+Shift+T",
+       !closed_urls_.empty(), false);
+  rule();
+
+  item("close-others", "Close other tabs", "closeothers", "", has_others, false);
+  item("close-right", "Close tabs to the right", "closeright", "", has_right,
+       false);
+  item("close", "Close tab", "close", "Ctrl+W", true, /*danger=*/true);
+  json << "]}";
+
+  // The anchor arrives in surface DIPs and the menu is placed in screen
+  // pixels, so it has to cross both conversions — the DPI scale and the
+  // window's position. Getting either wrong puts the menu on the wrong
+  // monitor, which is the kind of thing that only shows up on a second screen.
+  POINT anchor = {ToPhysical(surface_x_dip), ToPhysical(surface_y_dip)};
+  ::ClientToScreen(hwnd_, &anchor);
+
+  MenuSurface::Context context;
+  context.tab_id = tab_id;
+  context.anchor = anchor;
+  menu_->Open(json.str(), context, DeviceScale());
+}
+
+void MainWindow::OnMenuChoice(const std::string& command, int tab_id) {
+  // An empty command is a dismissal, not a choice.
+  if (command.empty()) {
+    return;
+  }
+  // The tab may have gone while the menu was up — a background load finishing
+  // with an error, another window closing it. Every branch below re-finds it
+  // rather than trusting the id.
+  if (!FindTab(tab_id)) {
+    return;
+  }
+
+  if (command == "reload")        { ReloadTab(tab_id); }
+  else if (command == "duplicate"){ DuplicateTab(tab_id); }
+  else if (command == "copy-url") { CopyTabUrl(tab_id); }
+  else if (command == "sleep")    { SleepTab(tab_id); }
+  else if (command == "wake")     { WakeTab(tab_id); }
+  else if (command == "never-sleep") { SetTabNeverSleeps(tab_id, true); }
+  else if (command == "allow-sleep") { SetTabNeverSleeps(tab_id, false); }
+  else if (command == "mute")     { ToggleTabMuted(tab_id); }
+  else if (command == "bookmark") {
+    if (const Tab* tab = FindTab(tab_id)) {
+      AddFavorite(tab->url, tab->title);
+    }
+  }
+  else if (command == "new-tab")  { CreateTab(std::string(), /*activate=*/true); }
+  else if (command == "reopen")   { ReopenClosedTab(); }
+  else if (command == "close-others") { CloseOtherTabs(tab_id); }
+  else if (command == "close-right")  { CloseTabsToTheRight(tab_id); }
+  else if (command == "close")    { CloseTab(tab_id); }
+}
+
+void MainWindow::SetSleepEnabled(bool enabled) {
+  sleep_enabled_ = enabled;
+  UpdateSleepTimer();
+}
+
+void MainWindow::SetSleepIdleMs(unsigned long long idle_ms) {
+  sleep_idle_ms_ = sleep::ClampIdleMs(idle_ms);
+}
+
+void MainWindow::UpdateSleepTimer() {
+  if (!hwnd_) {
+    return;
+  }
+  // The timer only exists while there is something it could act on. A window
+  // with one tab, or with sleeping switched off, has no timer at all rather
+  // than one that wakes up four times a minute to decide there is nothing to
+  // do — which is the behaviour this feature exists to avoid, not to add.
+  const bool wanted =
+      sleep_enabled_ && !options_.incognito && !closing_ && tabs_.size() > 1;
+  if (wanted && !sleep_timer_) {
+    sleep_timer_ = ::SetTimer(hwnd_, kSleepTimerId, kSleepTimerMs, nullptr);
+  } else if (!wanted && sleep_timer_) {
+    ::KillTimer(hwnd_, kSleepTimerId);
+    sleep_timer_ = 0;
+  }
 }
 
 void MainWindow::ReorderTab(int tab_id, int new_index) {
@@ -1066,8 +1737,11 @@ void MainWindow::AdjustZoom(double steps) {
 
 void MainWindow::OnPageCreated(int tab_id, CefRefPtr<CefBrowser> browser) {
   Tab* tab = FindTab(tab_id);
-  if (!tab) {
-    // The tab was closed before its browser finished being created.
+  if (!tab || closing_) {
+    // Either the tab was closed before its browser finished being created, or
+    // the whole window was. Both mean this browser is already unwanted — and
+    // one created during a close would otherwise be something the close sits
+    // waiting on forever.
     browser->GetHost()->CloseBrowser(/*force_close=*/true);
     return;
   }
@@ -1088,7 +1762,36 @@ void MainWindow::OnPageClosed(int tab_id) {
   if (index == tabs_.size()) {
     return;
   }
+
+  // Going to sleep, not going away.
+  //
+  // Sleeping and closing are the SAME CEF callback — a browser that has been
+  // destroyed — and they mean opposite things. This flag, set by SleepTab just
+  // before it asks the browser to close, is the only thing that tells them
+  // apart. Without it a tab going to sleep would simply vanish from the strip.
+  Tab& closed = tabs_[index];
+  if (closed.sleeping && !closing_) {
+    closed.sleeping = false;
+    closed.asleep = true;
+    closed.browser = nullptr;
+    closed.loading = false;
+    closed.can_go_back = false;
+    closed.can_go_forward = false;
+    closed.probe_pending = false;
+    PushBrowserState();
+    return;
+  }
+
   tabs_.erase(tabs_.begin() + index);
+
+  // Nothing below this point matters for a window that is going away, and some
+  // of it — laying out pages, pushing state into surfaces that are themselves
+  // being destroyed — is work done on objects mid-teardown. The close is the
+  // only thing left to advance.
+  if (closing_) {
+    MaybeFinishClose();
+    return;
+  }
 
   if (was_active) {
     // Activate the neighbour that took its place, falling back to the last tab.
@@ -1104,8 +1807,12 @@ void MainWindow::OnPageClosed(int tab_id) {
   PushBrowserState();
 
   // Closing the last tab closes the window, matching every other browser.
-  if (tabs_.empty() && hwnd_) {
-    ::PostMessage(hwnd_, WM_CLOSE, 0, 0);
+  //
+  // This is the ONLY place tab closure turns into window closure. It used to
+  // also happen by accident, from CEF's default DoClose notifying the top-level
+  // parent for every tab — see the comment on PageClient::DoClose.
+  if (tabs_.empty()) {
+    BeginClose();
   }
 }
 
@@ -1215,6 +1922,13 @@ void MainWindow::OnPageTitleChanged(int tab_id, const std::string& title) {
     return;
   }
   tab->title = title.empty() ? "Untitled" : title;
+  // A title, not a visit.
+  //
+  // The title is what makes a history entry readable — an address change on
+  // its own gives a row named after its own URL — but a title arriving is not
+  // a second visit to the page. Routing both through the same call counted
+  // every visit three times.
+  RecordHistory(*tab, /*navigated=*/false);
   PushBrowserState();
 }
 
@@ -1223,11 +1937,52 @@ void MainWindow::OnPageUrlChanged(int tab_id, const std::string& url) {
   if (!tab) {
     return;
   }
+  const bool moved = tab->url != url;
   tab->url = url;
+  if (moved) {
+    // THE navigation signal. A page that changes its own URL without a new
+    // document — every client-side router does — never fires another title
+    // change, so this is the only place that visit can be seen.
+    RecordHistory(*tab, /*navigated=*/true);
+  }
   PushBrowserState();
 }
 
+void MainWindow::RecordHistory(const Tab& tab, bool navigated) {
+  // An incognito window records NOTHING. Not filtered afterwards, not written
+  // and deleted — never written. That is the difference between a private mode
+  // and a tidy-up.
+  if (options_.incognito || !history_enabled_) {
+    return;
+  }
+  if (navigated) {
+    History().Record(tab.url, tab.title);
+  } else {
+    History().UpdateTitle(tab.url, tab.title);
+  }
+}
+
 // --- state push -----------------------------------------------------------
+
+std::string MainWindow::FavoritesJson() const {
+  std::ostringstream json;
+  json << "{\"items\":[";
+  if (favorites_) {
+    const std::vector<Favorite>& pinned = favorites_->items();
+    for (size_t i = 0; i < pinned.size(); ++i) {
+      if (i) {
+        json << ',';
+      }
+      const std::string icon =
+          favicons_ ? favicons_->DataUrl(HostOf(pinned[i].url)) : std::string();
+      json << "{\"url\":\"" << JsonEscape(pinned[i].url) << "\",\"title\":\""
+           << JsonEscape(pinned[i].title) << "\",\"icon\":\""
+           << JsonEscape(icon) << "\"}";
+    }
+  }
+  json << "]}";
+  return json.str();
+}
 
 std::string MainWindow::BuildBrowserStateJson() const {
   const Tab* active = FindTab(active_tab_id_);
@@ -1265,7 +2020,11 @@ std::string MainWindow::BuildBrowserStateJson() const {
     json << "{\"id\":" << tabs_[i].id << ",\"title\":\""
          << JsonEscape(tabs_[i].title) << "\",\"url\":\""
          << JsonEscape(tabs_[i].url) << "\",\"loading\":"
-         << (tabs_[i].loading ? "true" : "false") << "}";
+         << (tabs_[i].loading ? "true" : "false")
+         << ",\"asleep\":" << (tabs_[i].asleep ? "true" : "false")
+         << ",\"muted\":" << (tabs_[i].muted ? "true" : "false")
+         << ",\"neverSleep\":" << (tabs_[i].never_sleep ? "true" : "false")
+         << "}";
   }
   json << "]}";
   return json.str();
@@ -1294,6 +2053,11 @@ void MainWindow::PushBrowserState() {
 
 void MainWindow::FlushBrowserState() {
   state_push_pending_ = false;
+
+  // The tab count may have changed since the last flush, and the sleep timer
+  // only runs while there is more than one tab. Doing it here rather than at
+  // every call site means no future path can add a tab and forget.
+  UpdateSleepTimer();
 
   const std::string state = BuildBrowserStateJson();
 
@@ -1849,6 +2613,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
         TickSidebarAnimation();
         return 0;
       }
+      if (wparam == kSleepTimerId) {
+        SweepSleepableTabs();
+        return 0;
+      }
       break;
 
     case kMsgFlushBrowserState:
@@ -1867,6 +2635,10 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     }
 
     case WM_SIZE:
+      // The menu is anchored to a point on screen, not to the window. Once the
+      // window moves or resizes under it that anchor means nothing, so it is
+      // dismissed rather than left pointing somewhere it no longer is.
+      CloseContextMenu();
       if (wparam == SIZE_MINIMIZED) {
         // The corner masks are top-level windows, so they do not minimise with
         // their owner's client area — they have to be hidden explicitly or they
@@ -1883,10 +2655,20 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       return 0;
 
     case WM_MOVE:
+      CloseContextMenu();
       // Same reason: the masks are positioned in screen coordinates, so moving
       // the window has to drag them along with it.
       LayoutPages();
       return 0;
+
+    // Switching to another application takes the menu with it. A menu left
+    // floating over a window that is no longer in front is a menu that has to
+    // be dismissed before anything else can be clicked.
+    case WM_ACTIVATE:
+      if (LOWORD(wparam) == WA_INACTIVE) {
+        CloseContextMenu();
+      }
+      break;
 
     case WM_DPICHANGED: {
       // Dragged to a monitor with different scaling, or the scaling changed
@@ -1933,15 +2715,58 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
 
     case WM_LBUTTONDOWN:
     case WM_LBUTTONUP:
+      // A click anywhere in the window dismisses an open menu, and does NOT
+      // also do whatever it was pointing at. That is what every other menu on
+      // the platform does: the first click outside closes, the second acts.
+      if (message == WM_LBUTTONDOWN && context_menu_open()) {
+        CloseContextMenu();
+        return 0;
+      }
       ForwardMouseButton(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), wparam,
                          MBT_LEFT, message == WM_LBUTTONUP);
       return 0;
 
     case WM_RBUTTONDOWN:
     case WM_RBUTTONUP:
+      // A right-click with a menu already up replaces it. Closing first means
+      // the surface below sees a clean contextmenu event rather than one
+      // arriving while the previous menu is still on screen.
+      if (message == WM_RBUTTONDOWN && context_menu_open()) {
+        CloseContextMenu();
+      }
       ForwardMouseButton(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), wparam,
                          MBT_RIGHT, message == WM_RBUTTONUP);
       return 0;
+
+    // Middle-click. Missing entirely until now, which is why middle-clicking a
+    // tab did nothing: the topbar has handled button 1 since tabs existed, but
+    // WM_MBUTTONDOWN was never forwarded to it, so the event it was waiting
+    // for could not arrive. Only the page saw middle-clicks, because the page
+    // is a child window and gets its own.
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONUP:
+      if (message == WM_MBUTTONDOWN && context_menu_open()) {
+        CloseContextMenu();
+        return 0;
+      }
+      ForwardMouseButton(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), wparam,
+                         MBT_MIDDLE, message == WM_MBUTTONUP);
+      return 0;
+
+    // The two side buttons on a mouse are back and forward everywhere else,
+    // and they are the one navigation control that costs no chrome at all.
+    case WM_XBUTTONDOWN:
+      if (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) {
+        GoBack();
+      } else if (GET_XBUTTON_WPARAM(wparam) == XBUTTON2) {
+        GoForward();
+      }
+      // TRUE, not 0: WM_XBUTTONDOWN is documented as expecting it, unlike
+      // every other mouse message.
+      return TRUE;
+
+    case WM_XBUTTONUP:
+      return TRUE;
 
     case WM_MOUSEWHEEL:
       ForwardMouseWheel(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam),
@@ -1951,6 +2776,13 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
 
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
+      // The menu window is WS_EX_NOACTIVATE, so it never has the keyboard —
+      // keys pressed while it is up arrive HERE. Giving it first refusal is
+      // what makes Escape close it and the arrows walk it, without any of that
+      // reaching the page underneath.
+      if (menu_ && menu_->HandleKey(message, wparam, lparam)) {
+        return 0;
+      }
       // Last of the three shortcut entry points, for the window that has the
       // native focus while neither the page nor a chrome surface holds the
       // keyboard — briefly true at startup, and after the page's child window
@@ -1965,6 +2797,9 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
     case WM_CHAR:
     case WM_SYSKEYUP:
     case WM_SYSCHAR:
+      if (menu_ && menu_->HandleKey(message, wparam, lparam)) {
+        return 0;
+      }
       ForwardKeyEvent(message, wparam, lparam);
       return 0;
 
@@ -1977,12 +2812,12 @@ LRESULT MainWindow::HandleMessage(HWND hwnd,
       break;
 
     case WM_CLOSE:
-      for (size_t i = 0; i < static_cast<size_t>(SurfaceId::kCount); ++i) {
-        if (layers_[i].browser) {
-          layers_[i].browser->GetHost()->CloseBrowser(/*force_close=*/true);
-        }
-      }
-      break;
+      // Deliberately NOT falling through to DefWindowProc, which would destroy
+      // the window right now with every browser still alive. BeginClose starts
+      // the teardown; the window is destroyed by MaybeFinishClose once the last
+      // browser has reported in. See the comment on BeginClose.
+      BeginClose();
+      return 0;
 
     case WM_DESTROY:
       // The window list decides whether this was the last window and therefore

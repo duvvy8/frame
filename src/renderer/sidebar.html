@@ -252,8 +252,18 @@
         current.title = active ? active.title : '';
 
         renderFavorites(state);
+        // Sleeping tabs are counted here because this is the only place the
+        // feature is visible at a glance. A dimmed tab in the strip says a tab
+        // is asleep; nothing else says how many, and "4 asleep" is the line
+        // that makes someone realise the browser has been reclaiming memory
+        // rather than quietly losing tabs.
+        var asleep = 0;
+        for (var t = 0; t < state.tabs.length; t++) {
+          if (state.tabs[t].asleep) { asleep++; }
+        }
         metric.textContent = state.tabs.length +
-                             (state.tabs.length === 1 ? ' tab' : ' tabs');
+                             (state.tabs.length === 1 ? ' tab' : ' tabs') +
+                             (asleep ? ' · ' + asleep + ' asleep' : '');
       };
 
       FrameShell.bootstrap().catch(function (err) {
