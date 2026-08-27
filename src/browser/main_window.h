@@ -380,6 +380,13 @@ class MainWindow {
   int SidebarWidthDip() const;
   void TickSidebarAnimation();
 
+  // Runs after the slide has finished, until the sidebar surface has actually
+  // painted at its resting size. See the definition for why the slide alone
+  // does not guarantee that.
+  void TickSidebarSettle();
+  bool SurfaceMatchesBounds(SurfaceId id) const;
+  void NotifySurfaceResized(SurfaceId id);
+
   int ToPhysical(int dip) const;
   int ToDip(int physical) const;
   layout::ViewportRect ViewportDip() const;
@@ -424,6 +431,12 @@ class MainWindow {
   double sidebar_width_from_ = layout::kSidebarWidth;
   double sidebar_width_to_ = layout::kSidebarWidth;
   unsigned long long sidebar_anim_start_ms_ = 0;
+
+  // The slide is over and the timer is now only chasing the surface's final
+  // size. Cleared by a new toggle, which turns the timer back into an
+  // animation.
+  bool sidebar_settling_ = false;
+  unsigned long long sidebar_settle_until_ms_ = 0;
 
   // Fullscreen is a window state, not a layout constant, so it lives here
   // rather than in the shared geometry: chrome_layout.h describes the chrome

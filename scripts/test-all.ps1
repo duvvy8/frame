@@ -117,6 +117,7 @@ Run-Suite 'internal pages'                         'test-pages.ps1'  $shot
 Run-Suite 'settings change real behaviour'         'test-settings-effect.ps1' @()
 Run-Suite 'keyboard commands'                      'test-shortcuts.ps1' @()
 Run-Suite 'find in page'                           'test-find.ps1'   $shot
+Run-Suite 'the sidebar transition'                 'test-sidebar.ps1' $shot
 Run-Suite 'hover and interaction'                  'test-hover.ps1'  $shot
 Run-Suite 'stress and resources'                   'test-stress.ps1' $shot
 

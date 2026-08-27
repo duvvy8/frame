@@ -31,6 +31,84 @@ Two rules worth keeping:
 
 ---
 
+## 27/08/2026 15:00 – 15:55 — the sidebar left a black band behind when reopened
+
+**Branch:** `main` — uncommitted working tree
+**Build:** passing
+**Tests:** 152 of 152 (51 Catch2 unit + 101 behavioural across 9 suites)
+
+### The reported bug
+
+Clicking the sidebar toggle off and on again left a **168px band of flat black
+between the chrome and the page**, with a 40px sliver of real sidebar stranded
+inside it. It stayed until something else resized the window.
+
+Reproduced first, with `scripts/drive.ps1` on the second monitor: six toggles,
+reading the sidebar's own `innerWidth` back through DevTools after each. It
+came to rest at 42, then 69, then 71 — never at 168.
+
+**Root cause, from a trace of `GetViewRect` and `OnPaint`.** The slide asks the
+off-screen sidebar for a new width every 8ms. CEF services about six of those
+across the 210ms, reading `GetViewRect` for each and delivering `OnPaint` one
+size behind. It reads the FINAL width too — the size is never lost. What is
+lost is the frame: no `OnPaint` at that size ever arrives, so the renderer
+stays laid out at the previous one, and the difference between where the
+sidebar ends and where the page now starts is bare shell colour.
+
+**Why the obvious repair does nothing.** Calling `WasResized()` again is a
+no-op: CEF's cached view size already matches what `GetViewRect` would return,
+so nothing is stale from its point of view and it never asks the renderer for
+anything. The trace shows no `GetViewRect` at all for those calls.
+`Invalidate(PET_VIEW)` is the one that works — it asks for a *frame* rather
+than for a *size*, which is the half that went missing.
+
+### Fixed
+
+- **The sidebar arrives at its resting width.** The slide's timer no longer
+  stops when the animation ends; it drops to 40ms and re-asserts the final size
+  (`WasResized` + `Invalidate`) until the surface's painted bitmap is actually
+  the shape its bounds ask for. Typically one or two ticks; 750ms backstop so a
+  wedged renderer cannot hold the timer forever. A toggle arriving mid-settle
+  cancels it.
+- **The band during the slide, too.** `PaintLayer` blitted the bitmap at its
+  own size, so between the ~6 widths the renderer manages to deliver, the
+  difference showed as flat colour that pumped in and out on every toggle. It
+  now stretches the bitmap into the bounds when the two disagree (HALFTONE),
+  and takes the exact 1:1 path when they agree — which is every resting frame.
+  The sidebar's layout is fluid and really is being squeezed by the slide, so
+  scaling between delivered widths interpolates that same squeeze.
+
+### Added
+
+- `scripts/test-sidebar.ps1` — 5 checks, wired into `test-all.ps1`. Asserts the
+  resting width after each of six toggles (one toggle was NOT enough: it
+  reproduces on some and not others), after a toggle that interrupts a slide,
+  and after Ctrl+B. The last check measures the gap between the window's left
+  edge and the page child window's, which is the band itself. Verified against
+  the unfixed binary: 4 of the 5 fail, reporting
+  `sidebar laid out at 40, page begins 168dip in`.
+
+### Known issues / not done
+
+- The slide is still only ~6 renderer relayouts in 210ms; the stretch hides
+  that rather than removing it. Laying the surface out ONCE per toggle and
+  clipping the blit would be genuinely smooth, but it changes the transition's
+  look and moves hit-testing, so it was not done for a bug fix.
+- `PrintWindow` cannot capture a window that repaints every 8ms without tearing.
+  Mid-slide screenshots are not evidence of anything; the resting states are.
+
+### Notes for next session
+
+- `Invalidate(PET_VIEW)` is now in `NotifySurfaceResized`, which only the
+  settle uses. `NotifySurfacesResized` (plural, the one WM_SIZE calls) still
+  sends `WasResized` alone — a lone resize has never been dropped, and there is
+  no reason to pay for an invalidate on every window resize.
+- The same "asked for, never delivered" failure could in principle hit the
+  topbar on a window resize. It has not been seen, and it would need the same
+  settle to fix.
+
+---
+
 ## 26/08/2026 16:35 – 20:23 — production audit: tab lifecycle, context menu, sleep, real internal pages, tooltips, find
 
 **Branch:** `audit/production-pass` — pushed, awaiting review

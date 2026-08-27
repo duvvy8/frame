@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -49,6 +50,17 @@ const UINT_PTR kSidebarTimerId = 1;
 // computed from the clock rather than from the number of ticks, so a late or
 // coalesced timer message shortens the animation instead of stretching it.
 const UINT kSidebarTimerMs = 8;
+
+// The settle phase that follows the slide. See TickSidebarSettle: the frame for
+// the slide's LAST width is not always delivered, which leaves the sidebar
+// laid out at an intermediate one. This is how often the finished size is
+// re-asserted, and how long we keep asserting it.
+//
+// 40ms rather than 8: this is a repair, not an animation, and it normally takes
+// one or two attempts. 750ms is far longer than a surface needs to answer — it
+// is the backstop that stops a wedged renderer holding a timer forever.
+const UINT kSidebarSettleMs = 40;
+const unsigned long long kSidebarSettleTimeoutMs = 750;
 
 // Drives automatic tab sleep. Coarse on purpose: this decides whether a tab
 // has been idle for half an hour, so checking four times a minute is already
@@ -541,6 +553,11 @@ void MainWindow::ToggleSidebar() {
                                     : layout::kCollapsedRailWidth;
   sidebar_anim_start_ms_ = ::GetTickCount64();
 
+  // A toggle arriving during the settle phase cancels it: the size it was
+  // chasing is no longer the size we want, and the slide that starts here will
+  // hand it a new one to chase when it finishes.
+  sidebar_settling_ = false;
+
   // Re-arming an existing timer restarts it, so toggling mid-slide picks up
   // from wherever it had reached instead of snapping back to the start.
   ::SetTimer(hwnd_, kSidebarTimerId, kSidebarTimerMs, nullptr);
@@ -552,14 +569,22 @@ void MainWindow::ToggleSidebar() {
 }
 
 void MainWindow::TickSidebarAnimation() {
+  // The same timer runs the slide and the settle that follows it, because the
+  // second only exists to finish the first. Which one this tick is comes from
+  // the flag, not from the interval.
+  if (sidebar_settling_) {
+    TickSidebarSettle();
+    return;
+  }
+
   const ULONGLONG now = ::GetTickCount64();
   const ULONGLONG elapsed = now - sidebar_anim_start_ms_;
 
   double t = static_cast<double>(elapsed) /
              static_cast<double>(layout::kSidebarTransitionMs);
-  if (t >= 1.0) {
+  const bool arrived = t >= 1.0;
+  if (arrived) {
     t = 1.0;
-    ::KillTimer(hwnd_, kSidebarTimerId);
   }
 
   // Ease-out cubic: leaves immediately, arrives gently. The same shape as the
@@ -578,6 +603,76 @@ void MainWindow::TickSidebarAnimation() {
   PushPageShellMetrics();
   LayoutPages();
   ::InvalidateRect(hwnd_, nullptr, FALSE);
+
+  if (arrived) {
+    // Not KillTimer. The resize just issued is the one that matters and it is
+    // also the one most likely to be dropped — see TickSidebarSettle.
+    sidebar_settling_ = true;
+    sidebar_settle_until_ms_ = now + kSidebarSettleTimeoutMs;
+    ::SetTimer(hwnd_, kSidebarTimerId, kSidebarSettleMs, nullptr);
+  }
+}
+
+// True when the surface's last painted bitmap is the size its bounds now ask
+// for. One pixel of slack in each axis: the bitmap is sized by Chromium from
+// the DIP rect and the device scale, and ToPhysical rounds with MulDiv, so at a
+// fractional scale the two can legitimately disagree by a pixel.
+bool MainWindow::SurfaceMatchesBounds(SurfaceId id) const {
+  const Layer& target = layer(id);
+  if (!target.browser || target.pixels.empty()) {
+    return false;
+  }
+  const CefRect bounds = SurfaceBounds(id);
+  return std::abs(target.width - bounds.width) <= 1 &&
+         std::abs(target.height - bounds.height) <= 1;
+}
+
+// Both halves of "please be this size, and please prove it".
+//
+// WasResized alone is not enough after a burst of resizes — see
+// TickSidebarSettle. Invalidate is what makes CEF hand over a frame at a size
+// it has already accepted but never painted.
+void MainWindow::NotifySurfaceResized(SurfaceId id) {
+  Layer& target = layer(id);
+  if (target.browser) {
+    target.browser->GetHost()->WasResized();
+    target.browser->GetHost()->Invalidate(PET_VIEW);
+  }
+}
+
+// Chases the sidebar's resting size until the surface has actually painted at
+// it.
+//
+// THE BUG THIS EXISTS FOR: reopening the sidebar left a 168px band of bare
+// shell — black, because that is the flat colour Paint() clears to — with a
+// 40px sliver of real sidebar stranded in it. It stayed that way until
+// something else happened to resize the window.
+//
+// What the surface trace showed. The slide asks for a new width every 8ms;
+// CEF services about six of them, reads GetViewRect for each, and delivers
+// OnPaint one size behind. It reads the FINAL width too — so the size is not
+// lost. What is lost is the frame: no OnPaint at that size ever arrives, and
+// the renderer stays laid out at the previous one.
+//
+// Calling WasResized again does not recover it. CEF's cached view size already
+// matches what GetViewRect would return, so nothing is out of date from its
+// point of view and it never asks the renderer for anything — the trace shows
+// no GetViewRect at all for those calls. Invalidate is the one that works: it
+// asks for a frame rather than for a size, which is the half that went
+// missing.
+//
+// So the size is not assumed to have been taken. It is re-asserted until the
+// pixels come back the right shape, which is the only evidence that the
+// surface really did lay out at it. In practice that is one or two ticks.
+void MainWindow::TickSidebarSettle() {
+  if (SurfaceMatchesBounds(SurfaceId::kSidebar) ||
+      ::GetTickCount64() >= sidebar_settle_until_ms_) {
+    sidebar_settling_ = false;
+    ::KillTimer(hwnd_, kSidebarTimerId);
+    return;
+  }
+
+  NotifySurfaceResized(SurfaceId::kSidebar);
 }
 
 void MainWindow::ToggleFullscreen() {
@@ -2501,9 +2596,35 @@ void MainWindow::PaintLayer(HDC hdc, SurfaceId id) {
   info.bmiHeader.biBitCount = 32;
   info.bmiHeader.biCompression = BI_RGB;
 
-  ::SetDIBitsToDevice(hdc, bounds.x, bounds.y, source.width, source.height, 0,
-                      0, 0, source.height, source.pixels.data(), &info,
-                      DIB_RGB_COLORS);
+  if (source.width == bounds.width && source.height == bounds.height) {
+    ::SetDIBitsToDevice(hdc, bounds.x, bounds.y, source.width, source.height, 0,
+                        0, 0, source.height, source.pixels.data(), &info,
+                        DIB_RGB_COLORS);
+    return;
+  }
+
+  // The bitmap is not the size the surface now occupies, so it is scaled into
+  // that space rather than blitted at its own size and left short.
+  //
+  // This is the sidebar during its slide. The page's left edge moves every 8ms;
+  // the off-screen sidebar relayouts perhaps six times across the whole 210ms,
+  // because a relayout is a round trip to the renderer and it cannot be hurried
+  // (see TickSidebarSettle for what happens to the last one). Blitting the
+  // bitmap at its own size left the difference showing as flat shell colour —
+  // a black band between the sidebar and the page that pumped in and out on
+  // every toggle.
+  //
+  // Stretching is not a fudge here: the sidebar's layout is fluid and its
+  // contents really are being squeezed by the slide. Scaling between the widths
+  // the renderer manages to deliver interpolates that same squeeze, which is
+  // why the transition now reads as continuous. At rest the sizes agree and
+  // this path is not taken at all.
+  const int previous_mode = ::SetStretchBltMode(hdc, HALFTONE);
+  ::SetBrushOrgEx(hdc, 0, 0, nullptr);  // Required after HALFTONE.
+  ::StretchDIBits(hdc, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0,
+                  source.width, source.height, source.pixels.data(), &info,
+                  DIB_RGB_COLORS, SRCCOPY);
+  ::SetStretchBltMode(hdc, previous_mode);
 }
 
 void MainWindow::Paint(HDC hdc) {
