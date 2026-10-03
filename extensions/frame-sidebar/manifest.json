@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Frame sidebar",
+  "version": "0.2.0",
+  "description": "Frame's favourite sites and browser utilities.",
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "storage"
+  ],
+  "action": {
+    "default_title": "Open Frame sidebar"
+  },
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkF0vgDXuLmnx4OflhB3+jWjOArtegp8hZqYoX1yopXuyMy7oHgk8iwMzJkInFHzWa/eSpReO5jdQYjpCZfPkOIisccvj1w/xkdxouWkmxrFb/MgOdLHqdYu7ApH27JB5bYyung3PV9P8HXbRcaF8ThSMpmRjQaW0fZdRXQSKCE0Byt+bhvPuup37elhaDeOk1JVmS+74jOJLNjdGTBGHh4qSIvwI+imEjxQvaaE9pn83QZ8Jn+e2io5MapGbsC31dBpG0OCnlhYuVVaG80UUAm586DFLsrPR2qwz1h3rX3lxw117ukgxhW0KunSSv3hgv8Q2p4cMhpNeHrwBO3AacwIDAQAB"
+}

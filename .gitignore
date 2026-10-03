@@ -1,0 +1,11 @@
+/chromium/
+/depot_tools/
+/research/
+/profiles/
+/.playwright-cli/
+*.log
+/baseline-build.exit
+/baseline-build.pid
+/frame-build.exit
+/frame-build.pid
+__pycache__/

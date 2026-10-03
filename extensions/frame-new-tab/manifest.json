@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Frame development new tab",
+  "version": "0.1.0",
+  "description": "A minimal new-tab page for the Frame development build.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Nwhhx2gZn5mcJK94dDVQebWB7KNQr9RUcpqVFna2+UVwqiaVayjhehINwTz92G7ENVOOJFwqOl4/A8BpXsL8S4HiSwuDGcAfoi5c9HGapvoN+PK4WWIWb1W1Dn5ccAdWFMPBWv8+A8nwwwKbIMAXXuHFu4ki0SnDVYBGXvFnmE7xP1KGbkzr94Og18cmiwQ2zYHR7JA70I5NnhHAQ93l3dU0t9ZEm56V1ZDRbrrhTjbz8om7RWquC4C81x9CByTdHc3LivKiDaNvTb6m1seAmSwTClP2Oi0DZFLYosZqztt3AbZclX0Hnuccf8DSM1ezBmindIVNe2E6F72g7XH2QIDAQAB"
+}

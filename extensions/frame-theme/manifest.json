@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Frame development theme",
+  "version": "0.1.0",
+  "description": "Frame's indigo-to-sapphire development palette.",
+  "theme": {
+    "colors": {
+      "frame": [
+        66,
+        30,
+        134
+      ],
+      "frame_inactive": [
+        63,
+        40,
+        141
+      ],
+      "toolbar": [
+        55,
+        69,
+        164
+      ],
+      "tab_text": [
+        248,
+        247,
+        255
+      ],
+      "tab_background_text": [
+        222,
+        214,
+        244
+      ],
+      "bookmark_text": [
+        245,
+        244,
+        255
+      ],
+      "ntp_background": [
+        30,
+        25,
+        70
+      ],
+      "ntp_text": [
+        248,
+        247,
+        255
+      ],
+      "ntp_link": [
+        149,
+        184,
+        255
+      ],
+      "button_background": [
+        58,
+        59,
+        156
+      ]
+    }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnT69Lpk4idIx5Kk2oXSBAb5OFKZEWFUqYyJVCUBRTnt/GJE73Yo12pf/vvACIhE06j3VhN0kaaCrc+DoF7Mg6ymtlYIM8tPAQZ2gE1d1WVgNj4hVbMONpmoVsCxzx0b6i+myns07rW/mR2ZcKQdyEbdyRNO2G/CHv+Bg30Sdi2HUqAB7TW9srg/cJYCt2LV2jHE1dhKaYtmkgW9bmdeD5ixWRnS1SQKJSXO8dnNqJBwJ/U4BgnnpCs201SyxYeJwE5cEoaVRfLkZ+e1vxjOUg/sjSI6BZnrgZ0Y2Io2Bjewv2PBVwBP2gm/iA1aXycpvKG1Z+0sCsQZJeCsuExc0TwIDAQAB"
+}

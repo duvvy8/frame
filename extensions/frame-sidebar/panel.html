@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Frame sidebar</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <main>
+    <header class="topline">
+      <span class="wordmark">FRAME <span class="build">/ DEV</span></span>
+      <span class="status" id="status">READY</span>
+    </header>
+
+    <form class="address" id="address-form">
+      <label class="sr-only" for="address-input">Address or search</label>
+      <input id="address-input" type="text" autocomplete="off" spellcheck="false" placeholder="Address or search">
+      <button id="copy-link" type="button" title="Copy current link" aria-label="Copy current link">⧉</button>
+    </form>
+
+    <section class="section" aria-labelledby="sites-heading">
+      <div class="section-head">
+        <h2 id="sites-heading">Favourites</h2>
+        <button class="text-action" id="add-current" type="button">+ Current</button>
+      </div>
+      <div class="favourites" id="favourites"></div>
+      <p class="microcopy">Drag to reorder. Open sites reuse matching tabs.</p>
+    </section>
+
+    <section class="section" aria-labelledby="tools-heading">
+      <div class="section-head"><h2 id="tools-heading">Tools</h2></div>
+      <div class="tools">
+        <button data-page="chrome://bookmarks/" type="button"><span>Bookmarks</span><span class="arrow">↗</span></button>
+        <button data-page="chrome://history/" type="button"><span>History</span><span class="arrow">↗</span></button>
+        <button data-page="chrome://downloads/" type="button"><span>Downloads</span><span class="arrow">↗</span></button>
+        <button data-page="chrome://extensions/" type="button"><span>Extensions</span><span class="arrow">↗</span></button>
+        <button id="archive-current" type="button" title="Look up the current page in the Wayback Machine"><span>Archived copy</span><span class="arrow">↗</span></button>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="tabs-heading">
+      <div class="section-head"><h2 id="tabs-heading">Find a tab</h2></div>
+      <label class="sr-only" for="tab-query">Search open tabs</label>
+      <input class="tab-query" id="tab-query" type="search" placeholder="Search open tabs" autocomplete="off">
+      <div class="tab-results" id="tab-results" aria-live="polite"></div>
+    </section>
+
+    <footer>CHROMIUM CORE <span>•</span> FRAME SPACE</footer>
+  </main>
+  <script src="panel.js"></script>
+</body>
+</html>
