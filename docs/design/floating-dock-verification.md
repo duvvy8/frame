@@ -151,3 +151,21 @@ suite does not claim to cover all prior lifecycle/split/search acceptance.
    extension's real popup. Check third-party pages retain their own fonts and
    colours. Record results and real screenshots before calling native acceptance
    complete.
+
+## Resume after the first Windows build failure
+
+The first local attempt at commit `8268d6f` stopped on an obsolete navigation
+header include in `app_menu_model.cc`. The two navigation includes are corrected
+to the pinned revision's `chrome/browser/ui/navigator/` paths. The complete build
+is still pending; the header/source audit is not compiler acceptance.
+
+Save webpage edits and close any running Frame window, then run this single
+line from the outer Frame repository to upgrade the already-applied overlay
+and resume the incremental build:
+
+```bat
+git pull --ff-only && python scripts/check_native_manifest.py && python scripts/chromium_overlay.py upgrade --from-ref 8268d6f && call scripts\build-frame.cmd && call scripts\launch-frame.cmd
+```
+
+The `&&` separators stop subsequent steps when a command fails. Existing build
+outputs are reused. Do not launch the previous executable during the rebuild.

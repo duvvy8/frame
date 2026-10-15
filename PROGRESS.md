@@ -1,5 +1,21 @@
 # Frame milestone 1 progress — 27 September 2026
 
+## 15 October: first Windows redesign build failure and header correction
+
+The first reported local Windows build generated its targets, then stopped
+compiling `app_menu_model.cc`: the two new navigation includes used the obsolete
+`chrome/browser/ui/` location. Both now use the pinned revision's
+`chrome/browser/ui/navigator/` paths. A source audit checked all 17 quoted includes
+introduced by the redesign against the overlay, exact pinned upstream sources,
+or a verified `.mojom` generator source. The four overlay regression tests,
+compiled layout checks and 130-file manifest validation still pass. This fixes
+the reported missing-header error; a successful complete Windows build and
+runtime/visual acceptance are still pending. The prior executable was retained.
+For a checkout carrying the first redesign overlay, upgrade from `8268d6f`
+before resuming the incremental build; unknown local source edits still refuse
+writes. See the redesign verification document for the single-line command.
+
+
 ## 15 October: floating-dock source implementation (Windows acceptance pending)
 
 Implemented the selected concept in native Views and the browser-owned NTP.

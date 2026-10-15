@@ -399,7 +399,7 @@
     {
       "path": "chrome/browser/ui/toolbar/app_menu_model.cc",
       "before": "8525a482a7b363245a9550546261c7439e022ffa1855920e0fec2f0778efcb57",
-      "after": "e6964febb2fb38bc8972017400a5ec6424396f1174107ca21c65cf1c4f14f365"
+      "after": "926ff7fb34bac033bf59b9ccb4ff4226446763807412fee3e841b6cb8ef862f3"
     },
     {
       "path": "chrome/browser/ui/toolbar/app_menu_model.h",
