@@ -195,54 +195,6 @@ DEFINE_UI_CLASS_PROPERTY_KEY(bool, kActionItemUnderlineIndicatorKey, false)
 
 namespace {
 
-// Native, source-aware Copy Link. No omnibox selection, extra renderer, global
-// shortcut or toast. The one-shot feedback timer is owned by the button.
-class FrameCopyLinkButton final : public views::ImageButton {
-  METADATA_HEADER(FrameCopyLinkButton, views::ImageButton)
- public:
-  explicit FrameCopyLinkButton(BrowserWindowInterface* browser)
-      : views::ImageButton(base::BindRepeating(&FrameCopyLinkButton::Copy,
-                                               base::Unretained(this))),
-        browser_(browser) {
-    SetPreferredSize(gfx::Size(32, 32));
-    SetFocusBehavior(FocusBehavior::ALWAYS);
-    RestoreIcon();
-  }
-  void OnThemeChanged() override {
-    views::ImageButton::OnThemeChanged();
-    SetVisible(browser_->GetProfile()->GetPrefs()->GetBoolean(frame::kBlueShellPref));
-    SetEnabled(chrome::CanCopyUrl(browser_));
-  }
- private:
-  void Copy(const ui::Event&) {
-    auto* contents = browser_->GetTabStripModel()->GetActiveWebContents();
-    if (!contents || !chrome::CanCopyUrl(browser_) ||
-        !contents->GetVisibleURL().is_valid()) return;
-    {
-      ui::ScopedClipboardWriter clipboard(ui::ClipboardBuffer::kCopyPaste);
-      clipboard.WriteText(base::UTF8ToUTF16(contents->GetVisibleURL().spec()));
-    }
-    SetImageModel(STATE_NORMAL, ui::ImageModel::FromVectorIcon(
-        kCheckIcon, kColorToolbarButtonIcon, 18));
-    SetTooltipText(u"Link copied");
-    GetViewAccessibility().SetName(u"Link copied");
-    feedback_.Start(FROM_HERE, base::Seconds(1),
-                    base::BindOnce(&FrameCopyLinkButton::RestoreIcon,
-                                   base::Unretained(this)));
-  }
-  void RestoreIcon() {
-    SetImageModel(STATE_NORMAL, ui::ImageModel::FromVectorIcon(
-        vector_icons::kLinkIcon, kColorToolbarButtonIcon, 18));
-    SetTooltipText(u"Copy current page link");
-    GetViewAccessibility().SetName(u"Copy current page link");
-  }
-  raw_ptr<BrowserWindowInterface> browser_;
-  base::OneShotTimer feedback_;
-};
-BEGIN_METADATA(FrameCopyLinkButton)
-END_METADATA
-
-
 // Gets the display mode for a given browser.
 ToolbarView::DisplayMode GetDisplayMode(BrowserWindowInterface* browser) {
   // Checked in this order because even tabbed PWAs use the CUSTOM_TAB
@@ -544,7 +496,6 @@ void ToolbarView::Init() {
     location_bar_ = toolbar_webview_->GetLocationBar();
   }
 
-  AddChildView(std::make_unique<FrameCopyLinkButton>(browser_));
 
   bool is_glic_left_of_profile =
       features::kGlicToolbarButtonLocationParam.Get() ==
@@ -1762,6 +1713,17 @@ void ToolbarView::InitLayout() {
 
 void ToolbarView::LayoutCommon() {
   DCHECK(display_mode_ == DisplayMode::kNormal);
+
+  // Frame exposes the same native split menu beside the Windows caption
+  // buttons. Keep Chromium's original placement when the Frame shell is off.
+  if (split_tabs_ && browser_view_->IsFrameShellEnabled()) {
+    views::ManualLayoutUtil(layout_manager_).SetViewHidden(split_tabs_, true);
+  } else if (split_tabs_) {
+    auto* active = browser_->GetTabStripModel()->GetActiveTab();
+    const bool visible = browser_->GetProfile()->GetPrefs()->GetBoolean(
+        prefs::kPinSplitTabButton) || (active && active->IsSplit());
+    views::ManualLayoutUtil(layout_manager_).SetViewHidden(split_tabs_, !visible);
+  }
 
   gfx::Insets interior_margin =
       GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);

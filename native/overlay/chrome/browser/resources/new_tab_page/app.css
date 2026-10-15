@@ -97,6 +97,9 @@
 }
 
 cr-most-visited {
+  --most-visited-icon-size: 40px;
+  --most-visited-tile-size: 60px;
+  --most-visited-gap: 4px;
   --add-shortcut-background-color: var(
     --color-new-tab-page-add-shortcut-background
   );
@@ -196,9 +199,9 @@ cr-most-visited {
 
 #frameHeading {
   color: #f7f4ff;
-  font: 600 clamp(32px, 4vw, 38px)/1 Geist, sans-serif;
+  font: 600 clamp(26px, 3vw, 30px)/1 Geist, sans-serif;
   letter-spacing: -0.045em;
-  margin: clamp(100px, 20vh, 200px) 0 32px;
+  margin: clamp(72px, 25vh, 220px) 0 28px;
 }
 
 #frameEdition {

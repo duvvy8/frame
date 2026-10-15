@@ -29,6 +29,7 @@
 #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
 #include "chrome/browser/ui/views/frame/custom_corners.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/frame_dock_layout.h"
 #include "chrome/browser/ui/views/frame/custom_corners_background.h"
 #include "chrome/browser/ui/views/frame/custom_floating_corner.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_delegate.h"
@@ -746,6 +747,10 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumSize(
     min_width += padding;
   }
 
+  if (static_cast<BrowserView*>(views().browser_view)->IsFrameShellEnabled()) {
+    min_width += frame::kDockGutter + 48;  // Gutter and separate split control.
+    min_height = std::max(min_height, 240);
+  }
   return gfx::Size(min_width, min_height);
 }
 
@@ -768,17 +773,47 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   auto* frame_browser_view = static_cast<BrowserView*>(views().browser_view);
   const bool frame_shell = frame_browser_view->IsFrameShellEnabled() &&
       !is_fullscreen(layout_data_->window_state);
-  if (IsParentedTo(views().frame_rail, views().browser_view) &&
-      frame_browser_view->IsFrameRailVisible() && frame_shell) {
-    const int rail_width = views().frame_rail->GetPreferredSize().width();
-    layout.AddChild(views().frame_rail,
-                    gfx::Rect(browser_params.visual_client_area.x(),
-                              browser_params.visual_client_area.y(),
-                              rail_width,
-                              browser_params.visual_client_area.height()), true);
-    params.InsetHorizontal(rail_width, /*leading=*/true);
-  } else if (IsParentedTo(views().frame_rail, views().browser_view)) {
-    layout.AddChild(views().frame_rail, gfx::Rect(), false);
+  const bool show_dock = frame_shell && frame_browser_view->IsFrameDockVisible();
+  if (show_dock) {
+    // Reserve the gutter in the same params used by contents, infobars,
+    // bookmarks and split panes. No transparent full-height input surface.
+    params.InsetHorizontal(frame::kDockGutter, /*leading=*/true);
+  }
+  if (IsParentedTo(views().frame_tab_dock, views().browser_view)) {
+    const int top = browser_params.visual_client_area.y() +
+                    views().toolbar->GetPreferredSize().height() + 12;
+    const int bottom = browser_params.visual_client_area.bottom() - 60;
+    const auto dock = frame::CalculateDockBounds(
+        top, bottom, views().frame_tab_dock->GetPreferredSize().height());
+    // Below a one-tab viewport, use native tab search/keyboard shortcuts until
+    // more space returns. Keep the plus button and tabs as usable targets.
+    const bool dock_fits = dock.height >=
+        std::min(views().frame_tab_dock->GetPreferredSize().height(),
+                 frame::kDockFooterHeight + frame::kDockTabHeight + 4);
+    layout.AddChild(views().frame_tab_dock,
+        gfx::Rect(browser_params.visual_client_area.x() + frame::kDockInset,
+                  dock.y, frame::kDockWidth, dock.height), show_dock && dock_fits);
+  }
+  const int header_y = browser_params.visual_client_area.y();
+  const int header_height = views().toolbar->GetPreferredSize().height();
+  if (IsParentedTo(views().frame_logo, views().browser_view)) {
+    layout.AddChild(views().frame_logo,
+        gfx::Rect(browser_params.visual_client_area.x() + 24,
+                  header_y + std::max(0, (header_height - 24) / 2), 24, 24),
+        frame_shell);
+  }
+  if (IsParentedTo(views().frame_settings, views().browser_view)) {
+    layout.AddChild(views().frame_settings,
+        gfx::Rect(browser_params.visual_client_area.x() + 18,
+                  browser_params.visual_client_area.bottom() - 48, 36, 36),
+        frame_shell);
+  }
+  if (IsParentedTo(views().frame_split, views().browser_view)) {
+    const int right = browser_params.visual_client_area.right() -
+        gfx::ToCeiledSize(browser_params.trailing_exclusion.ContentWithPadding()).width();
+    layout.AddChild(views().frame_split,
+        gfx::Rect(right - 44, header_y + std::max(0, (header_height - 36) / 2),
+                  36, 36), frame_shell);
   }
   if (frame_shell) {
     params.Inset(gfx::Insets::TLBR(0, 0, 6, 6));
@@ -1418,6 +1453,16 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
                           params.visual_client_area.y(),
                           params.visual_client_area.width(),
                           views().toolbar->GetPreferredSize().height());
+      if (static_cast<BrowserView*>(views().browser_view)->IsFrameShellEnabled() &&
+          !is_fullscreen(layout_data_->window_state)) {
+        const int left = std::max(toolbar_bounds.x(),
+                                 params.visual_client_area.x());
+        const auto compact = frame::CalculateToolbarBounds(
+            left, std::max(left, toolbar_bounds.right() - 48),
+            layout_data_->revised_params.visual_client_area.CenterPoint().x());
+        toolbar_bounds.set_x(compact.x);
+        toolbar_bounds.set_width(compact.width);
+      }
       params.SetTop(toolbar_bounds.bottom());
       needs_exclusion = false;
     }

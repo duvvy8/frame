@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -63,6 +64,26 @@ class OverlayTests(unittest.TestCase):
         self.git('commit', '--allow-empty', '-qm', 'different revision')
         with self.assertRaisesRegex(RuntimeError, 'revision mismatch'):
             overlay.apply()
+
+    def test_upgrade_accepts_only_known_previous_bytes_and_preflights_all_files(self):
+        (self.src / 'source.cc').write_bytes(b'previous\r\n')
+        (self.src / 'other.cc').write_bytes(b'previous other\n')
+        overlay.export()
+        previous = json.loads((overlay.OVERLAY.parent / 'manifest.json').read_bytes())
+        (self.src / 'source.cc').write_bytes(b'new\r\n')
+        (self.src / 'other.cc').write_bytes(b'new other\n')
+        overlay.export()
+        (self.src / 'source.cc').write_bytes(b'previous\r\n')
+        (self.src / 'other.cc').write_bytes(b'unexported local work')
+        with self.assertRaisesRegex(RuntimeError, 'Preserved local changes'):
+            overlay.apply(previous)
+        self.assertEqual((self.src / 'source.cc').read_bytes(), b'previous\r\n')
+        self.assertEqual((self.src / 'other.cc').read_bytes(), b'unexported local work')
+        (self.src / 'other.cc').write_bytes(b'previous other\n')
+        overlay.apply(previous)
+        overlay.apply(previous)
+        self.assertEqual((self.src / 'source.cc').read_bytes(), b'new\r\n')
+        self.assertEqual((self.src / 'other.cc').read_bytes(), b'new other\n')
 
 
 if __name__ == '__main__':

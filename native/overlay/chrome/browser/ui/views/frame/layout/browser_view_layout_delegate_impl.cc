@@ -58,6 +58,10 @@ BrowserViewLayoutDelegateImpl::GetTabStripType() const {
     return TabStripType::kNone;
   }
 
+  // The selected Frame layout uses its model-backed floating dock. Keep the
+  // native tab hosts alive for menus, keyboard commands and tab drag machinery.
+  if (browser_view_->IsFrameShellEnabled()) return TabStripType::kNone;
+
   // Determine if there is a vertical tab strip.
   if (browser_view_->browser()->GetType() ==
       BrowserWindowInterface::Type::TYPE_NORMAL) {

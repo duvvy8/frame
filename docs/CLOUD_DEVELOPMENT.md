@@ -29,3 +29,17 @@ Record unavailable native build/runtime checks honestly in the handoff. A render
 Inspect the current branch and remote state before editing. Work on a dedicated feature branch based on the latest appropriate base. Preserve concurrent work, use normal commits, and push the completed branch to `origin` when authenticated publication is available. Verify the remote commit matches the intended local commit. Avoid duplicate commits if the desired work is already present. Do not force-push, rewrite unrelated history, or merge without a separate request.
 
 If cloud publishing permissions are unavailable, finish the patch and report that limitation; do not claim changes were pushed. Never commit credentials, local browser profiles, build outputs or the full Chromium checkout.
+
+## Floating-dock handoff
+
+Run `python scripts/check_native_manifest.py` for checkout-independent integrity
+validation and `python scripts/test_frame_dock_layout.py` to compile/exercise the
+actual dependency-free layout calculations when a C++ compiler is installed.
+These do not compile the browser or establish native visual/input acceptance.
+
+An existing Windows source checkout with a recognised older overlay can use
+`python scripts/chromium_overlay.py upgrade --from-ref b9d7949`. This reads the
+previous committed manifest, checks the pinned revision and unchanged baselines,
+and preflights every current file before applying new postimages. Unknown edits
+refuse the whole operation. It does not export or discover Chromium changes.
+See [the exact Windows upgrade/build/acceptance steps](design/floating-dock-verification.md).

@@ -1,5 +1,11 @@
 # Frame roadmap
 
+The selected floating-dock redesign is implemented in the source overlay as of
+15 October. Its Windows compilation and actual native/visual acceptance remain
+open. [The redesign checklist](docs/design/floating-dock-verification.md) records
+what cloud checks establish and the remaining build/runtime work. This does not
+mark the broader browser milestones below complete.
+
 This is Frame's plan, informed by the [Ember README](https://github.com/v11exe/ember/blob/main/README.md) and [Ember roadmap](https://github.com/v11exe/ember/blob/main/ROADMAP.md). Ember's completed status does **not** imply the feature exists in Frame. Frame uses full Chromium, so each idea needs a separate design and compatibility check in that codebase.
 
 ## Milestone 1 — browser foundation (current)

@@ -3160,6 +3160,10 @@ static_library("ui") {
   }
 
   if (toolkit_views) {
+    deps += [
+      "//chrome/browser/ui/tabs:tab_model",
+      "//chrome/browser/ui/views/frame:frame_dock_layout",
+    ]
     sources += [
       "views/frame/base_tab_strip_region_view.cc",
       "views/frame/base_tab_strip_region_view.h",

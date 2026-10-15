@@ -1,5 +1,44 @@
 # Frame milestone 1 progress — 27 September 2026
 
+## 15 October: floating-dock source implementation (Windows acceptance pending)
+
+Implemented the selected concept in native Views and the browser-owned NTP.
+The 48-DIP floating dock uses weak native TabInterface identities, model order,
+actual favicon updates, native activation/historical closure and existing tab
+context menus. It bounds its viewport, retains a fixed plus, reveals selected/
+focused tabs and reserves a page gutter. Tooltips/accessibility expose title,
+domain, pin/group and loading/audio/muted/sleeping state. F6 includes the dock,
+caption-side split and menu controls; arrow focus does not activate tabs.
+
+The compact toolbar retains the native omnibox and responsive extension/actions
+machinery. Caption exclusions and non-client hit testing preserve native Windows
+controls and whitespace dragging. The fixed Frame mark and bottom-left gear are
+separate from the scroll viewport. The gear opens Chromium's existing app menu;
+More tools retains recent switching, safe batch sleeping, archive lookup, Copy
+Link and bookmark-backed Frame favourites with exact-URL reuse. NTP shortcuts
+remain a separate native component with hidden captions and existing editing.
+Superseded rail/tab-strip toggles are removed while their stored prefs remain;
+disabling Frame shell restores conventional chrome.
+
+Added guarded overlay upgrade from a prior committed manifest so an existing
+Windows checkout need not reset its old postimages. The new regression confirms
+that a single unknown local edit refuses all writes and that a recognised
+upgrade is byte-exact and repeatable. Four overlay regression tests and the
+compiled C++ layout invariant test pass. The full manifest is checked for safe
+unique paths, existing exact-byte postimages, SHA-256 and pinned-revision agreement.
+New upstream-existing menu files use baseline bytes fetched at that revision;
+existing before hashes and CHROMIUM_REVISION are unchanged. The Windows suite
+has passed JavaScript syntax checking only; no native acceptance has run here.
+
+This Linux cloud checkout has no full Chromium source, Windows SDK or executable.
+The complete native translation units are uncompiled; runtime, visual, platform
+focus/caption/scaling, split and sleeping/session acceptance remain pending.
+No updated browser screenshot was produced. Exact safe upgrade/build commands,
+a new native dock acceptance harness and the remaining checklist are in
+[docs/design/floating-dock-verification.md](docs/design/floating-dock-verification.md).
+Earlier screenshots/reports do not establish redesign acceptance.
+
+
 ## Build and environment
 
 - This is a separate Git project at `C:\Users\Michael\Documents\frame`. The previous Frame and Ember repositories were inspected in ignored `research/` copies; neither reference repository was changed.
