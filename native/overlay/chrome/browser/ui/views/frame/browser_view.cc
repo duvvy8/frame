@@ -1290,8 +1290,8 @@ class FrameDockTabButton final : public views::ImageButton,
     return views::ImageButton::OnKeyPressed(event);
   }
 
-  void OnPaint(gfx::Canvas* canvas) override {
-    views::ImageButton::OnPaint(canvas);
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    views::ImageButton::PaintButtonContents(canvas);
     cc::PaintFlags flags;
     flags.setAntiAlias(true);
     if (active_) {
@@ -1619,7 +1619,7 @@ class FrameSplitButton final : public views::ImageButton,
   void Update() {
     if (runner_)
       runner_->Cancel();
-    const auto name =
+    const std::u16string name =
         IsSplit() ? u"Manage split view" : u"Split current page with a new tab";
     SetTooltipText(name);
     GetViewAccessibility().SetName(name);
@@ -1674,14 +1674,14 @@ bool BrowserView::IsFrameMenuCommandEnabled(int command) const {
       return contents && contents->GetVisibleURL().SchemeIsHTTPOrHTTPS() &&
              bookmarks && bookmarks->loaded() &&
              !GetProfile()->IsOffTheRecord() &&
-             chrome::CanBookmarkCurrentTab(browser());
+             chrome::CanBookmarkCurrentTab(browser_.get());
     case kFrameManageFavorites:
     case kFrameFavoritesMenu:
       return bookmarks && bookmarks->loaded();
     case kFrameArchive:
       return contents && contents->GetVisibleURL().SchemeIsHTTPOrHTTPS();
     case kFrameCopyLink:
-      return chrome::CanCopyUrl(browser());
+      return chrome::CanCopyUrl(browser_.get());
     default:
       return false;
   }

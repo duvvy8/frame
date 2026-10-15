@@ -429,7 +429,7 @@
     {
       "path": "chrome/browser/ui/views/frame/browser_view.cc",
       "before": "e382f432ca6e946463c8979dec7f5938f6f912c23a23ec49eda64a8914833ed7",
-      "after": "942630ec00f73f2f99a19d765dec9f44115019e76394189b1f0adbb887892d74"
+      "after": "7bf9e64d8868bbfa735c1e2efea2cd1502b49e481ad18fe694d5c3ea1c7a3064"
     },
     {
       "path": "chrome/browser/ui/views/frame/browser_view.h",

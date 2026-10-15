@@ -169,3 +169,17 @@ git pull --ff-only && python scripts/check_native_manifest.py && python scripts/
 
 The `&&` separators stop subsequent steps when a command fails. Existing build
 outputs are reused. Do not launch the previous executable during the rebuild.
+
+## Resume after the browser UI compile diagnostics
+
+The next Windows attempt reached `browser_view.cc` and reported four diagnostics.
+The dock now uses `PaintButtonContents` instead of final `OnPaint`; native
+capability checks receive the retained mutable browser pointer; the split label
+has an explicit string type. A complete Windows build is still pending.
+
+After saving page edits and closing Frame, run this single line from the outer
+Frame repository to upgrade the applied `a89181a` source and resume:
+
+```bat
+git pull --ff-only && python scripts/check_native_manifest.py && python scripts/chromium_overlay.py upgrade --from-ref a89181a && call scripts\build-frame.cmd && call scripts\launch-frame.cmd
+```

@@ -1,5 +1,24 @@
 # Frame milestone 1 progress — 27 September 2026
 
+## 15 October: correct the remaining reported browser UI compile diagnostics
+
+The second local Windows attempt passed the navigation-header failure and
+reported four errors in `browser_view.cc`. Dock indicators now override
+`ImageButton::PaintButtonContents`, as required by the pinned `Button` contract,
+instead of overriding its final `OnPaint`. The superclass content painter still
+draws the favicon; Chromium's button paint path retains its background, border
+and focus painting. The two native command-capability checks now use the stored
+mutable BrowserWindowInterface pointer without casting away const. The split
+control's label uses an explicit `std::u16string`, satisfying Chromium's rule
+against deducing raw pointers with `auto`. No public header changes are needed.
+
+Four overlay regression tests, the compiled layout check and 130-file manifest
+validation pass. These are source fixes for all four reported diagnostics; a
+complete Windows compiler/linker success and runtime acceptance still require
+the incremental local rebuild. Upgrade from the applied `a89181a` overlay for
+this retry; unknown local edits remain protected.
+
+
 ## 15 October: first Windows redesign build failure and header correction
 
 The first reported local Windows build generated its targets, then stopped
