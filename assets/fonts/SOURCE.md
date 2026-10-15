@@ -1,0 +1,1 @@
+Geist Sans and Geist Mono variable TTF assets downloaded from the official vercel/geist-font distribution on 4 October 2026. Source commit: 10dc7658f13c38a474cde201bb09a4617267545b. Licence: Geist-OFL.txt (SIL OFL 1.1). Native browser-process resources and privileged WebUI resources bundle these exact files; no CDN or installed Windows font is required.

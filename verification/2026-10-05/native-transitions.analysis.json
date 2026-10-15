@@ -1,0 +1,14 @@
+{
+  "recording": "C:\\Users\\Michael\\Documents\\frame\\verification\\2026-10-05\\native-transitions.mp4",
+  "sample_count": 750,
+  "region": {
+    "left": 200,
+    "top": 160,
+    "right": 1200,
+    "bottom": 830
+  },
+  "threshold": "Every RGB component < 24; predominantly dark means > 75%",
+  "maximum_fraction": 0.00015970149253731345,
+  "predominantly_dark_samples": [],
+  "limitations": "PrintWindow sampling only. Coordinates clip to capture size. Nominal video timestamps are not capture wall times; consult the recording timing sidecar. Unsampled/GPU/theme/discard transitions are not established by this measurement."
+}

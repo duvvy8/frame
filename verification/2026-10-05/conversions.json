@@ -1,0 +1,84 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\conversions-yAJ2ng",
+  "results": [
+    {
+      "text": "1 mi",
+      "expected": "1.60934 km",
+      "passed": true
+    },
+    {
+      "text": "32°F",
+      "expected": "0 °C",
+      "passed": true
+    },
+    {
+      "text": "1 lb",
+      "expected": "453.592 g",
+      "passed": true
+    },
+    {
+      "text": "1 US gallon",
+      "expected": "3.78541 L",
+      "passed": true
+    },
+    {
+      "text": "1 UK gallon",
+      "expected": "4.54609 L",
+      "passed": true
+    },
+    {
+      "text": "1e309 m",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "2 gallons",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "Meet at 10 PST",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "The distance is 2 mi",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "1,000 mi",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "-500°F",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "text": "1 km",
+      "expected": "3280.84 ft",
+      "passed": true
+    },
+    {
+      "text": "0°C",
+      "expected": "32 °F",
+      "passed": true
+    },
+    {
+      "text": "1 L",
+      "expected": "33.814 US fl oz",
+      "passed": true
+    },
+    {
+      "text": "1 mi",
+      "expected": null,
+      "passed": true
+    },
+    {
+      "name": "Both discoverable conversion settings persist through restart",
+      "passed": true
+    }
+  ]
+}

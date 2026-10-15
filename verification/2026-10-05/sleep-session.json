@@ -1,0 +1,17 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\sleep-session-6UMh6G",
+  "results": [
+    {
+      "name": "Explicit user protection and removal coexist with independent extension protection",
+      "passed": true
+    },
+    {
+      "name": "Native browser restart restores explicit protection and excludes transient extension state",
+      "passed": true
+    },
+    {
+      "name": "Removing a restored never-sleep preference survives a second native restart",
+      "passed": true
+    }
+  ]
+}

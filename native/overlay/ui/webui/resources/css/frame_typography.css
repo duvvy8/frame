@@ -1,0 +1,31 @@
+/* Frame typography. SIL OFL assets; see chrome://resources/fonts/frame/OFL.txt. */
+@font-face {
+  font-family: 'Geist';
+  src: url('chrome://resources/fonts/frame/Geist.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('chrome://resources/fonts/frame/GeistMono.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --frame-font-family: 'Geist', 'Segoe UI', sans-serif;
+  --frame-font-family-mono: 'Geist Mono', Consolas, monospace;
+  --frame-font-size-body: 14px;
+  --frame-font-size-secondary: 12px;
+  --frame-font-weight-body: 400;
+  --frame-font-weight-control: 500;
+  --frame-font-weight-heading: 600;
+}
+code, kbd, samp {
+  font-family: var(--frame-font-family-mono);
+}
+button, input, select, textarea {
+  font-family: var(--frame-font-family);
+}
+button { font-weight: var(--frame-font-weight-control); }

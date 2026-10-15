@@ -1,0 +1,1099 @@
+{
+  "text": "1 mi",
+  "expected": null,
+  "selection": "1 mi",
+  "items": [
+    {
+      "Name": "Settings – Appearance",
+      "Type": "ControlType.Document",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "Settings",
+      "Type": "ControlType.Text",
+      "Enabled": true,
+      "X": 85,
+      "Y": 22
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 347,
+      "Y": 20
+    },
+    {
+      "Name": "Search settings",
+      "Type": "ControlType.Edit",
+      "Enabled": true,
+      "X": 381,
+      "Y": 26
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 18,
+      "Y": 74
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Menu",
+      "Enabled": true,
+      "X": 18,
+      "Y": 74
+    },
+    {
+      "Name": "Profiles and services",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 74
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 84
+    },
+    {
+      "Name": "Autofill and passwords",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 114
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 124
+    },
+    {
+      "Name": "Privacy and security",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 154
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 164
+    },
+    {
+      "Name": "Performance",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 194
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 204
+    },
+    {
+      "Name": "Appearance",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 234
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 244
+    },
+    {
+      "Name": "Search engine",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 274
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 284
+    },
+    {
+      "Name": "Default browser",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 314
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 324
+    },
+    {
+      "Name": "On startup",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 354
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 364
+    },
+    {
+      "Name": "Languages",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 411
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 421
+    },
+    {
+      "Name": "Downloads",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 451
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 461
+    },
+    {
+      "Name": "Accessibility",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 491
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 501
+    },
+    {
+      "Name": "System",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 531
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 541
+    },
+    {
+      "Name": "Reset settings",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 571
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 581
+    },
+    {
+      "Name": "Extensions",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 628
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 638
+    },
+    {
+      "Name": "About Frame",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 19,
+      "Y": 668
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 42,
+      "Y": 678
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 284,
+      "Y": 66
+    },
+    {
+      "Name": "Appearance",
+      "Type": "ControlType.Text",
+      "Enabled": true,
+      "X": 349,
+      "Y": 87
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 132
+    },
+    {
+      "Name": "Frame midnight-blue shell",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 158
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 199
+    },
+    {
+      "Name": "Always show the horizontal tab strip",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 225
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 266
+    },
+    {
+      "Name": "Show the utility rail",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 282
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 314
+    },
+    {
+      "Name": "Visual recent-tab switcher",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 340
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 381
+    },
+    {
+      "Name": "Convert selected measurements",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 407
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 449
+    },
+    {
+      "Name": "Prefer metric conversion results",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 474
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 516
+    },
+    {
+      "Name": "Theme",
+      "Type": "ControlType.Hyperlink",
+      "Enabled": true,
+      "X": 985,
+      "Y": 524
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 565
+    },
+    {
+      "Name": "Customise your toolbar",
+      "Type": "ControlType.Hyperlink",
+      "Enabled": true,
+      "X": 985,
+      "Y": 573
+    },
+    {
+      "Name": "Mode",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 620
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 663
+    },
+    {
+      "Name": "Show Home button",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 688
+    },
+    {
+      "Name": "Bookmarks bar",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 738
+    },
+    {
+      "Name": "Tab position",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 787
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 829
+    },
+    {
+      "Name": "Show tab search button",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 846
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 878
+    },
+    {
+      "Name": "Show tab groups in bookmarks bar",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 895
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 927
+    },
+    {
+      "Name": "Automatically pin new tab groups created on any device to the bookmarks bar",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 944
+    },
+    {
+      "Name": "Side panel position",
+      "Type": "ControlType.Text",
+      "Enabled": true,
+      "X": 369,
+      "Y": 991
+    },
+    {
+      "Name": "Chrome panels Side panel position",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 1031
+    },
+    {
+      "Name": "Tab hover preview card",
+      "Type": "ControlType.Text",
+      "Enabled": true,
+      "X": 369,
+      "Y": 1088
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 409,
+      "Y": 1122
+    },
+    {
+      "Name": "Show tab preview images",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 1138
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 409,
+      "Y": 1170
+    },
+    {
+      "Name": "Show tab memory usage",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 1187
+    },
+    {
+      "Name": "Font size",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 1226
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 1268
+    },
+    {
+      "Name": "Customise fonts",
+      "Type": "ControlType.Hyperlink",
+      "Enabled": true,
+      "X": 985,
+      "Y": 1276
+    },
+    {
+      "Name": "Page zoom",
+      "Type": "ControlType.ComboBox",
+      "Enabled": true,
+      "X": 809,
+      "Y": 1323
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 349,
+      "Y": 1365
+    },
+    {
+      "Name": "Allow split view drag and drop on left, right or bottom edge of window",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 983,
+      "Y": 1382
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": false,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "Native measurement tests - Chromium",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 1145,
+      "Y": 11
+    },
+    {
+      "Name": "Minimise",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1145,
+      "Y": 11
+    },
+    {
+      "Name": "Maximise",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1190,
+      "Y": 11
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1236,
+      "Y": 11
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 50
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 50
+    },
+    {
+      "Name": "Search or enter URL (Ctrl+L)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 56
+    },
+    {
+      "Name": "Show or hide tabs",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 98
+    },
+    {
+      "Name": "New tab (Ctrl+T)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 140
+    },
+    {
+      "Name": "Split current page with a new tab",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 182
+    },
+    {
+      "Name": "Switch recent tabs (Ctrl+Tab)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 224
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 28,
+      "Y": 266
+    },
+    {
+      "Name": "Bookmarks (Ctrl+Shift+O)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 273
+    },
+    {
+      "Name": "Downloads (Ctrl+J)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 315
+    },
+    {
+      "Name": "History (Ctrl+H)",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 357
+    },
+    {
+      "Name": "Extensions",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 399
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 28,
+      "Y": 441
+    },
+    {
+      "Name": "Settings and appearance",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 448
+    },
+    {
+      "Name": "Sleep eligible background tabs",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 490
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 28,
+      "Y": 532
+    },
+    {
+      "Name": "Add current page to rail favourites",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 539
+    },
+    {
+      "Name": "Edit, reorder or remove rail favourites",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 581
+    },
+    {
+      "Name": "View archived copies of current website",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 28,
+      "Y": 623
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "Frame",
+      "Type": "ControlType.Image",
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 74,
+      "Y": 50
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.ToolBar",
+      "Enabled": true,
+      "X": 74,
+      "Y": 50
+    },
+    {
+      "Name": "Back",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 80,
+      "Y": 56
+    },
+    {
+      "Name": "Forward",
+      "Type": "ControlType.Button",
+      "Enabled": false,
+      "X": 116,
+      "Y": 56
+    },
+    {
+      "Name": "Reload",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 152,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Enabled": true,
+      "X": 195,
+      "Y": 56
+    },
+    {
+      "Name": "View site information",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 200,
+      "Y": 61
+    },
+    {
+      "Name": "Address and search bar",
+      "Type": "ControlType.Edit",
+      "Enabled": true,
+      "X": 232,
+      "Y": 61
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 1121,
+      "Y": 61
+    },
+    {
+      "Name": "Bookmark this tab",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1121,
+      "Y": 61
+    },
+    {
+      "Name": "Copy current page link",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1166,
+      "Y": 57
+    },
+    {
+      "Name": "You",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1200,
+      "Y": 56
+    },
+    {
+      "Name": "Frame",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 1236,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 80,
+      "Y": 102
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 80,
+      "Y": 103
+    },
+    {
+      "Name": "Native measurement tests",
+      "Type": "ControlType.Document",
+      "Enabled": true,
+      "X": 80,
+      "Y": 103
+    },
+    {
+      "Name": "1 mi",
+      "Type": "ControlType.Text",
+      "Enabled": true,
+      "X": 158,
+      "Y": 181
+    },
+    {
+      "Name": "Unsaved form",
+      "Type": "ControlType.Edit",
+      "Enabled": true,
+      "X": 271,
+      "Y": 187
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 80,
+      "Y": 102
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 74,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 80,
+      "Y": 10
+    },
+    {
+      "Name": "Tab search",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 80,
+      "Y": 16
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Tab",
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "Native measurement tests",
+      "Type": "ControlType.TabItem",
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 316,
+      "Y": 16
+    },
+    {
+      "Name": "Settings – Appearance",
+      "Type": "ControlType.TabItem",
+      "Enabled": true,
+      "X": 340,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 554,
+      "Y": 16
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "New tab",
+      "Type": "ControlType.Button",
+      "Enabled": true,
+      "X": 590,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 630,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 156,
+      "Y": 183
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 156,
+      "Y": 183
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.MenuBar",
+      "Enabled": true,
+      "X": 156,
+      "Y": 183
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 180,
+      "Y": 207
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Enabled": true,
+      "X": 180,
+      "Y": 207
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Menu",
+      "Enabled": true,
+      "X": 180,
+      "Y": 207
+    },
+    {
+      "Name": "Copy Ctrl+C",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 207
+    },
+    {
+      "Name": "Copy link to highlight",
+      "Type": "ControlType.MenuItem",
+      "Enabled": false,
+      "X": 180,
+      "Y": 235
+    },
+    {
+      "Name": "Search Google for “1 mi”",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 263
+    },
+    {
+      "Name": "Print… Ctrl+P",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 291
+    },
+    {
+      "Name": "Open in reading mode Alt+Shift+R",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 319
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Enabled": true,
+      "X": 180,
+      "Y": 347
+    },
+    {
+      "Name": "Get image descriptions from Google",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 364
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Enabled": true,
+      "X": 180,
+      "Y": 392
+    },
+    {
+      "Name": "Inspect",
+      "Type": "ControlType.MenuItem",
+      "Enabled": true,
+      "X": 180,
+      "Y": 409
+    }
+  ]
+}

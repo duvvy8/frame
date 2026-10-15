@@ -1,0 +1,21 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\timeout-QIZbkC",
+  "results": [
+    {
+      "name": "Configured one-minute native timer sleeps eligible background page while edited, excluded and active pages survive",
+      "passed": true
+    },
+    {
+      "name": "Actual Memory settings timer and domain exclusion controls retain native preferences and edited text",
+      "passed": true
+    },
+    {
+      "name": "Adaptive timing remains selectable through the native settings control",
+      "passed": true
+    },
+    {
+      "name": "Timeout choice and excluded domain survive actual browser restart",
+      "passed": true
+    }
+  ]
+}

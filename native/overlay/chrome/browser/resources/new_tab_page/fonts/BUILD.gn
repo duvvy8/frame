@@ -1,0 +1,13 @@
+import("//ui/webui/resources/tools/generate_grd.gni")
+
+generate_grd("build_grdp") {
+  grd_prefix = "new_tab_page_frame_font"
+  out_grd = "$target_gen_dir/resources.grdp"
+  input_files = [
+    "Geist.ttf",
+    "IBMPlexSans.ttf",
+    "IBMPlexMono-Regular.ttf",
+  ]
+  input_files_base_dir = rebase_path(".", "//")
+  resource_path_prefix = "fonts"
+}

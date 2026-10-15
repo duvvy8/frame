@@ -1,0 +1,92 @@
+{
+  "dialog": {
+    "Name": "Open",
+    "Handle": 1443956,
+    "X": 18,
+    "Y": 10,
+    "Width": 1200,
+    "Height": 720
+  },
+  "controls": [
+    {
+      "Handle": 1903114,
+      "Class": "Static",
+      "Text": "File &name:",
+      "Id": 1090,
+      "X": 156,
+      "Y": 659,
+      "Width": 54,
+      "Height": 15
+    },
+    {
+      "Handle": 2951542,
+      "Class": "ComboBoxEx32",
+      "Text": "",
+      "Id": 1148,
+      "X": 215,
+      "Y": 655,
+      "Width": 778,
+      "Height": 24
+    },
+    {
+      "Handle": 2754784,
+      "Class": "ComboBox",
+      "Text": "",
+      "Id": 1148,
+      "X": 215,
+      "Y": 655,
+      "Width": 778,
+      "Height": 24
+    },
+    {
+      "Handle": 6358818,
+      "Class": "Edit",
+      "Text": "",
+      "Id": 1148,
+      "X": 219,
+      "Y": 660,
+      "Width": 754,
+      "Height": 15
+    },
+    {
+      "Handle": 2099702,
+      "Class": "Static",
+      "Text": "Files of &type:",
+      "Id": 1089,
+      "X": 26,
+      "Y": 41,
+      "Width": 0,
+      "Height": 0
+    },
+    {
+      "Handle": 2032396,
+      "Class": "ComboBox",
+      "Text": "",
+      "Id": 1136,
+      "X": 1005,
+      "Y": 655,
+      "Width": 188,
+      "Height": 23
+    },
+    {
+      "Handle": 1509786,
+      "Class": "Button",
+      "Text": "&Open",
+      "Id": 1,
+      "X": 1005,
+      "Y": 684,
+      "Width": 88,
+      "Height": 26
+    },
+    {
+      "Handle": 3344738,
+      "Class": "Button",
+      "Text": "Cancel",
+      "Id": 2,
+      "X": 1105,
+      "Y": 684,
+      "Width": 88,
+      "Height": 26
+    }
+  ]
+}

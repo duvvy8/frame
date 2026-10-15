@@ -1,0 +1,30 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\archive-3X4Qid",
+  "results": [
+    {
+      "name": "Native archive page action on /missing?q=a%26b#part retains original site content, URL and edited form",
+      "archiveAction": true,
+      "passed": true
+    },
+    {
+      "name": "Native archive page action on /gone retains original site content, URL and edited form",
+      "archiveAction": true,
+      "passed": true
+    },
+    {
+      "name": "Native link action explicitly opens the linked original with query and fragment",
+      "archiveAction": true,
+      "passed": true
+    },
+    {
+      "name": "Unsupported link scheme exposes no archive action",
+      "passed": true
+    },
+    {
+      "name": "Native failed-navigation context action preserves original failure URL",
+      "archiveAction": true,
+      "passed": true
+    }
+  ],
+  "limitation": "Browser-owned initial navigation may precede route attachment and reach Wayback. Later archive responses use a fixture. Checks cover explicit action and context preservation, not remote snapshot availability."
+}

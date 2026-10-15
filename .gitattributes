@@ -1,1 +1,2 @@
 *.cmd text eol=crlf
+native/overlay/** -text whitespace=cr-at-eol

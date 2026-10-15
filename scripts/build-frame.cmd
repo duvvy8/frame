@@ -10,13 +10,7 @@ set /p FRAME_REV=<"%ROOT%\CHROMIUM_REVISION"
 for /f %%A in ('git rev-parse HEAD') do set "CURRENT_REV=%%A"
 if not "%CURRENT_REV%"=="%FRAME_REV%" (echo Chromium revision does not match CHROMIUM_REVISION & popd & exit /b 1)
 popd
-python "%ROOT%\scripts\make_dev_icon.py"
-if errorlevel 1 exit /b 1
-python "%ROOT%\scripts\apply_frame.py"
-if errorlevel 1 exit /b 1
-python "%ROOT%\scripts\apply_native_shell.py"
-if errorlevel 1 exit /b 1
-python "%ROOT%\scripts\apply_native_appearance.py"
+python "%ROOT%\scripts\chromium_overlay.py" apply
 if errorlevel 1 exit /b 1
 pushd "%ROOT%\chromium\src"
 call gn.bat gen out\FrameBaseline --args="is_debug=false is_component_build=true symbol_level=0 blink_symbol_level=0 v8_symbol_level=0"

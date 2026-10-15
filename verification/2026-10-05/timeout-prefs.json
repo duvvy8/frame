@@ -1,0 +1,14 @@
+{
+  "timeout": {
+    "key": "frame.tabs.sleep_timeout_minutes",
+    "type": "NUMBER",
+    "value": 1
+  },
+  "exclusions": {
+    "key": "performance_tuning.tab_discarding.exceptions_with_time",
+    "type": "DICTIONARY",
+    "value": {
+      "excluded.frame-test.test": "13435701908177000"
+    }
+  }
+}

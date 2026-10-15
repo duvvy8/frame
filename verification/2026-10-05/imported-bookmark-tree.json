@@ -1,0 +1,201 @@
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "dateAdded": 1791228188030,
+                    "id": "8",
+                    "index": 0,
+                    "parentId": "7",
+                    "syncing": false,
+                    "title": "Unicode café",
+                    "url": "https://frame-test.test/nested?q=1&b=2#fragment"
+                  }
+                ],
+                "dateAdded": 1791228188031,
+                "id": "7",
+                "index": 0,
+                "parentId": "6",
+                "syncing": false,
+                "title": "Nested Ω"
+              }
+            ],
+            "dateAdded": 1791228188031,
+            "dateGroupModified": 1791228188031,
+            "id": "6",
+            "index": 0,
+            "parentId": "1",
+            "syncing": false,
+            "title": "Imported test"
+          }
+        ],
+        "dateAdded": 1791228179208,
+        "folderType": "bookmarks-bar",
+        "id": "1",
+        "index": 0,
+        "parentId": "0",
+        "syncing": false,
+        "title": "Bookmarks bar"
+      },
+      {
+        "children": [
+          {
+            "dateAdded": 1791228181611,
+            "id": "5",
+            "index": 0,
+            "parentId": "2",
+            "syncing": false,
+            "title": "Existing preserved",
+            "url": "https://frame-test.test/existing"
+          }
+        ],
+        "dateAdded": 1791228179208,
+        "dateGroupModified": 1791228181611,
+        "folderType": "other",
+        "id": "2",
+        "index": 1,
+        "parentId": "0",
+        "syncing": false,
+        "title": "Other bookmarks"
+      }
+    ],
+    "dateAdded": 1791228179208,
+    "id": "0",
+    "syncing": false,
+    "title": ""
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "dateAdded": 1791228188030,
+                "id": "8",
+                "index": 0,
+                "parentId": "7",
+                "syncing": false,
+                "title": "Unicode café",
+                "url": "https://frame-test.test/nested?q=1&b=2#fragment"
+              }
+            ],
+            "dateAdded": 1791228188031,
+            "id": "7",
+            "index": 0,
+            "parentId": "6",
+            "syncing": false,
+            "title": "Nested Ω"
+          }
+        ],
+        "dateAdded": 1791228188031,
+        "dateGroupModified": 1791228188031,
+        "id": "6",
+        "index": 0,
+        "parentId": "1",
+        "syncing": false,
+        "title": "Imported test"
+      }
+    ],
+    "dateAdded": 1791228179208,
+    "folderType": "bookmarks-bar",
+    "id": "1",
+    "index": 0,
+    "parentId": "0",
+    "syncing": false,
+    "title": "Bookmarks bar"
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "dateAdded": 1791228188030,
+            "id": "8",
+            "index": 0,
+            "parentId": "7",
+            "syncing": false,
+            "title": "Unicode café",
+            "url": "https://frame-test.test/nested?q=1&b=2#fragment"
+          }
+        ],
+        "dateAdded": 1791228188031,
+        "id": "7",
+        "index": 0,
+        "parentId": "6",
+        "syncing": false,
+        "title": "Nested Ω"
+      }
+    ],
+    "dateAdded": 1791228188031,
+    "dateGroupModified": 1791228188031,
+    "id": "6",
+    "index": 0,
+    "parentId": "1",
+    "syncing": false,
+    "title": "Imported test"
+  },
+  {
+    "children": [
+      {
+        "dateAdded": 1791228188030,
+        "id": "8",
+        "index": 0,
+        "parentId": "7",
+        "syncing": false,
+        "title": "Unicode café",
+        "url": "https://frame-test.test/nested?q=1&b=2#fragment"
+      }
+    ],
+    "dateAdded": 1791228188031,
+    "id": "7",
+    "index": 0,
+    "parentId": "6",
+    "syncing": false,
+    "title": "Nested Ω"
+  },
+  {
+    "dateAdded": 1791228188030,
+    "id": "8",
+    "index": 0,
+    "parentId": "7",
+    "syncing": false,
+    "title": "Unicode café",
+    "url": "https://frame-test.test/nested?q=1&b=2#fragment"
+  },
+  {
+    "children": [
+      {
+        "dateAdded": 1791228181611,
+        "id": "5",
+        "index": 0,
+        "parentId": "2",
+        "syncing": false,
+        "title": "Existing preserved",
+        "url": "https://frame-test.test/existing"
+      }
+    ],
+    "dateAdded": 1791228179208,
+    "dateGroupModified": 1791228181611,
+    "folderType": "other",
+    "id": "2",
+    "index": 1,
+    "parentId": "0",
+    "syncing": false,
+    "title": "Other bookmarks"
+  },
+  {
+    "dateAdded": 1791228181611,
+    "id": "5",
+    "index": 0,
+    "parentId": "2",
+    "syncing": false,
+    "title": "Existing preserved",
+    "url": "https://frame-test.test/existing"
+  }
+]

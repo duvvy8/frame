@@ -1,0 +1,482 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\lifecycle-VtrXyY",
+  "results": [
+    {
+      "name": "Clean background sleeps; active, dirty and extension-protected pages survive",
+      "passed": true
+    },
+    {
+      "name": "Sleeping tab wakes through native tab activation",
+      "passed": true
+    },
+    {
+      "name": "Native maximise, restore, minimise and restore",
+      "passed": true
+    }
+  ],
+  "states": [
+    {
+      "tabUrl": "chrome://newtab/",
+      "title": "New tab",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 1,
+      "lastActiveSeconds": 7,
+      "id": 1,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 0,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:63359/dirty",
+      "title": "Lifecycle /dirty",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab has form interactions",
+        "The user has edited the tab's content"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 2,
+      "lastActiveSeconds": 7,
+      "id": 2,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 7.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:63359/protected",
+      "title": "Lifecycle /protected",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab is protected by an extension"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 3,
+      "lastActiveSeconds": 6,
+      "id": 3,
+      "isAutoDiscardable": false,
+      "siteEngagementScore": 7.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://discards/",
+      "title": "Discards",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab is currently using DevTools"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 4,
+      "lastActiveSeconds": 5,
+      "id": 4,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 3,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:63359/active",
+      "title": "Lifecycle /active",
+      "visibility": 2,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is currently visible",
+        "Tab is currently active"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "visible"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 5,
+      "lastActiveSeconds": 0,
+      "id": 5,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 7.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+      "title": "Omnibox Popup",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 6,
+      "lastActiveSeconds": 0,
+      "id": 6,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 4.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://omnibox-popup.top-chrome/",
+      "title": "Omnibox Popup",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 7,
+      "lastActiveSeconds": 0,
+      "id": 7,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 4.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:63359/clean",
+      "title": "Lifecycle /clean",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 5,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is already discarded"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used"
+      ],
+      "discardCount": 1,
+      "discardReason": 2,
+      "utilityRank": 8,
+      "lastActiveSeconds": 7,
+      "id": 8,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 7.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://webui-toolbar.top-chrome/",
+      "title": "chrome://webui-toolbar.top-chrome",
+      "visibility": 2,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 9,
+      "lastActiveSeconds": 0,
+      "id": 9,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 0,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    }
+  ],
+  "before": [
+    {
+      "Id": 3564,
+      "WorkingSet64": 171958272,
+      "PrivateMemorySize64": 49700864,
+      "CPU": 0.578125
+    },
+    {
+      "Id": 7772,
+      "WorkingSet64": 198979584,
+      "PrivateMemorySize64": 61042688,
+      "CPU": 0.390625
+    },
+    {
+      "Id": 22144,
+      "WorkingSet64": 347852800,
+      "PrivateMemorySize64": 111947776,
+      "CPU": 2.8125
+    },
+    {
+      "Id": 22832,
+      "WorkingSet64": 269168640,
+      "PrivateMemorySize64": 92639232,
+      "CPU": 0.390625
+    },
+    {
+      "Id": 24096,
+      "WorkingSet64": 228077568,
+      "PrivateMemorySize64": 58511360,
+      "CPU": 0.59375
+    },
+    {
+      "Id": 25152,
+      "WorkingSet64": 270077952,
+      "PrivateMemorySize64": 81477632,
+      "CPU": 0.78125
+    },
+    {
+      "Id": 25292,
+      "WorkingSet64": 16023552,
+      "PrivateMemorySize64": 5783552,
+      "CPU": 0.0625
+    },
+    {
+      "Id": 25748,
+      "WorkingSet64": 280772608,
+      "PrivateMemorySize64": 100900864,
+      "CPU": 0.46875
+    },
+    {
+      "Id": 26584,
+      "WorkingSet64": 272560128,
+      "PrivateMemorySize64": 96985088,
+      "CPU": 0.453125
+    },
+    {
+      "Id": 26760,
+      "WorkingSet64": 181067776,
+      "PrivateMemorySize64": 50626560,
+      "CPU": 0.28125
+    },
+    {
+      "Id": 30060,
+      "WorkingSet64": 148025344,
+      "PrivateMemorySize64": 40890368,
+      "CPU": 0.328125
+    },
+    {
+      "Id": 30796,
+      "WorkingSet64": 270966784,
+      "PrivateMemorySize64": 95485952,
+      "CPU": 0.390625
+    },
+    {
+      "Id": 30900,
+      "WorkingSet64": 298696704,
+      "PrivateMemorySize64": 98332672,
+      "CPU": 1.46875
+    },
+    {
+      "Id": 31560,
+      "WorkingSet64": 14508032,
+      "PrivateMemorySize64": 5582848,
+      "CPU": 0.078125
+    },
+    {
+      "Id": 32068,
+      "WorkingSet64": 216756224,
+      "PrivateMemorySize64": 53723136,
+      "CPU": 0.375
+    },
+    {
+      "Id": 32104,
+      "WorkingSet64": 237776896,
+      "PrivateMemorySize64": 245391360,
+      "CPU": 2.015625
+    },
+    {
+      "Id": 32156,
+      "WorkingSet64": 292999168,
+      "PrivateMemorySize64": 97095680,
+      "CPU": 0.921875
+    },
+    {
+      "Id": 32360,
+      "WorkingSet64": 315363328,
+      "PrivateMemorySize64": 120807424,
+      "CPU": 1.09375
+    }
+  ],
+  "after": [
+    {
+      "Id": 3564,
+      "WorkingSet64": 175259648,
+      "PrivateMemorySize64": 50466816,
+      "CPU": 1.015625
+    },
+    {
+      "Id": 5888,
+      "WorkingSet64": 181444608,
+      "PrivateMemorySize64": 50626560,
+      "CPU": 0.34375
+    },
+    {
+      "Id": 7772,
+      "WorkingSet64": 199225344,
+      "PrivateMemorySize64": 61042688,
+      "CPU": 0.390625
+    },
+    {
+      "Id": 22144,
+      "WorkingSet64": 372555776,
+      "PrivateMemorySize64": 123432960,
+      "CPU": 9.53125
+    },
+    {
+      "Id": 22832,
+      "WorkingSet64": 270725120,
+      "PrivateMemorySize64": 92999680,
+      "CPU": 0.40625
+    },
+    {
+      "Id": 24096,
+      "WorkingSet64": 228589568,
+      "PrivateMemorySize64": 58511360,
+      "CPU": 0.59375
+    },
+    {
+      "Id": 25152,
+      "WorkingSet64": 270163968,
+      "PrivateMemorySize64": 81477632,
+      "CPU": 0.78125
+    },
+    {
+      "Id": 25292,
+      "WorkingSet64": 16035840,
+      "PrivateMemorySize64": 5795840,
+      "CPU": 0.0625
+    },
+    {
+      "Id": 25748,
+      "WorkingSet64": 280891392,
+      "PrivateMemorySize64": 100896768,
+      "CPU": 0.484375
+    },
+    {
+      "Id": 26584,
+      "WorkingSet64": 273420288,
+      "PrivateMemorySize64": 97345536,
+      "CPU": 0.453125
+    },
+    {
+      "Id": 26760,
+      "WorkingSet64": 218677248,
+      "PrivateMemorySize64": 55201792,
+      "CPU": 0.34375
+    },
+    {
+      "Id": 30060,
+      "WorkingSet64": 148164608,
+      "PrivateMemorySize64": 40947712,
+      "CPU": 0.34375
+    },
+    {
+      "Id": 30796,
+      "WorkingSet64": 271183872,
+      "PrivateMemorySize64": 95485952,
+      "CPU": 0.390625
+    },
+    {
+      "Id": 30900,
+      "WorkingSet64": 303206400,
+      "PrivateMemorySize64": 102227968,
+      "CPU": 1.59375
+    },
+    {
+      "Id": 31560,
+      "WorkingSet64": 14508032,
+      "PrivateMemorySize64": 5582848,
+      "CPU": 0.078125
+    },
+    {
+      "Id": 32068,
+      "WorkingSet64": 216838144,
+      "PrivateMemorySize64": 53723136,
+      "CPU": 0.375
+    },
+    {
+      "Id": 32104,
+      "WorkingSet64": 235368448,
+      "PrivateMemorySize64": 242651136,
+      "CPU": 2.09375
+    },
+    {
+      "Id": 32156,
+      "WorkingSet64": 294170624,
+      "PrivateMemorySize64": 97763328,
+      "CPU": 0.921875
+    },
+    {
+      "Id": 32360,
+      "WorkingSet64": 315912192,
+      "PrivateMemorySize64": 121200640,
+      "CPU": 1.125
+    },
+    {
+      "Id": 33304,
+      "WorkingSet64": 184291328,
+      "PrivateMemorySize64": 56446976,
+      "CPU": 0.28125
+    }
+  ],
+  "measurement": "Summed process working/private bytes; shared pages may be double counted. One fixture run, not a baseline comparison."
+}

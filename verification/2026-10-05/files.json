@@ -1,0 +1,25 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\files-mtwf6u",
+  "results": [
+    {
+      "name": "Native HTML import preserves nested Unicode folders, URL query/fragment and existing bookmarks",
+      "passed": true
+    },
+    {
+      "name": "Malformed non-bookmark HTML leaves existing native bookmark data intact",
+      "passed": true
+    },
+    {
+      "name": "Native export writes the imported nested folder and canonical URL to selected HTML file",
+      "passed": true
+    },
+    {
+      "name": "Real Windows upload chooser delivers only the selected fixture file to the page",
+      "passed": true
+    },
+    {
+      "name": "Cancelling native upload selection preserves the previous selected file",
+      "passed": true
+    }
+  ]
+}

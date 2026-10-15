@@ -1,0 +1,263 @@
+{
+  "elapsedSeconds": 60.159,
+  "states": [
+    {
+      "tabUrl": "chrome://newtab/",
+      "title": "New tab",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 1,
+      "lastActiveSeconds": 62,
+      "id": 1,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 0,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:51669/dirty",
+      "title": "Timeout /dirty",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab has form interactions",
+        "The user has edited the tab's content"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 2,
+      "lastActiveSeconds": 61,
+      "id": 2,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 6,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://excluded.frame-test.test:51669/excluded",
+      "title": "Timeout /excluded",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab was opted out via a setting or enterprise policy"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "opted out",
+        "most recently used"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 3,
+      "lastActiveSeconds": 61,
+      "id": 3,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 3,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://discards/",
+      "title": "Discards",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab is currently using DevTools"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 4,
+      "lastActiveSeconds": 60,
+      "id": 4,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 3,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://settings/performance",
+      "title": "Settings – Performance",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is recently visible",
+        "Tab has form interactions",
+        "The user has edited the tab's content"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "most recently used",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 5,
+      "lastActiveSeconds": 60,
+      "id": 5,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 3,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:51669/active",
+      "title": "Timeout /active",
+      "visibility": 2,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is currently visible",
+        "Tab is currently active"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "visible"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 6,
+      "lastActiveSeconds": 0,
+      "id": 6,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 6,
+      "hasFocus": true,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+      "title": "Omnibox Popup",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 7,
+      "lastActiveSeconds": 0,
+      "id": 7,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 4.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://omnibox-popup.top-chrome/",
+      "title": "Omnibox Popup",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "recently visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 8,
+      "lastActiveSeconds": 0,
+      "id": 8,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 4.5,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "http://127.0.0.1:51669/clean",
+      "title": "Timeout /clean",
+      "visibility": 0,
+      "loadingState": 2,
+      "state": 5,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "Tab is already discarded"
+      ],
+      "canFreeze": 1,
+      "cannotFreezeReasons": [
+        "recently visible"
+      ],
+      "discardCount": 1,
+      "discardReason": 2,
+      "utilityRank": 9,
+      "lastActiveSeconds": 61,
+      "id": 9,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 6,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    },
+    {
+      "tabUrl": "chrome://webui-toolbar.top-chrome/",
+      "title": "chrome://webui-toolbar.top-chrome",
+      "visibility": 2,
+      "loadingState": 2,
+      "state": 0,
+      "canDiscard": false,
+      "cannotDiscardReasons": [
+        "The Page is not a tab"
+      ],
+      "canFreeze": 2,
+      "cannotFreezeReasons": [
+        "visible",
+        "WebUI"
+      ],
+      "discardCount": 0,
+      "discardReason": 0,
+      "utilityRank": 10,
+      "lastActiveSeconds": 0,
+      "id": 10,
+      "isAutoDiscardable": true,
+      "siteEngagementScore": 0,
+      "hasFocus": false,
+      "stateChangeTime": {}
+    }
+  ]
+}

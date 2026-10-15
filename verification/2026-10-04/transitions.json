@@ -1,0 +1,50 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\transitions-Hwy0x8",
+  "events": [
+    {
+      "name": "Settings and appearance",
+      "seconds": 1.016
+    },
+    {
+      "name": "Extensions",
+      "seconds": 2.38
+    },
+    {
+      "name": "History (Ctrl+H)",
+      "seconds": 3.694
+    },
+    {
+      "name": "Downloads (Ctrl+J)",
+      "seconds": 5.065
+    },
+    {
+      "name": "Bookmarks (Ctrl+Shift+O)",
+      "seconds": 6.421
+    },
+    {
+      "name": "New tab (Ctrl+T)",
+      "seconds": 7.791
+    },
+    {
+      "name": "Settings and appearance",
+      "seconds": 9.162
+    },
+    {
+      "name": "Extensions",
+      "seconds": 10.481
+    },
+    {
+      "name": "History (Ctrl+H)",
+      "seconds": 11.755
+    },
+    {
+      "name": "Downloads (Ctrl+J)",
+      "seconds": 13.11
+    },
+    {
+      "name": "Bookmarks (Ctrl+Shift+O)",
+      "seconds": 14.448
+    }
+  ],
+  "limitations": "25 seconds of PrintWindow snapshots, nominal 30 fps. Consult timing sidecar. Does not prove every renderer/GPU/theme transition."
+}

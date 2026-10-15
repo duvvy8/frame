@@ -1,0 +1,20 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\split-XqsdRi",
+  "results": [
+    {
+      "name": "Native rail command creates two visible real website panes",
+      "passed": true,
+      "dimensions": [
+        {
+          "width": 575,
+          "visibility": "visible"
+        },
+        {
+          "width": 575,
+          "visibility": "visible"
+        }
+      ]
+    }
+  ],
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ 'https://frame-test.test/right'\n- 'https://frame-test.test/left'\n                           ^\n"
+}

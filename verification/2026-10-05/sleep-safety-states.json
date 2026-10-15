@@ -1,0 +1,312 @@
+[
+  {
+    "tabUrl": "chrome://newtab/",
+    "title": "New tab",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "WebUI"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 1,
+    "lastActiveSeconds": 15,
+    "id": 1,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 0,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/capture",
+    "title": "Sleep safety /capture",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible",
+      "Tab is playing audio",
+      "Tab is capturing video",
+      "Tab is capturing audio"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "audible",
+      "capturing video",
+      "capturing audio",
+      "has an active WebRTC connection"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 2,
+    "lastActiveSeconds": 12,
+    "id": 2,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/audio",
+    "title": "Sleep safety /audio",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible",
+      "Tab is playing audio"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "audible"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 3,
+    "lastActiveSeconds": 11,
+    "id": 3,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/unload",
+    "title": "Sleep safety /unload",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "most recently used"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 4,
+    "lastActiveSeconds": 11,
+    "id": 4,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/pinned",
+    "title": "Sleep safety /pinned",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible",
+      "Tab was pinned"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "most recently used"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 5,
+    "lastActiveSeconds": 8,
+    "id": 5,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/loading",
+    "title": "Sleep safety /loading",
+    "visibility": 0,
+    "loadingState": 1,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "loading",
+      "most recently used"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 6,
+    "lastActiveSeconds": 8,
+    "id": 6,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "chrome://discards/",
+    "title": "Discards",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is recently visible",
+      "Tab is currently using DevTools"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "most recently used",
+      "WebUI"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 7,
+    "lastActiveSeconds": 7,
+    "id": 7,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 3,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/active",
+    "title": "Sleep safety /active",
+    "visibility": 2,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is currently visible",
+      "Tab is currently active"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "visible"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 8,
+    "lastActiveSeconds": 0,
+    "id": 8,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "chrome://omnibox-popup.top-chrome/omnibox_popup_aim.html",
+    "title": "Omnibox Popup",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "The Page is not a tab"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "WebUI"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 9,
+    "lastActiveSeconds": 0,
+    "id": 9,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 4.5,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "chrome://omnibox-popup.top-chrome/",
+    "title": "Omnibox Popup",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "The Page is not a tab"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "recently visible",
+      "WebUI"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 10,
+    "lastActiveSeconds": 0,
+    "id": 10,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 4.5,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "http://127.0.0.1:53949/clean",
+    "title": "Sleep safety /clean",
+    "visibility": 0,
+    "loadingState": 2,
+    "state": 5,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "Tab is already discarded"
+    ],
+    "canFreeze": 1,
+    "cannotFreezeReasons": [
+      "recently visible"
+    ],
+    "discardCount": 1,
+    "discardReason": 2,
+    "utilityRank": 11,
+    "lastActiveSeconds": 14,
+    "id": 11,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 12.02,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  },
+  {
+    "tabUrl": "chrome://webui-toolbar.top-chrome/",
+    "title": "chrome://webui-toolbar.top-chrome",
+    "visibility": 2,
+    "loadingState": 2,
+    "state": 0,
+    "canDiscard": false,
+    "cannotDiscardReasons": [
+      "The Page is not a tab"
+    ],
+    "canFreeze": 2,
+    "cannotFreezeReasons": [
+      "visible",
+      "WebUI"
+    ],
+    "discardCount": 0,
+    "discardReason": 0,
+    "utilityRank": 12,
+    "lastActiveSeconds": 0,
+    "id": 12,
+    "isAutoDiscardable": true,
+    "siteEngagementScore": 0,
+    "hasFocus": false,
+    "stateChangeTime": {}
+  }
+]

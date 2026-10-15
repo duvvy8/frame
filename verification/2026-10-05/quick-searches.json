@@ -1,0 +1,49 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\quick-searches-wLzbUg",
+  "results": [
+    {
+      "name": "All five built-in engines expose editable ordinary and bang aliases",
+      "passed": true
+    },
+    {
+      "name": "Native add/edit/delete and browser restart retain user additions and deletion",
+      "passed": true
+    },
+    {
+      "name": "Actual restore button restores renamed/deleted built-ins by native identity and retains user addition",
+      "passed": true
+    },
+    {
+      "name": "Restore preserves conflicting user keywords without duplicates",
+      "passed": true
+    },
+    {
+      "name": "Shared native bang resolver encodes Reddit query and Unicode correctly",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: r",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: !gh",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: maps",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: mine",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: http://localhost:3000/",
+      "passed": true
+    },
+    {
+      "name": "Native bare alias or URL precedence: https://frame-test.test/path?q=one#two",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\narrow-kUUUTY",
+  "results": [
+    {
+      "name": "Pinned mark diagnostic",
+      "controls": [
+        {
+          "Name": "Frame",
+          "Type": "ControlType.Image",
+          "Enabled": true,
+          "X": 18,
+          "Y": 10
+        },
+        {
+          "Name": "Frame",
+          "Type": "ControlType.Button",
+          "Enabled": true,
+          "X": 736,
+          "Y": 56
+        }
+      ]
+    },
+    {
+      "name": "Native short-window scrolling diagnostic",
+      "main": {
+        "Name": "Short window - Frame",
+        "Handle": 4654804,
+        "X": 10,
+        "Y": 10,
+        "Width": 780,
+        "Height": 420
+      },
+      "bottom": {
+        "Name": "View archived copies of current website",
+        "Type": "ControlType.Button",
+        "Enabled": true,
+        "X": 28,
+        "Y": 386
+      },
+      "top": {
+        "Name": "Switch recent tabs (Ctrl+Tab)",
+        "Type": "ControlType.Button",
+        "Enabled": true,
+        "X": 28,
+        "Y": 50
+      }
+    },
+    {
+      "name": "Actual short OS window allows accessibility scrolling between top and bottom rail actions",
+      "passed": true,
+      "main": {
+        "Name": "Short window - Frame",
+        "Handle": 4654804,
+        "X": 10,
+        "Y": 10,
+        "Width": 780,
+        "Height": 420
+      },
+      "bottom": {
+        "Name": "View archived copies of current website",
+        "Type": "ControlType.Button",
+        "Enabled": true,
+        "X": 28,
+        "Y": 386
+      },
+      "top": {
+        "Name": "Switch recent tabs (Ctrl+Tab)",
+        "Type": "ControlType.Button",
+        "Enabled": true,
+        "X": 28,
+        "Y": 50
+      },
+      "limitation": "Real keyboard focus traversal requires foreground activation."
+    },
+    {
+      "name": "Native resize preserves live website state",
+      "passed": true
+    }
+  ]
+}

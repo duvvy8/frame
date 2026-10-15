@@ -1,0 +1,653 @@
+[
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": false,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "Extension popup fixture - Chromium",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 1145,
+    "Y": 11
+  },
+  {
+    "Name": "Minimise",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1145,
+    "Y": 11
+  },
+  {
+    "Name": "Maximise",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1190,
+    "Y": 11
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1236,
+    "Y": 11
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 50
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 50
+  },
+  {
+    "Name": "Search or enter URL (Ctrl+L)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 56
+  },
+  {
+    "Name": "Show or hide tabs",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 98
+  },
+  {
+    "Name": "New tab (Ctrl+T)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 140
+  },
+  {
+    "Name": "Split current page with a new tab",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 182
+  },
+  {
+    "Name": "Switch recent tabs (Ctrl+Tab)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 224
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 28,
+    "Y": 266
+  },
+  {
+    "Name": "Bookmarks (Ctrl+Shift+O)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 273
+  },
+  {
+    "Name": "Downloads (Ctrl+J)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 315
+  },
+  {
+    "Name": "History (Ctrl+H)",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 357
+  },
+  {
+    "Name": "Extensions",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 399
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 28,
+    "Y": 441
+  },
+  {
+    "Name": "Settings and appearance",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 448
+  },
+  {
+    "Name": "Sleep eligible background tabs",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 490
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 28,
+    "Y": 532
+  },
+  {
+    "Name": "Add current page to rail favourites",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 539
+  },
+  {
+    "Name": "Edit, reorder or remove rail favourites",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 581
+  },
+  {
+    "Name": "View archived copies of current website",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 28,
+    "Y": 623
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "Frame",
+    "Type": "ControlType.Image",
+    "Enabled": true,
+    "X": 18,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 74,
+    "Y": 50
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.ToolBar",
+    "Enabled": true,
+    "X": 74,
+    "Y": 50
+  },
+  {
+    "Name": "Back",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 80,
+    "Y": 56
+  },
+  {
+    "Name": "Forward",
+    "Type": "ControlType.Button",
+    "Enabled": false,
+    "X": 116,
+    "Y": 56
+  },
+  {
+    "Name": "Reload",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 152,
+    "Y": 56
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 195,
+    "Y": 56
+  },
+  {
+    "Name": "View site information",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 200,
+    "Y": 61
+  },
+  {
+    "Name": "Address and search bar",
+    "Type": "ControlType.Edit",
+    "Enabled": true,
+    "X": 232,
+    "Y": 61
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 1031,
+    "Y": 61
+  },
+  {
+    "Name": "Bookmark this tab",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1031,
+    "Y": 61
+  },
+  {
+    "Name": "Copy current page link",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1076,
+    "Y": 57
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 1110,
+    "Y": 56
+  },
+  {
+    "Name": "uBlock Origin Lite\nHas access to this site",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1110,
+    "Y": 56
+  },
+  {
+    "Name": "Extensions",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1146,
+    "Y": 56
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 1189,
+    "Y": 65
+  },
+  {
+    "Name": "You",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1200,
+    "Y": 56
+  },
+  {
+    "Name": "Frame",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 1236,
+    "Y": 56
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 80,
+    "Y": 102
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 80,
+    "Y": 103
+  },
+  {
+    "Name": "Extension popup fixture",
+    "Type": "ControlType.Document",
+    "Enabled": true,
+    "X": 80,
+    "Y": 103
+  },
+  {
+    "Name": "Current extension destination",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 88,
+    "Y": 124
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 80,
+    "Y": 102
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 74,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 80,
+    "Y": 10
+  },
+  {
+    "Name": "Tab search",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 80,
+    "Y": 16
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 102,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Tab",
+    "Enabled": true,
+    "X": 102,
+    "Y": 10
+  },
+  {
+    "Name": "Extension popup fixture - Memory usage - 56.5 MB",
+    "Type": "ControlType.TabItem",
+    "Enabled": true,
+    "X": 102,
+    "Y": 10
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 316,
+    "Y": 16
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 102,
+    "Y": 10
+  },
+  {
+    "Name": "New tab",
+    "Type": "ControlType.Button",
+    "Enabled": true,
+    "X": 352,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 392,
+    "Y": 10
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 863,
+    "Y": 86
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": false,
+    "X": 863,
+    "Y": 86
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Window",
+    "Enabled": true,
+    "X": 863,
+    "Y": 86
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 863,
+    "Y": 86
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 863,
+    "Y": 86
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 870,
+    "Y": 91
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Pane",
+    "Enabled": true,
+    "X": 870,
+    "Y": 91
+  },
+  {
+    "Name": "uBlock Origin Lite",
+    "Type": "ControlType.Document",
+    "Enabled": true,
+    "X": 870,
+    "Y": 91
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 870,
+    "Y": 91
+  },
+  {
+    "Name": "frame-test.test",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 957,
+    "Y": 103
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 885,
+    "Y": 147
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 1007,
+    "Y": 147
+  },
+  {
+    "Name": "no filtering",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 885,
+    "Y": 168
+  },
+  {
+    "Name": "basic",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 946,
+    "Y": 168
+  },
+  {
+    "Name": "optimal",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 1007,
+    "Y": 168
+  },
+  {
+    "Name": "complete",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 1068,
+    "Y": 168
+  },
+  {
+    "Name": "filtering mode",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 960,
+    "Y": 223
+  },
+  {
+    "Name": "optimal",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 982,
+    "Y": 244
+  },
+  {
+    "Name": "On this website",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 876,
+    "Y": 290
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 870,
+    "Y": 310
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Image",
+    "Enabled": true,
+    "X": 880,
+    "Y": 317
+  },
+  {
+    "Name": "Remove an element",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 901,
+    "Y": 319
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 870,
+    "Y": 345
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Image",
+    "Enabled": true,
+    "X": 875,
+    "Y": 352
+  },
+  {
+    "Name": "Create a custom filter",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 901,
+    "Y": 354
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 870,
+    "Y": 380
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Image",
+    "Enabled": true,
+    "X": 875,
+    "Y": 387
+  },
+  {
+    "Name": "Report an issue",
+    "Type": "ControlType.Text",
+    "Enabled": true,
+    "X": 901,
+    "Y": 389
+  },
+  {
+    "Name": "Open the dashboard",
+    "Type": "ControlType.Group",
+    "Enabled": true,
+    "X": 1087,
+    "Y": 422
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Image",
+    "Enabled": true,
+    "X": 1104,
+    "Y": 434
+  }
+]

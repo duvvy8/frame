@@ -1,0 +1,54 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\acceptance-OzjU8c",
+  "results": [
+    {
+      "name": "Ordinary typing focuses NTP search without losing characters",
+      "passed": true
+    },
+    {
+      "name": "Pasted quick search: gh frame browser",
+      "passed": true
+    },
+    {
+      "name": "Pasted quick search: !wiki frame & browser",
+      "passed": true
+    },
+    {
+      "name": "Pasted quick search: yt frame browser",
+      "passed": true
+    },
+    {
+      "name": "Pasted quick search: !gh café 日本語",
+      "passed": true
+    },
+    {
+      "name": "Explicit URLs retain query and fragment; websites retain fonts",
+      "passed": true
+    },
+    {
+      "name": "Native favourites add and manage using the bookmark model",
+      "passed": true
+    },
+    {
+      "name": "Copy Link copies authoritative current URL via native toolbar",
+      "passed": true
+    },
+    {
+      "name": "Native utilities reuse tabs on repeated activation",
+      "passed": true
+    },
+    {
+      "name": "Search preferences are discoverable and persistent",
+      "passed": true
+    },
+    {
+      "name": "Five utilities render navy backgrounds and bundled Geist offline",
+      "passed": true
+    },
+    {
+      "name": "Back/Forward and reload preserve real page navigation",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

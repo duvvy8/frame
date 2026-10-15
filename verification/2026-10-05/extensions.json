@@ -1,0 +1,32 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\extensions-mMYmW2",
+  "results": [
+    {
+      "name": "Official cached MV3 extension installs enabled in native manager",
+      "passed": true,
+      "id": "opgkinjliofoopopnjblmabggabemmmh",
+      "version": "2026.926.2202"
+    },
+    {
+      "name": "Enabled native DNR rules intercept controlled advertising script before fixture response",
+      "passed": true
+    },
+    {
+      "name": "Native manager disable changes actual blocking behaviour",
+      "passed": true
+    },
+    {
+      "name": "Re-enabling restores native request blocking",
+      "passed": true
+    },
+    {
+      "name": "Native extension identity and enabled state persist on restart",
+      "passed": true
+    },
+    {
+      "name": "Native toolbar opens actual installed extension popup for active website",
+      "passed": true
+    }
+  ],
+  "limitations": "Cached official uBOL MV3 unpacked package only; no Web Store, MV2 or permission prompt compatibility claim."
+}

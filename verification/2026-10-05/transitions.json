@@ -1,0 +1,50 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\transitions-JRSjdG",
+  "events": [
+    {
+      "name": "Settings and appearance",
+      "seconds": 1.015
+    },
+    {
+      "name": "Extensions",
+      "seconds": 2.4
+    },
+    {
+      "name": "History (Ctrl+H)",
+      "seconds": 3.677
+    },
+    {
+      "name": "Downloads (Ctrl+J)",
+      "seconds": 5.018
+    },
+    {
+      "name": "Bookmarks (Ctrl+Shift+O)",
+      "seconds": 6.358
+    },
+    {
+      "name": "New tab (Ctrl+T)",
+      "seconds": 7.665
+    },
+    {
+      "name": "Settings and appearance",
+      "seconds": 8.958
+    },
+    {
+      "name": "Extensions",
+      "seconds": 10.235
+    },
+    {
+      "name": "History (Ctrl+H)",
+      "seconds": 11.494
+    },
+    {
+      "name": "Downloads (Ctrl+J)",
+      "seconds": 12.786
+    },
+    {
+      "name": "Bookmarks (Ctrl+Shift+O)",
+      "seconds": 14.077
+    }
+  ],
+  "limitations": "25 seconds of PrintWindow snapshots, nominal 30 fps. Consult timing sidecar. Does not prove every renderer/GPU/theme transition."
+}

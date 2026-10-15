@@ -1,0 +1,923 @@
+{
+  "part": "clean",
+  "menu": [
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Intermediate D3D Window",
+      "Handle": 2491934,
+      "Enabled": false,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "Lifecycle /active - Chromium",
+      "Type": "ControlType.Pane",
+      "Class": "BrowserRootView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "NonClientView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "BrowserFrameViewWin",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "BrowserCaptionButtonContainer",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1145,
+      "Y": 11
+    },
+    {
+      "Name": "Minimise",
+      "Type": "ControlType.Button",
+      "Class": "WindowsCaptionButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1145,
+      "Y": 11
+    },
+    {
+      "Name": "Maximise",
+      "Type": "ControlType.Button",
+      "Class": "WindowsCaptionButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1190,
+      "Y": 11
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "WindowsCaptionButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1236,
+      "Y": 11
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "BrowserView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "ScrollView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "ScrollView::Viewport",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 50
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "View",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 50
+    },
+    {
+      "Name": "Search or enter URL (Ctrl+L)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 56
+    },
+    {
+      "Name": "Show or hide tabs",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 98
+    },
+    {
+      "Name": "New tab (Ctrl+T)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 140
+    },
+    {
+      "Name": "Split current page with a new tab",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 182
+    },
+    {
+      "Name": "Switch recent tabs (Ctrl+Tab)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 224
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Separator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 266
+    },
+    {
+      "Name": "Bookmarks (Ctrl+Shift+O)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 273
+    },
+    {
+      "Name": "Downloads (Ctrl+J)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 315
+    },
+    {
+      "Name": "History (Ctrl+H)",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 357
+    },
+    {
+      "Name": "Extensions",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 399
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Separator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 441
+    },
+    {
+      "Name": "Settings and appearance",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 448
+    },
+    {
+      "Name": "Sleep eligible background tabs",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 490
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Separator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 532
+    },
+    {
+      "Name": "Add current page to rail favourites",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 539
+    },
+    {
+      "Name": "Edit, reorder or remove rail favourites",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 581
+    },
+    {
+      "Name": "View archived copies of current website",
+      "Type": "ControlType.Button",
+      "Class": "ImageButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 28,
+      "Y": 623
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "ScrollView::Viewport",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "Frame",
+      "Type": "ControlType.Image",
+      "Class": "ImageView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 18,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "TopContainerView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 50
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.ToolBar",
+      "Class": "ToolbarView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 50
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "WebUIToolbarWebView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.ToolBar",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 56
+    },
+    {
+      "Name": "Back",
+      "Type": "ControlType.Button",
+      "Class": "iph-visual-target",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 116,
+      "Y": 56
+    },
+    {
+      "Name": "Forward",
+      "Type": "ControlType.Button",
+      "Class": "iph-visual-target",
+      "Handle": 0,
+      "Enabled": false,
+      "X": 116,
+      "Y": 56
+    },
+    {
+      "Name": "Reload",
+      "Type": "ControlType.Button",
+      "Class": "iph-visual-target",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 152,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Group",
+      "Class": "LocationBarView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 195,
+      "Y": 56
+    },
+    {
+      "Name": "View site information",
+      "Type": "ControlType.Button",
+      "Class": "LocationIconView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 200,
+      "Y": 61
+    },
+    {
+      "Name": "Address and search bar",
+      "Type": "ControlType.Edit",
+      "Class": "OmniboxViewViews",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 232,
+      "Y": 61
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "PageActionContainerView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1026,
+      "Y": 61
+    },
+    {
+      "Name": "Bookmark this tab",
+      "Type": "ControlType.Button",
+      "Class": "PageActionView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1026,
+      "Y": 61
+    },
+    {
+      "Name": "Copy current page link",
+      "Type": "ControlType.Button",
+      "Class": "FrameCopyLinkButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1071,
+      "Y": 57
+    },
+    {
+      "Name": "You",
+      "Type": "ControlType.Button",
+      "Class": "AvatarToolbarButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1105,
+      "Y": 56
+    },
+    {
+      "Name": "Action required",
+      "Type": "ControlType.Button",
+      "Class": "BrowserAppMenuButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1144,
+      "Y": 56
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "MultiContentsView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 102
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Chrome_WidgetWin_1",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 103
+    },
+    {
+      "Name": "Lifecycle /active",
+      "Type": "ControlType.Document",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 103
+    },
+    {
+      "Name": "/active",
+      "Type": "ControlType.Text",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 88,
+      "Y": 124
+    },
+    {
+      "Name": "Unsaved form",
+      "Type": "ControlType.Edit",
+      "Class": "",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 88,
+      "Y": 182
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "View",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 103
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "ContentsSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 102
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "HorizontalTabStripRegionViewOld",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 74,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "TabStripComboButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 10
+    },
+    {
+      "Name": "Tab search",
+      "Type": "ControlType.Button",
+      "Class": "TabStripFlatEdgeButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 80,
+      "Y": 16
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "TabStrip",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Tab",
+      "Class": "TabContainerImpl",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "New tab",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 239,
+      "Y": 17
+    },
+    {
+      "Name": "Lifecycle /clean",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 261,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 397,
+      "Y": 17
+    },
+    {
+      "Name": "Lifecycle /dirty",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 419,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 555,
+      "Y": 17
+    },
+    {
+      "Name": "Lifecycle /protected",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 577,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 713,
+      "Y": 17
+    },
+    {
+      "Name": "Discards",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 735,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 871,
+      "Y": 17
+    },
+    {
+      "Name": "Lifecycle /active",
+      "Type": "ControlType.TabItem",
+      "Class": "Tab",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 893,
+      "Y": 10
+    },
+    {
+      "Name": "Close",
+      "Type": "ControlType.Button",
+      "Class": "TabCloseButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1029,
+      "Y": 17
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "TabStrip::TabDragContextImpl",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 102,
+      "Y": 10
+    },
+    {
+      "Name": "New tab",
+      "Type": "ControlType.Button",
+      "Class": "TabStripControlButton",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1063,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "FrameGrabHandle",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 1103,
+      "Y": 10
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "Chrome_WidgetWin_1",
+      "Handle": 5769140,
+      "Enabled": true,
+      "X": 325,
+      "Y": 18
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "MenuHostRootView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 325,
+      "Y": 18
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.MenuBar",
+      "Class": "MenuScrollViewContainer",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 325,
+      "Y": 18
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "View",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 42
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Pane",
+      "Class": "MenuScrollViewContainer::MenuScrollView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 42
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Menu",
+      "Class": "SubmenuView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 42
+    },
+    {
+      "Name": "Sleep tab now",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 42
+    },
+    {
+      "Name": "Never sleep this tab",
+      "Type": "ControlType.CheckBox",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 70
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Class": "MenuSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 98
+    },
+    {
+      "Name": "New tab to the right",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 115
+    },
+    {
+      "Name": "New split view with current tab",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 143
+    },
+    {
+      "Name": "Add tab to new group",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 171
+    },
+    {
+      "Name": "Move tab to new window",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 199
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Class": "MenuSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 227
+    },
+    {
+      "Name": "Reload Ctrl+R",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 244
+    },
+    {
+      "Name": "Duplicate",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 272
+    },
+    {
+      "Name": "Pin",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 300
+    },
+    {
+      "Name": "Mute site",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 328
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Class": "MenuSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 356
+    },
+    {
+      "Name": "Add tab to reading list",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 373
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Class": "MenuSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 405
+    },
+    {
+      "Name": "Show tabs vertically",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 422
+    },
+    {
+      "Name": "",
+      "Type": "ControlType.Separator",
+      "Class": "MenuSeparator",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 450
+    },
+    {
+      "Name": "Close Ctrl+W",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 467
+    },
+    {
+      "Name": "Close other tabs",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 495
+    },
+    {
+      "Name": "Close tabs to the right",
+      "Type": "ControlType.MenuItem",
+      "Class": "MenuItemView",
+      "Handle": 0,
+      "Enabled": true,
+      "X": 349,
+      "Y": 523
+    }
+  ]
+}

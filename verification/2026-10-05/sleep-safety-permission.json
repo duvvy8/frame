@@ -1,0 +1,353 @@
+[
+  {
+    "Name": "Start fixture",
+    "Type": "ControlType.Button",
+    "Class": "",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 26,
+    "Y": 195
+  },
+  {
+    "Name": "More actions for Web Store shortcut",
+    "Type": "ControlType.Button",
+    "Class": "icon-more-vert",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 586,
+    "Y": 364
+  },
+  {
+    "Name": "Add shortcut",
+    "Type": "ControlType.Button",
+    "Class": "",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 616,
+    "Y": 360
+  },
+  {
+    "Name": "Customise Frame",
+    "Type": "ControlType.Button",
+    "Class": "customize-button",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1030,
+    "Y": 755
+  },
+  {
+    "Name": "Minimise",
+    "Type": "ControlType.Button",
+    "Class": "WindowsCaptionButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1145,
+    "Y": 11
+  },
+  {
+    "Name": "Maximise",
+    "Type": "ControlType.Button",
+    "Class": "WindowsCaptionButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1190,
+    "Y": 11
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Class": "WindowsCaptionButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1236,
+    "Y": 11
+  },
+  {
+    "Name": "Search or enter URL (Ctrl+L)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 56
+  },
+  {
+    "Name": "Show or hide tabs",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 98
+  },
+  {
+    "Name": "New tab (Ctrl+T)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 140
+  },
+  {
+    "Name": "Split current page with a new tab",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 182
+  },
+  {
+    "Name": "Switch recent tabs (Ctrl+Tab)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 224
+  },
+  {
+    "Name": "Bookmarks (Ctrl+Shift+O)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 273
+  },
+  {
+    "Name": "Downloads (Ctrl+J)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 315
+  },
+  {
+    "Name": "History (Ctrl+H)",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 357
+  },
+  {
+    "Name": "Extensions",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 399
+  },
+  {
+    "Name": "Settings and appearance",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 448
+  },
+  {
+    "Name": "Sleep eligible background tabs",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 490
+  },
+  {
+    "Name": "Add current page to rail favourites",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 539
+  },
+  {
+    "Name": "Edit, reorder or remove rail favourites",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 581
+  },
+  {
+    "Name": "View archived copies of current website",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 28,
+    "Y": 623
+  },
+  {
+    "Name": "Back",
+    "Type": "ControlType.Button",
+    "Class": "iph-visual-target",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 80,
+    "Y": 56
+  },
+  {
+    "Name": "Forward",
+    "Type": "ControlType.Button",
+    "Class": "iph-visual-target",
+    "Handle": 0,
+    "Enabled": false,
+    "X": 116,
+    "Y": 56
+  },
+  {
+    "Name": "Reload",
+    "Type": "ControlType.Button",
+    "Class": "iph-visual-target",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 152,
+    "Y": 56
+  },
+  {
+    "Name": "",
+    "Type": "ControlType.Button",
+    "Class": "PermissionDashboardView",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 200,
+    "Y": 61
+  },
+  {
+    "Name": "Bookmark this tab",
+    "Type": "ControlType.Button",
+    "Class": "PageActionView",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1121,
+    "Y": 61
+  },
+  {
+    "Name": "Copy current page link",
+    "Type": "ControlType.Button",
+    "Class": "FrameCopyLinkButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1166,
+    "Y": 57
+  },
+  {
+    "Name": "You",
+    "Type": "ControlType.Button",
+    "Class": "AvatarToolbarButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1200,
+    "Y": 56
+  },
+  {
+    "Name": "Frame",
+    "Type": "ControlType.Button",
+    "Class": "BrowserAppMenuButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 1236,
+    "Y": 56
+  },
+  {
+    "Name": "Start fixture",
+    "Type": "ControlType.Button",
+    "Class": "",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 88,
+    "Y": 288
+  },
+  {
+    "Name": "Tab search",
+    "Type": "ControlType.Button",
+    "Class": "TabStripFlatEdgeButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 80,
+    "Y": 16
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Class": "TabCloseButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 318,
+    "Y": 17
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Class": "TabCloseButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 556,
+    "Y": 17
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Class": "TabCloseButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 794,
+    "Y": 17
+  },
+  {
+    "Name": "New tab",
+    "Type": "ControlType.Button",
+    "Class": "TabStripControlButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 828,
+    "Y": 10
+  },
+  {
+    "Name": "Close",
+    "Type": "ControlType.Button",
+    "Class": "ImageButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 481,
+    "Y": 106
+  },
+  {
+    "Name": "Allow while visiting the site",
+    "Type": "ControlType.Button",
+    "Class": "MdTextButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 221,
+    "Y": 562
+  },
+  {
+    "Name": "Allow this time",
+    "Type": "ControlType.Button",
+    "Class": "MdTextButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 221,
+    "Y": 608
+  },
+  {
+    "Name": "Never allow",
+    "Type": "ControlType.Button",
+    "Class": "MdTextButton",
+    "Handle": 0,
+    "Enabled": true,
+    "X": 221,
+    "Y": 654
+  }
+]

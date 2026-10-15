@@ -1,0 +1,14 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\sleep-safety-eAVkQm",
+  "results": [
+    {
+      "name": "Actual in-progress download prevents bulk sleeping",
+      "passed": true
+    },
+    {
+      "name": "Native playback, live camera/microphone capture, unload risk, pinned, loading and active pages survive while clean control sleeps",
+      "passed": true
+    }
+  ],
+  "capture": "Synthetic Chromium device with actual native permission approval in the isolated browser; native lifecycle capture reason asserted after detaching. No physical hardware acceptance."
+}

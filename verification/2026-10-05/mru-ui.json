@@ -1,0 +1,10 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\mru-Pvk2Xm",
+  "results": [
+    {
+      "name": "Native recent-tab ordering, cancellation and mouse activation without extra pages",
+      "passed": true
+    }
+  ],
+  "limitation": "Real Ctrl+Tab/release/Escape sequence is a separate acceptance test."
+}

@@ -1,0 +1,7 @@
+{
+  "frames": 750,
+  "dark_pixel_threshold": "Each RGB channel below 24 within x200:1200 y160:830",
+  "maximum_dark_fraction": 0.00014179104477611942,
+  "predominantly_dark_frames": [],
+  "limitation": "PrintWindow sampling cannot prove zero flashes between captures"
+}

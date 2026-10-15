@@ -1,0 +1,44 @@
+{
+  "profile": "C:\\Users\\Michael\\Documents\\frame\\profiles\\split-WKhK5W",
+  "results": [
+    {
+      "name": "Native rail command creates two visible real website panes",
+      "passed": true,
+      "dimensions": [
+        {
+          "width": 575,
+          "visibility": "visible"
+        },
+        {
+          "width": 575,
+          "visibility": "visible"
+        }
+      ]
+    },
+    {
+      "name": "Copy Link follows focused pane; both forms retain independent state",
+      "passed": true
+    },
+    {
+      "name": "Closing one split pane preserves surviving real page",
+      "passed": true
+    },
+    {
+      "name": "Internal palette diagnostic",
+      "palette": {
+        "dark": true,
+        "card": "rgb(20, 38, 61)",
+        "text": "rgb(234, 240, 250)"
+      }
+    },
+    {
+      "name": "Native Frame scheme, navy cards and readable foreground agree without colour emulation",
+      "passed": true,
+      "palette": {
+        "dark": true,
+        "card": "rgb(20, 38, 61)",
+        "text": "rgb(234, 240, 250)"
+      }
+    }
+  ]
+}
