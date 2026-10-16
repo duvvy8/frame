@@ -1,12 +1,23 @@
 # Floating dock: implementation and Windows acceptance
 
-## Current evidence — 15 October 2026
+## Current evidence — 16 October 2026
 
-The native overlay implements the selected reference. The cloud checkout has
-neither `chromium/src`, depot_tools, a Windows SDK, nor `Frame.exe`. The complete
-Views translation units have **not** been compiled, and the new browser has
-**not** been launched or visually accepted. No screenshot of an updated running
-browser is available. The committed concept remains a design reference only.
+The Windows handoff build passed in 98 steps. Local native fixes rebuilt in three
+steps each; shortcut resources in 26, and final short-window resources in 11.
+The actual browser was controlled with Computer Use keyboard input and captured
+using native window/screen helpers. See
+[the report and screenshot index](../../verification/floating-dock/REPORT.md).
+
+**Full acceptance remains incomplete.** Computer Use capture repeatedly returned
+`FrameArrived timed out` / `window capture timed out`; pointer input returned
+`coordinate input geometry is unavailable`. Keyboard and accessibility reads
+worked. Real fallback screenshots support limited visual review, while pointer
+hit testing, hover, dragging, Snap and Windows display-scale acceptance remain
+blocked. Broader lifecycle/extension/alias/import checks below remain pending.
+
+The overlay now preserves 131 files, including the shared shortcut CSS fix.
+Existing baseline hashes and the pinned Chromium revision are unchanged.
+Cloud-only statements in older progress sections are historical.
 
 Available checks:
 
@@ -76,10 +87,23 @@ git status --short
 git fetch origin
 git switch feature/floating-tab-dock
 python scripts/check_native_manifest.py
-python scripts/chromium_overlay.py upgrade --from-ref b9d7949
+python scripts/chromium_overlay.py upgrade --from-ref 5ddd297
 call scripts\build-frame.cmd
 call scripts\launch-frame.cmd
 ```
+
+The new shared `most_visited.css` overlay uses the exact pinned Git object as its
+baseline. An untouched Windows checkout can contain CRLF instead. If upgrade
+refuses **that file**, compare its bytes with the pinned baseline before retrying.
+The following command changes only a baseline differing by CRLF; it refuses
+actual local edits. Do not run it against an already-applied overlay.
+
+```bat
+python -c "from pathlib import Path; import subprocess; name='ui/webui/resources/cr_components/most_visited/most_visited.css'; p=Path('chromium/src')/name; baseline=subprocess.check_output(['git','-C','chromium/src','show','HEAD:'+name]); assert p.read_bytes().replace(b'\r\n',b'\n') == baseline, 'Preserved local edits or existing overlay'; p.write_bytes(baseline)"
+```
+
+Then retry the upgrade command before building. This reconciliation was performed
+for the local acceptance build; the running checkout already has the final overlay.
 
 `upgrade` is for a pinned source checkout carrying the handoff overlay. It
 preflights every file and accepts only pristine upstream bytes, the previous

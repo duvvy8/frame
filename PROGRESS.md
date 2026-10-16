@@ -1,5 +1,47 @@
 # Frame milestone 1 progress — 27 September 2026
 
+## 16 October: local floating-dock fixes and partial acceptance
+
+The Windows handoff build passed in 98 steps. Actual browser inspection then
+exposed hidden caption controls, top-left-aligned favicons, clipped keyboard
+focus, a wrapped Add shortcut button and short-window footer occlusion. Controls
+now stack above the top container, icons are centred and focus rings remain
+inside their targets. Compact shortcut buttons override the inherited text-button
+minimum. Short NTPs use tighter wordmark spacing and reserved footer clearance.
+
+Native correction builds passed in three steps each; shortcut resources in 26,
+and the final short-window resources in 11. Four overlay regressions, compiled
+geometry, the 131-file manifest and JavaScript syntax checks pass. Existing
+baseline hashes and the Chromium pin are unchanged. The acceptance harness now
+checks actual shortcut wrapping, focus scrolling and footer clearance; its full
+native suite was not run.
+
+Actual Computer Use keyboard checks and real captures establish activation,
+arrow focus without activation, Enter, native context menus/pinning, creation,
+closure/website restoration, URL entry/suggestions, navigation/reload, split
+creation/separation with retained forms, moved Copy Link, favourite exact-URL
+reuse, 780x420 overflow, maximise/restore through CDP, fullscreen/gutter return,
+utility WebUI loading and shortcut editing. Shortcut width changed from 71.95px
+in a 60px slot with a hidden second row to 60px with zero internal scroll.
+Final short-window footer clearance is 12.125px.
+
+**Full acceptance remains incomplete.** Computer Use capture repeatedly failed
+with `FrameArrived timed out` and `window capture timed out`, including recovery
+after resuming on 16 October. Pointer input returned `coordinate input geometry
+is unavailable`. Keyboard control worked; native PrintWindow and screen-region
+helpers supplied real screenshots. Pointer/hover/drag/Snap, Windows display
+scales and broader lifecycle/media/capture, extension popup, alias editor and
+import/export regressions remain pending. Every saved screenshot was inspected;
+intermediate failures remain as historical evidence.
+
+The requested Apple Design skill was installed locally from
+`dickwu/apple-design-skill` at `914b6a377c22755597e4405e54911b996de822d7`.
+Its alignment, visible-focus, target-size and restraint principles informed this
+pass. Frame retains navy, Geist and solid surfaces; the skill is not a browser
+dependency. See [the local acceptance report](verification/floating-dock/REPORT.md)
+for results, screenshots and limitations. Older cloud statements below describe
+earlier stages and do not supersede this local evidence.
+
 ## 15 October: correct the remaining reported browser UI compile diagnostics
 
 The second local Windows attempt passed the navigation-header failure and

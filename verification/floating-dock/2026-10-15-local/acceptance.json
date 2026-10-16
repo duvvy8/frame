@@ -1,0 +1,144 @@
+{
+  "profile": "C:/Users/Michael/Documents/frame/profiles/dock-cu-final-qMQBuH",
+  "results": [
+    {
+      "name": "Native three-tab model with duplicate/fallback icons",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Ctrl+1 retains edited form",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Dock arrow focus does not activate tabs",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Enter activates focused dock entry",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Shift+F10 exposes native tab and lifecycle menu",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Pin updates native model order",
+      "passed": true,
+      "phase": "before test session recovery; actual screenshots retained"
+    },
+    {
+      "name": "Recovered test session after missed-close-event timeout; acceptance not inferred",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+T creates native new tab with Frame NTP",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+W closes only new tab, preserving edited background form",
+      "passed": true
+    },
+    {
+      "name": "Closed-tab restore",
+      "passed": false,
+      "incomplete": true,
+      "details": "Restoring a blank NTP selected earlier test session history and opened additional fixture tabs; isolated single-tab restore not established.",
+      "supersededBy": "2026-10-16-local/acceptance.json: Ctrl+Shift+T restores exact website URL and preserves edited neighbour"
+    },
+    {
+      "name": "Native omnibox text entry, suggestions and URL navigation",
+      "passed": true,
+      "details": {
+        "url": "http://127.0.0.1:55824/navigation"
+      }
+    },
+    {
+      "name": "Alt+Left follows native back history",
+      "passed": true
+    },
+    {
+      "name": "Alt+Right follows native forward history",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+R reloads the actual renderer document",
+      "passed": true
+    },
+    {
+      "name": "F6 reaches caption split control with visible focus; Enter opens native chooser",
+      "passed": true
+    },
+    {
+      "name": "Keyboard chooser selection creates two real split panes",
+      "passed": true,
+      "details": {
+        "firstWidth": 567,
+        "secondWidth": 567
+      }
+    },
+    {
+      "name": "Moved Copy Link action copies focused right split pane URL",
+      "passed": true
+    },
+    {
+      "name": "Actual OS window maximises through CDP bounds API",
+      "passed": true,
+      "details": {
+        "bounds": {
+          "left": -8,
+          "top": -8,
+          "width": 2576,
+          "height": 1416,
+          "windowState": "maximized"
+        }
+      }
+    },
+    {
+      "name": "Split menu Separate views preserves both edited documents",
+      "passed": true
+    },
+    {
+      "name": "F6 reaches bottom-left gear and Enter opens existing app menu",
+      "passed": true
+    },
+    {
+      "name": "Created 24 extra real tabs for bounded overflow",
+      "passed": true,
+      "details": {
+        "tabs": 26
+      }
+    },
+    {
+      "name": "Ctrl+1 reveals first model entry in 780x420 overflow; both forms retained",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+9 activates and reveals last overflow tab",
+      "passed": true
+    },
+    {
+      "name": "F11 enters actual fullscreen and releases content gutter",
+      "passed": true,
+      "details": {
+        "width": 2560
+      }
+    },
+    {
+      "name": "F11 exits fullscreen and restores dock and gutter",
+      "passed": true,
+      "details": {
+        "width": 680
+      }
+    },
+    {
+      "name": "Ctrl+W closes selected real website only",
+      "passed": true
+    }
+  ],
+  "acceptanceComplete": false
+}

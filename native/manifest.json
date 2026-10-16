@@ -244,7 +244,7 @@
     {
       "path": "chrome/browser/resources/new_tab_page/app.css",
       "before": "c512b9c235d4e47c5a12db6fbf832edc83885a545ad7f45ddddd8c936b564f76",
-      "after": "993407b5e59ee9e17c63a215e8e566550370d3b73814768f7402c0bd4cd87db9"
+      "after": "830d662d4b61da27c5716d2f29499859e1d33fc6239ec66c21c876df0204be18"
     },
     {
       "path": "chrome/browser/resources/new_tab_page/app.html",
@@ -429,7 +429,7 @@
     {
       "path": "chrome/browser/ui/views/frame/browser_view.cc",
       "before": "e382f432ca6e946463c8979dec7f5938f6f912c23a23ec49eda64a8914833ed7",
-      "after": "7bf9e64d8868bbfa735c1e2efea2cd1502b49e481ad18fe694d5c3ea1c7a3064"
+      "after": "2e40f5d40af8e5e92cb13e4fd7daf332b869959ccace6455e7895e6e9dfde6ac"
     },
     {
       "path": "chrome/browser/ui/views/frame/browser_view.h",
@@ -595,6 +595,11 @@
       "path": "ui/webui/resources/BUILD.gn",
       "before": "bb4eb263b2cf73613c9de5c6d557928f5f8f9cda28cc10b14e3b966fc1329f6e",
       "after": "43bd522c0bb754807e66c4bcb7dfe6634b6df8e7821a92a36486f60233cc7dfb"
+    },
+    {
+      "path": "ui/webui/resources/cr_components/most_visited/most_visited.css",
+      "before": "9c4de67d976f1ff6176983a10744487ac83a2f558783f4d31238832c20356a15",
+      "after": "2a674b48fa84795deeb42f20789b91cb0898165b0d9d548d956149274c997848"
     },
     {
       "path": "ui/webui/resources/cr_elements/cr_nav_menu_item_style_lit.css",

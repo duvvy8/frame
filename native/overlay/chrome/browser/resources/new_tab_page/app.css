@@ -336,6 +336,17 @@ ntp-searchbox[shown] {
   width: 1px;
 }
 
+/* Keep the shortcut row clear of the fixed customise control in short windows. */
+@media (max-height: 500px) {
+  #frameHeading {
+    margin: clamp(16px, 8vh, 32px) 0 20px;
+  }
+
+  #contentBottomSpacer {
+    height: 72px;
+  }
+}
+
 svg {
   position: fixed;
 }

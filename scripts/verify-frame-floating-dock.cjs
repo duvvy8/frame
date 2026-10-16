@@ -156,9 +156,40 @@ const server = http.createServer((request, response) => {
     assert(await shortcuts.evaluate(el => el.hasAttribute('hide-title')));
     const titles = shortcuts.locator('.tile-title');
     for (let i = 0; i < await titles.count(); ++i) assert(!(await titles.nth(i).isVisible()));
+    const addShortcut = shortcuts.getByRole('button', {name: 'Add shortcut', exact: true});
+    if (await addShortcut.isVisible()) {
+      await addShortcut.focus();
+      const geometry = await shortcuts.evaluate(host => {
+        const container = host.shadowRoot.querySelector('#container');
+        const add = host.shadowRoot.querySelector('#addShortcut');
+        return {
+          scrollTop: container.scrollTop,
+          scrollHeight: container.scrollHeight,
+          clientHeight: container.clientHeight,
+          buttonWidth: add.getBoundingClientRect().width,
+          tileWidth: parseFloat(getComputedStyle(host).getPropertyValue('--tile-size')),
+        };
+      });
+      assert(geometry.buttonWidth <= geometry.tileWidth + 1,
+          'Compact Add shortcut exceeded its modelled tile width');
+      assert(geometry.scrollHeight <= geometry.clientHeight + 1,
+          'Shortcut controls wrapped into a clipped extra row');
+      assert.equal(geometry.scrollTop, 0,
+          'Focusing Add shortcut scrolled the favicons out of view');
+    }
     assert(await page.locator('ntp-searchbox').isVisible());
     assert(await page.locator('#frameHeading').isVisible());
     capture('new-tab');
+    native('resize', null, ['-Width', '780', '-Height', '420']);
+    await waitFor(() => page.evaluate(() => innerHeight < 500),
+        'Short NTP window did not resize');
+    const shortcutBounds = await shortcuts.boundingBox();
+    const customizeBounds = await page.locator('#customizeButton').boundingBox();
+    assert(shortcutBounds && customizeBounds);
+    assert(shortcutBounds.y + shortcutBounds.height <= customizeBounds.y,
+        'Short NTP shortcuts overlap the fixed customise control');
+    capture('new-tab-short');
+    native('resize', null, ['-Width', '1280', '-Height', '900']);
   });
   results.push({name: 'Manual acceptance still required', pending: [
     'Omnibox suggestions, alias editor, copy/paste and real keyboard focus/shortcuts',

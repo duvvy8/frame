@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-16",
+  "branch": "feature/floating-tab-dock",
+  "startingCommit": "5ddd297c8d1aed68e84b18dd196f29e6f15676ad",
+  "chromiumRevision": "ad04fe860307f4c408ca74ef7dbfcaaa221cff85",
+  "acceptanceComplete": false,
+  "build": {
+    "nativeFixBuilds": {"passed": true, "stepsEach": 3},
+    "shortcutResourceBuild": {"passed": true, "steps": 26},
+    "finalShortWindowResourceBuild": {"passed": true, "steps": 11}
+  },
+  "sourceChecks": {
+    "overlayRegressionTests": {"passed": true, "tests": 4},
+    "compiledDockGeometry": {"passed": true},
+    "manifest": {"passed": true, "files": 131},
+    "javascriptSyntax": {"passed": true},
+    "diffWhitespace": {"passed": true},
+    "existingBaselineHashesUnchanged": true,
+    "chromiumRevisionUnchanged": true
+  },
+  "runtimePassed": [
+    "Real tab model, duplicate/fallback favicons and native pinning",
+    "F6, dock arrows without activation, Enter activation and visible focus",
+    "Native Shift+F10 tab menu",
+    "Ctrl+T, Ctrl+W and isolated exact-URL Ctrl+Shift+T restoration",
+    "Native URL entry and suggestions, history navigation and reload",
+    "Split creation/separation and independent edited forms",
+    "Moved Copy Link follows focused split pane and restores prior clipboard text",
+    "Frame favourite creation and exact-URL tab reuse retain edited forms",
+    "26-tab overflow at actual 780x420 OS bounds; first/last tab reveal",
+    "CDP maximise/restore, F11 fullscreen and gutter restoration",
+    "Appearance, History, Downloads, Bookmarks and Extensions WebUI loading",
+    "Third-party fixture retains its own fonts and colours",
+    "NTP shortcut keyboard editing, saving, cancellation and accessible titles",
+    "Final shortcut width 60px, viewport/scroll height 60px, scrollTop 0",
+    "Final short NTP footer clearance 12.125px and usable shortcut dialog"
+  ],
+  "rawResults": [
+    "2026-10-15-local/acceptance.json",
+    "2026-10-16-local/acceptance.json"
+  ],
+  "intermediateFailures": [
+    {
+      "finding": "Earlier blank-NTP restoration selected prior test history",
+      "replacement": "Isolated exact-URL website restoration passed on 16 October"
+    },
+    {
+      "finding": "Add shortcut wrapped and focus scrolled favicons out of view",
+      "replacement": "Final shared CSS fixes width and eliminates internal scrolling"
+    },
+    {
+      "finding": "Short NTP shortcut target overlapped fixed customise control",
+      "replacement": "Final short-window CSS leaves 12.125px clearance"
+    }
+  ],
+  "computerControl": {
+    "nativeKeyboard": "passed for listed workflows",
+    "accessibilityReads": "available",
+    "nativeCapture": "unavailable after fresh-session recovery attempts",
+    "errors": [
+      "FrameArrived timed out: timed out waiting on channel",
+      "window capture timed out: timed out waiting on channel",
+      "coordinate input geometry is unavailable"
+    ],
+    "fallbackScreenshots": "Real PrintWindow and screen-region captures, visually inspected"
+  },
+  "remainingAcceptance": [
+    "Physical pointer activation, middle/right click, hover and wheel",
+    "Page-edge hit delivery, caption drag, all-edge resizing and Snap",
+    "Multi-monitor and Windows display scaling at 100/125/150/200 percent",
+    "Full lifecycle/media/capture/download protection rerun",
+    "Sleeping preview/wake and session/never-sleep persistence",
+    "Complete alias editor, search providers and IME",
+    "Real extension popup, bookmark import/export, archive and conversions",
+    "Complete existing native acceptance harness"
+  ],
+  "regularProfile": "Preserved, reopened after final build and left running",
+  "finalScreenshot": "2026-10-16-local/regular-profile-final.png",
+  "report": "REPORT.md"
+}

@@ -1,0 +1,145 @@
+{
+  "profile": "C:/Users/Michael/Documents/frame/profiles/dock-cu-resume-Kpry1Z",
+  "results": [
+    {
+      "name": "Ctrl+W closes a real website in a clean profile",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+Shift+T restores exact website URL and preserves edited neighbour",
+      "passed": true
+    },
+    {
+      "name": "Relocated Add favourite command runs in isolated profile",
+      "passed": true
+    },
+    {
+      "name": "Frame favourite reuses exact native tab and retains both unsaved forms",
+      "passed": true
+    },
+    {
+      "name": "Appearance settings load with redesigned chrome",
+      "passed": true,
+      "details": {
+        "url": "chrome://settings/appearance",
+        "dark": true
+      }
+    },
+    {
+      "name": "Existing History WebUI loads",
+      "passed": true,
+      "details": {
+        "title": "History"
+      }
+    },
+    {
+      "name": "Existing Downloads WebUI loads",
+      "passed": true,
+      "details": {
+        "title": "Download history"
+      }
+    },
+    {
+      "name": "Existing Bookmarks WebUI loads",
+      "passed": true,
+      "details": {
+        "title": "Bookmarks"
+      }
+    },
+    {
+      "name": "Existing Extensions WebUI loads",
+      "passed": true,
+      "details": {
+        "title": "Extensions"
+      }
+    },
+    {
+      "name": "Third-party fixture retains its own typography and colours",
+      "passed": true,
+      "details": {
+        "font": "serif",
+        "background": "rgb(255, 255, 255)",
+        "color": "rgb(0, 0, 0)"
+      }
+    },
+    {
+      "name": "Native NTP keeps favicon-only shortcuts and live search field",
+      "passed": true
+    },
+    {
+      "name": "Native NTP shortcut editor accepts keyboard name/URL and saves accessible shortcut",
+      "passed": true
+    },
+    {
+      "name": "Compact NTP shortcut geometry before fix",
+      "passed": false,
+      "details": {
+        "buttonWidth": 71.9531,
+        "tileWidth": 60,
+        "containerHeight": 60,
+        "scrollHeight": 120,
+        "scrollTop": 60,
+        "problem": "Add shortcut wraps into hidden row; focus clips favicons"
+      },
+      "resolvedBy": "Fixed compact NTP keeps Add shortcut in modelled row"
+    },
+    {
+      "name": "Fixed compact NTP keeps Add shortcut in modelled row",
+      "passed": true,
+      "details": {
+        "scrollTop": 0,
+        "scrollHeight": 60,
+        "clientHeight": 60,
+        "buttonWidth": 60,
+        "tileWidth": 60,
+        "tiles": 4
+      }
+    },
+    {
+      "name": "Rebuilt NTP editor opens with Space and all icons remain in view",
+      "passed": true
+    },
+    {
+      "name": "Escape cancels editor and returns focus without hiding shortcut icons",
+      "passed": true
+    },
+    {
+      "name": "Fixed shortcuts remain visible in actual 780x420 window",
+      "passed": true,
+      "details": {
+        "scrollTop": 0,
+        "scrollHeight": 60,
+        "height": 60,
+        "buttonWidth": 60
+      }
+    },
+    {
+      "name": "Short NTP footer clearance before spacing fix",
+      "passed": false,
+      "details": "At 780x420, fixed customise button overlaps shortcut target edge; shortcut row itself no longer wraps.",
+      "resolvedBy": "Final short NTP avoids fixed customise target and preserves icon row"
+    },
+    {
+      "name": "Final short NTP avoids fixed customise target and preserves icon row",
+      "passed": true,
+      "details": {
+        "gap": 12.125,
+        "spacer": 72
+      }
+    },
+    {
+      "name": "Final short-window shortcut dialog opens with keyboard",
+      "passed": true
+    },
+    {
+      "name": "Final regular NTP preserves reference proportions and favicon-only shortcuts",
+      "passed": true
+    }
+  ],
+  "acceptanceComplete": false,
+  "captureBlockers": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "window capture timed out: timed out waiting on channel",
+    "coordinate input geometry is unavailable"
+  ]
+}

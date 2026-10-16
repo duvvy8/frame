@@ -1,11 +1,11 @@
 # Windows build and launch guide
 
-For the 15 October floating-dock change, follow the
+For the floating-dock change, follow the
 [upgrade and acceptance steps](docs/design/floating-dock-verification.md).
-The source overlay is updated, but the redesigned browser has not been built
-or launched in the cloud. The prior October acceptance described below is
-historical, and tests that invoke removed rail buttons need the documented menu
-routes before reuse.
+The Windows redesign now builds and has partial native acceptance with
+[real screenshots](verification/floating-dock/REPORT.md). Full pointer,
+display-scale and retained-feature acceptance remains incomplete. Older tests
+that invoke removed rail buttons need the documented menu routes before reuse.
 
 This is a source build of full Chromium, with a separate Frame output. Use an x64 Windows 10/11 machine and an **elevated installer session** for Visual Studio and the Windows SDK. Chromium's [current official Windows guide](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/windows_build_instructions.md) is the authority if its requirements change.
 

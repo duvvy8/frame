@@ -1179,9 +1179,12 @@ class FrameDockTabButton final : public views::ImageButton,
         owner_(owner),
         tab_(tab->GetWeakPtr()) {
     SetPreferredSize(gfx::Size(40, frame::kDockTabHeight));
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
     SetFocusBehavior(FocusBehavior::ALWAYS);
     set_context_menu_controller(this);
     views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
     views::FocusRing::Get(this)->SetColorId(ui::kColorFocusableBorderFocused);
     GetViewAccessibility().SetRole(ax::mojom::Role::kTab);
   }
@@ -1401,6 +1404,7 @@ class FrameTabDockView final : public views::AccessiblePaneView,
     new_tab_->SetTooltipText(u"New tab (Ctrl+T)");
     new_tab_->GetViewAccessibility().SetName(u"New tab (Ctrl+T)");
     views::FocusRing::Install(new_tab_);
+    views::FocusRing::Get(new_tab_)->SetHaloInset(2);
     owner_->browser()->GetTabStripModel()->AddObserver(this);
     ScheduleSync(true);
   }
@@ -1558,8 +1562,11 @@ class FrameSettingsButton final : public views::ImageButton {
                                                  kColorToolbarButtonIcon, 18));
     SetTooltipText(u"Settings and browser menu");
     GetViewAccessibility().SetName(u"Settings and browser menu");
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
     SetFocusBehavior(FocusBehavior::ALWAYS);
     views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
   }
 
  private:
@@ -1596,8 +1603,11 @@ class FrameSplitButton final : public views::ImageButton,
     SetImageModel(STATE_NORMAL,
                   ui::ImageModel::FromVectorIcon(kSplitSceneIcon,
                                                  kColorToolbarButtonIcon, 18));
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
     SetFocusBehavior(FocusBehavior::ALWAYS);
     views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
     browser_->GetTabStripModel()->AddObserver(this);
     Update();
   }
@@ -1890,6 +1900,17 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
 
   browser_->GetTabStripModel()->AddObserver(this);
 
+  main_background_region_ =
+      AddChildView(std::make_unique<MainBackgroundRegionView>(*this));
+  main_background_region_->SetProperty(
+      views::kElementIdentifierKey,
+      BrowserViewLayoutViews::kMainBackgroundRegionElementId);
+
+  top_container_ = AddChildView(std::make_unique<TopContainerView>(this));
+  top_container_insertion_index_ = GetIndexOf(top_container_.get());
+
+  // Keep floating controls above the top container so its background cannot
+  // paint over the logo/split button or intercept their pointer targets.
   if (GetIsNormalType()) {
     auto* logo = AddChildView(std::make_unique<views::ImageView>());
     logo->SetImage(ui::ImageModel::FromVectorIcon(frame::kFrameBrandIcon, 24));
@@ -1904,15 +1925,6 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
         std::make_unique<FrameTabDockView>(this)));
     frame_tab_dock_->SetVisible(IsFrameDockVisible());
   }
-
-  main_background_region_ =
-      AddChildView(std::make_unique<MainBackgroundRegionView>(*this));
-  main_background_region_->SetProperty(
-      views::kElementIdentifierKey,
-      BrowserViewLayoutViews::kMainBackgroundRegionElementId);
-
-  top_container_ = AddChildView(std::make_unique<TopContainerView>(this));
-  top_container_insertion_index_ = GetIndexOf(top_container_.get());
 
   toolbar_ = top_container_->AddChildView(
       std::make_unique<ToolbarView>(browser_.get(), this));
