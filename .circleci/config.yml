@@ -1,25 +1,133 @@
 version: 2.1
-# Bounded cloud capability probe. Staged continuation is added only after
-# validating the actual image/toolchain and checkpoint capacity.
 jobs:
-  inspect-free-windows:
+  cloud-stage:
+    parameters:
+      stage:
+        type: integer
     machine:
       image: windows-server-2025-gui:current
     shell: powershell.exe -ExecutionPolicy Bypass
     resource_class: windows.medium
+    environment:
+      FRAME_FREE_PLAN_CONFIRMED: "1"
     steps:
       - checkout
       - run:
-          name: Inspect cloud build prerequisites without invoking a compiler
-          no_output_timeout: 5m
-          command: .\scripts\cloud\circleci-preflight.ps1
+          name: Prepare disposable cloud machine and signed Microsoft toolchain
+          no_output_timeout: 40m
+          command: .\scripts\cloud\circleci-prepare-machine.ps1
+      - when:
+          condition:
+            not:
+              equal: [1, << parameters.stage >>]
+          steps:
+            - attach_workspace:
+                at: C:\frame-checkpoints
+      - run:
+          name: Resume bounded cloud stage << parameters.stage >>
+          no_output_timeout: 40m
+          command: python .\scripts\cloud\circleci-stage.py --stage << parameters.stage >>
+      - persist_to_workspace:
+          root: C:\frame-checkpoints
+          paths:
+            - stage-*.zip
       - store_artifacts:
           path: C:\frame-diagnostics
-          destination: frame-preflight
+          destination: stage-<< parameters.stage >>
 workflows:
-  frame-cloud-preflight:
+  frame-widevine-staged-free:
     jobs:
-      - inspect-free-windows:
+      - cloud-stage:
+          name: stage-01
+          stage: 1
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-02
+          stage: 2
+          requires:
+            - stage-01
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-03
+          stage: 3
+          requires:
+            - stage-02
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-04
+          stage: 4
+          requires:
+            - stage-03
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-05
+          stage: 5
+          requires:
+            - stage-04
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-06
+          stage: 6
+          requires:
+            - stage-05
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-07
+          stage: 7
+          requires:
+            - stage-06
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-08
+          stage: 8
+          requires:
+            - stage-07
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-09
+          stage: 9
+          requires:
+            - stage-08
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-10
+          stage: 10
+          requires:
+            - stage-09
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-11
+          stage: 11
+          requires:
+            - stage-10
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031
+      - cloud-stage:
+          name: stage-12
+          stage: 12
+          requires:
+            - stage-11
           filters:
             branches:
               only: cloud/widevine-staged-20261031
