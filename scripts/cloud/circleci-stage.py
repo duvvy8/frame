@@ -23,6 +23,12 @@ def safe_member(root, name):
     return path
 
 
+def safe_link(root, path, target):
+    if not (path.parent / target).resolve().is_relative_to(root.resolve()):
+        raise ValueError('Checkpoint link escapes its root: ' + str(path))
+    return target
+
+
 def restore():
     STATE.mkdir(exist_ok=True)
     previous = 0
@@ -34,8 +40,13 @@ def restore():
             metadata = json.loads(z.read('_checkpoint.json'))
             for name in metadata['deleted']:
                 path = safe_member(STATE, name)
-                if path.is_file():
+                if path.is_symlink() or path.is_file():
                     path.unlink()
+            # Remove replaced links before writing regular files through them.
+            for name in metadata['changed']:
+                target = safe_member(STATE, name)
+                if target.is_symlink():
+                    target.unlink()
             for item in z.infolist():
                 if item.filename == '_checkpoint.json':
                     continue
@@ -45,6 +56,16 @@ def restore():
                     shutil.copyfileobj(src, dst, 4 * 1024 * 1024)
                 stamp = metadata['changed'][item.filename][1]
                 os.utime(target, ns=(stamp, stamp))
+            # Link targets may appear later in the archive; recreate links last.
+            for name, info in metadata['changed'].items():
+                if not isinstance(info, dict):
+                    continue
+                target = safe_member(STATE, name)
+                link = safe_link(STATE, target, info['symlink'])
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_file():
+                    target.unlink()
+                target.symlink_to(link, target_is_directory=info['directory'])
         previous = number
         # Archives are disposable copies downloaded into this cloud job.
         archive.unlink()
@@ -54,11 +75,15 @@ def restore():
 def inventory(root):
     result = {}
     for folder, dirs, names in os.walk(root, followlinks=False):
+        links = [d for d in dirs if (Path(folder) / d).is_symlink()]
         dirs[:] = [d for d in dirs if not (Path(folder) / d).is_symlink()]
-        for name in names:
+        for name in names + links:
             path = Path(folder) / name
             if path.is_symlink():
-                raise RuntimeError('Checkpoint cannot preserve a symlink safely: ' + str(path))
+                link = safe_link(root, path, os.readlink(path))
+                result[path.relative_to(root).as_posix()] = {
+                    'symlink': link, 'directory': path.is_dir()}
+                continue
             stat = path.stat()
             result[path.relative_to(root).as_posix()] = [stat.st_size, stat.st_mtime_ns]
     return result
@@ -71,6 +96,8 @@ def checkpoint(number, before):
     archive = CHECKPOINTS / f'stage-{number:02d}.zip'
     with zipfile.ZipFile(archive, 'x', zipfile.ZIP_DEFLATED, compresslevel=1, allowZip64=True) as z:
         for name in sorted(changed):
+            if isinstance(changed[name], dict):
+                continue  # Preserve links in metadata, never dereference them.
             # Git packs, archives and images are already compressed.
             method = zipfile.ZIP_STORED if Path(name).suffix in ('.pack', '.zip', '.png', '.jpg', '.woff2') else zipfile.ZIP_DEFLATED
             z.write(STATE / name, name, compress_type=method, compresslevel=1)

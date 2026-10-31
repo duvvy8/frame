@@ -50,6 +50,16 @@ staging does not make compute, storage or transfer consumption disappear.
   deletions and timestamps; checkpoint paths cannot escape the root; cloud
   execution is refused outside CircleCI. No native compiler was invoked locally.
 
+Pipeline 4 passed machine preparation but failed checkpointing a legitimate
+Node dependency symlink. The checkpoint format now records internal file and
+directory links without dereferencing them, recreates links after file restore,
+and rejects targets outside the cloud state root. Five Python checks pass; the
+real symlink round-trip check is skipped on this PC because Windows does not
+grant symlink creation privileges. The cloud dependency tool already created
+the link that exposed this failure. No successful checkpoint from pipeline 4
+was available to reuse. The Free plan was rechecked before the corrected retry:
+2,113 of 30,000 credits used.
+
 The complete cloud build, returned browser, DRM module installation and Netflix
 playback are not yet verified. A successful source build alone will not establish
 Google signing approval or Netflix compatibility. The finished runtime must be
