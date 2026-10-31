@@ -4,7 +4,9 @@ New-Item -ItemType Directory -Force -Path 'C:\frame-diagnostics' | Out-Null
 # This is a fresh CircleCI VM. Reclaim only allowlisted preinstalled caches,
 # unused .NET SDKs and obsolete Windows SDK versions; never user data or OS files.
 $allowlisted = @('C:\ProgramData\Package Cache',
-    'C:\ProgramData\Microsoft\VisualStudio\Packages','C:\Program Files\dotnet')
+    'C:\ProgramData\Microsoft\VisualStudio\Packages','C:\Program Files\dotnet',
+    'C:\Program Files\Microsoft Visual Studio\2022',
+    'C:\Program Files (x86)\Microsoft Visual Studio\2022')
 foreach ($sdkPart in @('Include','Lib','bin','UnionMetadata','References')) {
     $sdkParent = 'C:\Program Files (x86)\Windows Kits\10\' + $sdkPart
     foreach ($sdkVersion in @('10.0.10240.0','10.0.19041.0','10.0.22621.0','10.0.26100.0')) {
