@@ -148,6 +148,16 @@ content::WebUIDataSource* CreateAndAddHistoryUIHTMLSource(Profile* profile) {
 
   // Platform-specific data sources (e.g. history clusters, embeddings).
   history::PopulatePlatformDataSource(source, profile);
+  // History remains a local browsing tool, without Gemini activity or AI search.
+  for (const char* key : {"isGlicEnabled", "isGlicWebActuationAvailable",
+                          "isBrowsingHistoryActorIntegrationM3Enabled",
+                          "isCriticalActionsEnabled",
+                          "isCriticalActionsChatLinkoutsEnabled",
+                          "enableHistoryEmbeddings", "enableHistoryEmbeddingsAnswers",
+                          "maybeShowEmbeddingsIph"}) {
+    source->AddBoolean(key, false);
+  }
+
 
   return source;
 }

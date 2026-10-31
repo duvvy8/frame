@@ -421,6 +421,7 @@ if (!is_android && !is_mac) {
 
 if (is_win) {
   shared_library("chrome_dll") {
+    # Frame fonts are owned by //chrome/browser and installed after DirectWrite.
     configs += [ "//build/config/compiler:wexit_time_destructors" ]
     configs -= [ "//build/config/compiler:thinlto_optimize_default" ]
     configs += [ "//build/config/compiler:thinlto_optimize_max" ]
@@ -434,8 +435,6 @@ if (is_win) {
       "app/chrome_main_delegate.cc",
       "app/chrome_main_delegate.h",
       "app/startup_timestamps.h",
-      "app/frame_typography_win.cc",
-      "app/frame_typography_win.h",
     ]
 
     output_name = "chrome"

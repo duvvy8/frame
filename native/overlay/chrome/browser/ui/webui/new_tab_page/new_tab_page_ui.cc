@@ -350,6 +350,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                          base::FeatureList::IsEnabled(
                              ntp_realbox::kNtpRealboxCyclingPlaceholders));
   source->AddBoolean("multiLineEnabled",
+                     !profile->GetPrefs()->GetBoolean(frame::kBlueShellPref) &&
                      ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
                          ntp_realbox::kMultiLineEnabled.Get());
   source->AddBoolean(
@@ -723,6 +724,16 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
     source->AddLocalizedString("searchBoxPlaceholder",
                                IDS_GOOGLE_SEARCH_BOX_EMPTY_HINT_MD);
   }
+
+  // Google AI surfaces stay disabled independently of the appearance setting.
+  for (const char* key : {"ntpRealboxNextEnabled", "isFuseboxEnabled",
+                          "searchboxCyclingPlaceholders", "multiLineEnabled",
+                          "searchboxShowComposeEntrypoint",
+                          "ntpRealboxDynamicAiModeButton",
+                          "searchboxShowComposebox"}) {
+    source->AddBoolean(key, false);
+  }
+  source->AddString("searchBoxPlaceholder", "Search or enter URL");
 
   if (profile->GetPrefs()->GetBoolean(frame::kBlueShellPref)) {
     source->AddBoolean("frameShell", true);

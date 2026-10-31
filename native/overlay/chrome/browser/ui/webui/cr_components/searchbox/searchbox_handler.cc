@@ -18,10 +18,12 @@
 #include "base/containers/fixed_flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
+#include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
@@ -31,6 +33,8 @@
 #include "chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/favicon/favicon_service_factory.h"
+#include "chrome/browser/image_fetcher/image_fetcher_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/preloading/autocomplete_dictionary_preload_service.h"
 #include "chrome/browser/preloading/autocomplete_dictionary_preload_service_factory.h"
@@ -39,7 +43,9 @@
 #include "chrome/browser/preloading/search_preload/search_preload_service.h"
 #include "chrome/browser/preloading/search_preload/search_preload_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
+#include "chrome/browser/themes/frame_theme_supplier.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
@@ -53,6 +59,10 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
+#include "components/favicon/core/favicon_service.h"
+#include "components/image_fetcher/core/image_fetcher.h"
+#include "components/image_fetcher/core/image_fetcher_service.h"
+#include "components/image_fetcher/core/request_metadata.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
@@ -86,7 +96,10 @@
 #include "components/variations/variations_client.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
+#include "skia/ext/image_operations.h"
 #include "third_party/omnibox_proto/chrome_searchbox_stats.pb.h"
 #include "third_party/omnibox_proto/groups.pb.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
@@ -98,10 +111,15 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition_utils.h"
+#include "ui/base/webui/web_ui_util.h"
 #include "ui/gfx/image/image.h"
+#include "ui/gfx/image/image_skia.h"
+#include "ui/gfx/image/image_skia_operations.h"
+#include "ui/gfx/geometry/size.h"
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
 #include "url/gurl.h"
+#include "url/origin.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"  // nogncheck
@@ -1212,6 +1230,7 @@ TemplateURLService* SearchboxHandler::GetTemplateURLService() const {
 }
 
 void SearchboxHandler::SendAvailableKeywordModels() {
+  UpdateDefaultSearchProviderIcon();
   if (!page_) {
     return;
   }
@@ -1285,6 +1304,156 @@ void SearchboxHandler::SendAvailableKeywordModels() {
 
   page_->SetAvailableKeywordModels(std::move(models),
                                    default_search_provider_keyword);
+}
+
+void SearchboxHandler::UpdateDefaultSearchProviderIcon() {
+  if (!page_ || !profile_ || !web_contents_ ||
+      !profile_->GetPrefs()->GetBoolean(frame::kBlueShellPref)) {
+    return;
+  }
+  const GURL& page_url = web_contents_->GetVisibleURL();
+  if (!page_url.SchemeIs("chrome") ||
+      (page_url.host() != "new-tab-page" && page_url.host() != "newtab")) {
+    return;
+  }
+  auto* service = GetTemplateURLService();
+  const auto* provider = service ? service->GetDefaultSearchProvider() : nullptr;
+  GURL home_url;
+  GURL icon_url;
+  std::string key;
+  if (provider) {
+    const GURL search_url = provider->GenerateSearchURL(
+        service->search_terms_data(), std::u16string());
+    if (search_url.SchemeIsHTTPOrHTTPS()) {
+      home_url = url::Origin::Create(search_url).GetURL();
+    }
+    icon_url = provider->favicon_url().is_valid()
+                   ? provider->favicon_url()
+                   : home_url.Resolve("favicon.ico");
+    key = base::NumberToString(provider->id()) + ":" + icon_url.spec();
+  }
+  if (search_provider_icon_key_ == key) {
+    return;
+  }
+  search_provider_icon_key_ = key;
+  const auto generation = ++search_provider_icon_generation_;
+  search_provider_icon_tasks_.TryCancelAll();
+  // Immediately clear the previous provider, including when no default exists.
+  page_->SetDefaultSearchProviderIcon("");
+  if (!icon_url.is_valid()) {
+    return;
+  }
+  auto* favicons = FaviconServiceFactory::GetForProfile(
+      profile_, ServiceAccessType::IMPLICIT_ACCESS);
+  if (favicons) {
+    // WebUI's OmniboxClient does not implement the native omnibox favicon
+    // cache API. Read the profile database directly instead of that stub.
+    favicons->GetFaviconImage(
+        icon_url,
+        base::BindOnce(
+            [](base::WeakPtr<SearchboxHandler> handler, uint64_t generation,
+               GURL icon_url, GURL home_url,
+               const favicon_base::FaviconImageResult& result) {
+              if (handler) {
+                handler->OnDefaultSearchProviderIconCached(
+                    generation, icon_url, home_url, result.image);
+              }
+            },
+            weak_ptr_factory_.GetWeakPtr(), generation, icon_url, home_url),
+        &search_provider_icon_tasks_);
+  } else {
+    FetchDefaultSearchProviderIcon(generation, icon_url, home_url, false);
+  }
+}
+
+void SearchboxHandler::OnDefaultSearchProviderIconCached(
+    uint64_t generation,
+    GURL icon_url,
+    GURL home_url,
+    const gfx::Image& image) {
+  if (generation != search_provider_icon_generation_ || !page_) {
+    return;
+  }
+  if (!image.IsEmpty()) {
+    page_->SetDefaultSearchProviderIcon(webui::GetBitmapDataUrl(image.AsBitmap()));
+    return;
+  }
+  FetchDefaultSearchProviderIcon(generation, icon_url, home_url, false);
+}
+
+void SearchboxHandler::FetchDefaultSearchProviderIcon(uint64_t generation,
+                                                    GURL icon_url,
+                                                    GURL home_url,
+                                                    bool fallback) {
+  const GURL fetch_url = fallback ? home_url.Resolve("favicon.ico") : icon_url;
+  if (generation != search_provider_icon_generation_ ||
+      !fetch_url.SchemeIsHTTPOrHTTPS() || (fallback && fetch_url == icon_url)) {
+    return;
+  }
+  auto* service = ImageFetcherServiceFactory::GetForKey(profile_->GetProfileKey());
+  if (!service) {
+    return;
+  }
+  constexpr auto annotation = net::DefineNetworkTrafficAnnotation(
+      "frame_new_tab_search_engine_favicon", R"(
+        semantics {
+          sender: "Frame New Tab search engine icon"
+          description: "Loads the selected provider's favicon for New Tab search."
+          trigger: "Opening Frame New Tab or changing the default search provider."
+          data: "The provider's favicon URL or origin /favicon.ico. No cookies or search queries."
+          destination: WEBSITE
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "Users select their default provider through browser search settings."
+          policy_exception_justification: "The icon follows the user's selected provider."
+        })");
+  image_fetcher::ImageFetcherParams params(annotation, "Omnibox");
+  params.set_frame_size(gfx::Size(16, 16));
+  params.set_max_download_size(256 * 1024);
+  service->GetImageFetcher(image_fetcher::ImageFetcherConfig::kNetworkOnly)
+      ->FetchImage(
+          fetch_url,
+          base::BindOnce(
+              &SearchboxHandler::OnDefaultSearchProviderIconDownloaded,
+              weak_ptr_factory_.GetWeakPtr(), generation, icon_url, home_url,
+              fallback),
+          std::move(params));
+}
+
+void SearchboxHandler::OnDefaultSearchProviderIconDownloaded(
+    uint64_t generation,
+    GURL icon_url,
+    GURL home_url,
+    bool fallback,
+    const gfx::Image& image,
+    const image_fetcher::RequestMetadata& metadata) {
+  if (generation != search_provider_icon_generation_ || !page_) {
+    return;
+  }
+  if (image.IsEmpty() || metadata.http_response_code >= 400) {
+    if (!fallback) {
+      FetchDefaultSearchProviderIcon(generation, icon_url, home_url, true);
+    }
+    return;
+  }
+  const SkBitmap bitmap = image.AsBitmap();
+  if (bitmap.drawsNothing()) {
+    return;
+  }
+  const gfx::Image sized(gfx::ImageSkiaOperations::CreateResizedImage(
+      gfx::ImageSkia::CreateFrom1xBitmap(bitmap),
+      skia::ImageOperations::ResizeMethod::RESIZE_LANCZOS3, gfx::Size(16, 16)));
+  page_->SetDefaultSearchProviderIcon(webui::GetBitmapDataUrl(sized.AsBitmap()));
+  if (!profile_->IsOffTheRecord()) {
+    auto* favicons = FaviconServiceFactory::GetForProfile(
+        profile_, ServiceAccessType::IMPLICIT_ACCESS);
+    if (favicons && home_url.is_valid()) {
+      favicons->SetOnDemandFavicons(home_url, icon_url,
+                                   favicon_base::IconType::kFavicon, sized,
+                                   base::DoNothing());
+    }
+  }
 }
 
 void SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged() {

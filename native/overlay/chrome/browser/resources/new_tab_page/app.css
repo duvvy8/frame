@@ -16,7 +16,7 @@
     --color-new-tab-page-common-input-placeholder
   );
   --cr-focus-outline-color: var(--color-new-tab-page-focus-ring);
-  --cr-searchbox-height: 48px;
+  --cr-searchbox-height: 56px;
   --cr-searchbox-shadow: 0 1px 6px 0 var(--color-searchbox-shadow);
   --cr-searchbox-icon-left-position: 12px;
   --cr-searchbox-icon-size-in-searchbox: 20px;
@@ -25,7 +25,7 @@
   --cr-searchbox-results-search-icon-size: 20px;
   --ntp-theme-text-shadow: none;
   --ntp-one-google-bar-height: 56px;
-  --ntp-search-box-width: 337px;
+  --ntp-search-box-width: min(680px, calc(100vw - 64px));
   --ntp-menu-shadow:
     var(--color-new-tab-page-menu-inner-shadow) 0 1px 2px 0,
     var(--color-new-tab-page-menu-outer-shadow) 0 2px 6px 2px;
@@ -45,6 +45,74 @@
    * AndroidFontLookupImpl downloads them from GMSCore. */
   font-family: 'Google Sans Text', 'Google Sans', Arial, sans-serif;
 </if>
+}
+
+/* Overscan hides the edges during gentle, pointer-only movement. */
+#frameBackground {
+  --frame-edge-fade-x: clamp(24px, 10vw, 152px);
+  --frame-edge-fade-y: clamp(24px, 16vh, 152px);
+  height: calc(100vh + 24px);
+  inset: -12px;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  position: fixed;
+  user-select: none;
+  /* Reveal the existing theme surface at the edges, so the wallpaper joins
+   * the native toolbar and rail. Keep dark image pixels on that same surface.
+   * The transparent rim exceeds the overscan plus maximum pointer travel. */
+  mix-blend-mode: lighten;
+  mask-image:
+    linear-gradient(to bottom,
+      transparent 24px,
+      rgb(0 0 0 / 0.16) calc(24px + var(--frame-edge-fade-y) * 0.21),
+      rgb(0 0 0 / 0.5) calc(24px + var(--frame-edge-fade-y) * 0.47),
+      rgb(0 0 0 / 0.84) calc(24px + var(--frame-edge-fade-y) * 0.74),
+      black calc(24px + var(--frame-edge-fade-y)),
+      black calc(100% - 24px - var(--frame-edge-fade-y)),
+      rgb(0 0 0 / 0.84)
+        calc(100% - 24px - var(--frame-edge-fade-y) * 0.74),
+      rgb(0 0 0 / 0.5)
+        calc(100% - 24px - var(--frame-edge-fade-y) * 0.47),
+      rgb(0 0 0 / 0.16)
+        calc(100% - 24px - var(--frame-edge-fade-y) * 0.21),
+      transparent calc(100% - 24px)),
+    linear-gradient(to right,
+      transparent 24px,
+      rgb(0 0 0 / 0.16) calc(24px + var(--frame-edge-fade-x) * 0.21),
+      rgb(0 0 0 / 0.5) calc(24px + var(--frame-edge-fade-x) * 0.47),
+      rgb(0 0 0 / 0.84) calc(24px + var(--frame-edge-fade-x) * 0.74),
+      black calc(24px + var(--frame-edge-fade-x)),
+      black calc(100% - 24px - var(--frame-edge-fade-x)),
+      rgb(0 0 0 / 0.84)
+        calc(100% - 24px - var(--frame-edge-fade-x) * 0.74),
+      rgb(0 0 0 / 0.5)
+        calc(100% - 24px - var(--frame-edge-fade-x) * 0.47),
+      rgb(0 0 0 / 0.16)
+        calc(100% - 24px - var(--frame-edge-fade-x) * 0.21),
+      transparent calc(100% - 24px));
+  mask-composite: intersect;
+  transform: translate3d(0, 0, 0);
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  width: calc(100% + 24px);
+  z-index: 0;
+}
+
+#frameBackground[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
+  #frameBackground {
+    transform: none !important;
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  #frameBackground {
+    display: none;
+  }
 }
 
 /**
@@ -67,27 +135,6 @@
   --ntp-scrim-opacity_: 0.5;
 }
 
-/**
- * Maintain a larger width if the secondary side can be shown and was at any
- * point available to be shown.
- */
-:host([realbox-can-show-secondary-side][realbox-had-secondary-side]),
-:host([realbox-can-show-secondary-side]) {
-  --ntp-search-box-width: 746px;
-}
-
-@media (min-width: 560px) {
-  :host {
-    --ntp-search-box-width: 449px;
-  }
-}
-
-@media (min-width: 672px) {
-  :host {
-    --ntp-search-box-width: 561px;
-  }
-}
-
 /*A module width of 768px with 18px gaps on each side. */
 @media (min-width: 804px) {
   :host {
@@ -97,6 +144,9 @@
 }
 
 cr-most-visited {
+  --most-visited-icon-size: 52px;
+  --most-visited-tile-size: 72px;
+  --most-visited-gap: 8px;
   --add-shortcut-background-color: var(
     --color-new-tab-page-add-shortcut-background
   );
@@ -166,9 +216,9 @@ cr-most-visited {
   align-items: center;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--ntp-one-google-bar-height));
-  min-width: fit-content; /* Prevents OneGoogleBar cutoff at 500% zoom. */
-  padding-top: var(--ntp-one-google-bar-height);
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 72px 32px 88px;
   position: relative;
   z-index: 1;
 }
@@ -194,18 +244,84 @@ cr-most-visited {
   display: none;
 }
 
-#frameHeading {
-  color: #f7f4ff;
-  font: 600 clamp(32px, 4vw, 38px)/1 Geist, sans-serif;
-  letter-spacing: -0.045em;
-  margin: clamp(100px, 20vh, 200px) 0 32px;
+/* Keep the real searchbox and shortcut components in one responsive cluster. */
+#frameStart {
+  align-items: center;
+  display: grid;
+  gap: 80px;
+  grid-template-columns: 300px minmax(0, 680px);
+  margin-block: auto;
+  max-width: 1060px;
+  padding-bottom: 40px;
+  width: 100%;
 }
 
-#frameEdition {
-  color: #b9b3db;
-  font: 11px 'Geist Mono', monospace;
-  letter-spacing: 0.2em;
-  margin: 0 0 34px;
+#frameBrand {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#frameMark {
+  display: block;
+}
+
+#frameHeading {
+  color: #f7f4ff;
+  font: 600 108px/1 Geist, sans-serif;
+  letter-spacing: -0.055em;
+  margin: 0;
+}
+
+#frameActions {
+  --ntp-search-box-width: 100%;
+  min-width: 0;
+  padding-top: 60px;
+  width: 100%;
+}
+
+#frameActions cr-most-visited {
+  display: block;
+  max-width: 100%;
+  --most-visited-justify: flex-start;
+}
+
+@media (max-width: 1000px) {
+  #frameStart {
+    gap: 48px;
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  #frameHeading {
+    font-size: 72px;
+  }
+}
+
+@media (max-width: 760px) {
+  #frameStart {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+    padding-bottom: 0;
+  }
+
+  #frameBrand {
+    align-items: center;
+    gap: 16px;
+  }
+
+  #frameHeading {
+    font-size: 64px;
+  }
+
+  #frameActions {
+    padding-top: 0;
+  }
+
+  #frameActions cr-most-visited {
+    --most-visited-justify: center;
+  }
 }
 
 #oneGoogleBarStackingContext,
@@ -221,8 +337,8 @@ cr-most-visited {
 
 #searchboxContainer {
   --cr-focus-outline-color: var(--color-searchbox-results-icon-focused-outline);
-  display: inherit;
-  margin-bottom: 16px;
+  display: block;
+  margin-bottom: 20px;
   position: relative;
   z-index: 2;
 }
@@ -331,6 +447,69 @@ ntp-searchbox[shown] {
   flex-shrink: 0;
   height: 32px;
   width: 1px;
+}
+
+/* Keep the footer after the shortcut rows in short or zoomed windows. */
+@media (max-height: 500px) {
+  #content {
+    padding-block: 16px;
+  }
+
+  #frameStart {
+    gap: 16px;
+    padding-bottom: 0;
+  }
+
+  #frameBrand {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  #frameHeading {
+    font-size: 48px;
+  }
+
+  #frameMark {
+    height: 32px;
+    width: 32px;
+  }
+
+  #frameActions {
+    padding-top: 0;
+  }
+
+  #searchboxContainer {
+    margin-bottom: 12px;
+  }
+
+  cr-most-visited {
+    --most-visited-icon-size: 44px;
+    --most-visited-tile-size: 64px;
+  }
+
+  #customizeButtons {
+    align-self: flex-end;
+    flex-shrink: 0;
+    margin-top: 20px;
+    position: static;
+  }
+
+  #contentBottomSpacer {
+    height: 0;
+  }
+}
+
+@media (max-height: 500px) and (min-width: 600px) {
+  #frameStart {
+    gap: 24px;
+    grid-template-columns: 160px minmax(0, 1fr);
+    max-width: 900px;
+  }
+
+  #frameBrand {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 svg {

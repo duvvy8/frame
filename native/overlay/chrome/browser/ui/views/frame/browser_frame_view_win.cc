@@ -166,12 +166,12 @@ bool BrowserFrameViewWin::CaptionButtonsOnLeadingEdge() const {
 }
 
 int BrowserFrameViewWin::GetTopInset(bool restored) const {
-  if (GetBrowserView()->GetTabStripVisible()) {
+  if (GetBrowserView()->IsFrameShellEnabled() ||
+      GetBrowserView()->GetTabStripVisible()) {
     return TopAreaHeight(restored);
   }
-  // With Frame's tab strip hidden, reserve the native caption area above the
-  // toolbar. Its existing non-client hit testing supplies Windows dragging,
-  // double-click maximize, caption buttons and resize borders.
+  // Non-Frame windows without a tab strip retain their separate native
+  // caption area above the toolbar.
   return TitlebarHeight(restored);
 }
 

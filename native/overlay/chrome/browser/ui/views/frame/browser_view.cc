@@ -4,6 +4,18 @@
 
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/frame_brand_icon.h"
+#include "chrome/browser/ui/views/frame/frame_dock_layout.h"
+#include "chrome/browser/ui/toolbar/app_menu_model.h"
+#include "chrome/browser/ui/views/toolbar/app_menu.h"
+#include "chrome/browser/ui/tabs/split_tab_menu_model.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
+#include "chrome/browser/ui/tabs/tab_group_model.h"
+#include "components/tabs/public/tab_group.h"
+#include "ui/views/controls/focus_ring.h"
+#include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/context_menu_controller.h"
+#include "ui/gfx/image/image_skia_operations.h"
+#include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/performance_manager/policies/page_discarding_helper.h"
 #include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
@@ -1155,376 +1167,693 @@ class FrameTabSwitcher final : public views::View,
   base::WeakPtrFactory<FrameTabSwitcher> weak_factory_{this};
 };
 
-// Frame's utility rail uses Chromium commands and its real tab strip host.
-class FrameRailView : public views::ScrollView,
-                      public bookmarks::BaseBookmarkModelObserver,
-                      public TabStripModelObserver,
-                      public views::FocusChangeListener {
+// A dock entry owns no tab state: resolve its weak native identity at every
+// interaction, including after a menu, navigation or sleeping-content swap.
+class FrameDockTabButton final : public views::ImageButton,
+                                 public views::ContextMenuController {
+  METADATA_HEADER(FrameDockTabButton, views::ImageButton)
  public:
-  explicit FrameRailView(BrowserView* owner) : owner_(owner) {
-    ClipHeightTo(0, std::numeric_limits<int>::max());
-    SetHorizontalScrollBarMode(ScrollBarMode::kDisabled);
-    SetVerticalScrollBarMode(ScrollBarMode::kHiddenButEnabled);
-    body_ = SetContents(std::make_unique<views::View>());
-    body_->SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kVertical,
-        gfx::Insets::TLBR(6, 10, 10, 10), 6));
-    SetPreferredSize(gfx::Size(56, 0));
-    auto* logo = SetHeader(std::make_unique<views::ImageView>());
-    logo->SetImage(ui::ImageModel::FromVectorIcon(frame::kFrameBrandIcon, 24));
-    logo->SetPreferredSize(gfx::Size(56, 40));
-    // ScrollView headers lay themselves out; ImageView does not size itself.
-    logo->SetSize(gfx::Size(56, 40));
-    logo->SetTooltipText(u"Frame");
-    logo->GetViewAccessibility().SetName(u"Frame");
-    // The previous brand was decorative. Keep the replacement noninteractive;
-    // native application menu and tab-search controls retain their actions.
+  FrameDockTabButton(BrowserView* owner, tabs::TabInterface* tab)
+      : views::ImageButton(base::BindRepeating(&FrameDockTabButton::Activate,
+                                               base::Unretained(this))),
+        owner_(owner),
+        tab_(tab->GetWeakPtr()) {
+    SetPreferredSize(gfx::Size(40, frame::kDockTabHeight));
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
+    SetFocusBehavior(FocusBehavior::ALWAYS);
+    set_context_menu_controller(this);
+    views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
+    views::FocusRing::Get(this)->SetColorId(ui::kColorFocusableBorderFocused);
+    GetViewAccessibility().SetRole(ax::mojom::Role::kTab);
+  }
 
-    AddCommand(vector_icons::kSearchIcon, u"Search or enter URL (Ctrl+L)",
-               IDC_FOCUS_LOCATION);
-    tabs_button_ = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating(&BrowserView::ToggleFrameTabStrip,
-                            base::Unretained(owner)),
-        kTabIcon, 18, kColorToolbarButtonIcon,
-        kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-    ConfigureButton(tabs_button_, u"Show or hide tabs");
-    AddCommand(kAddIcon, u"New tab (Ctrl+T)", IDC_NEW_TAB);
-    AddCommand(kSplitSceneIcon, u"Split current page with a new tab", IDC_NEW_SPLIT_TAB);
-    auto* switcher = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating([](BrowserView* owner) {
-          FrameTabSwitcher::Show(owner, false);
-        }, base::Unretained(owner)), kTabIcon, 18, kColorToolbarButtonIcon,
-        kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-    ConfigureButton(switcher, u"Switch recent tabs (Ctrl+Tab)");
-    AddSeparator();
-    AddCommand(kBookmarkManagerIcon, u"Bookmarks (Ctrl+Shift+O)",
-               IDC_SHOW_BOOKMARK_MANAGER);
-    AddCommand(kDownloadIcon, u"Downloads (Ctrl+J)", IDC_SHOW_DOWNLOADS);
-    AddCommand(kHistoryIcon, u"History (Ctrl+H)", IDC_SHOW_HISTORY);
-    AddCommand(vector_icons::kExtensionFilledIcon, u"Extensions",
-               IDC_MANAGE_EXTENSIONS);
-    AddSeparator();
-      AddCommand(kSettingsIcon, u"Settings and appearance", IDC_OPTIONS);
+  tabs::TabInterface* tab() const { return tab_.get(); }
 
-      sleep_ = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-          base::BindRepeating(&FrameRailView::SleepBackgroundTabs,
-                              base::Unretained(this)),
-          kPerformanceOldIcon, 18, kColorToolbarButtonIcon,
-          kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-      ConfigureButton(sleep_, u"Sleep eligible background tabs");
-
-    AddSeparator();
-    auto* add_favorite = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating(&FrameRailView::AddCurrentFavorite,
-                            base::Unretained(this)),
-        kStarIcon, 18, kColorToolbarButtonIcon, kColorToolbarButtonIconDisabled,
-        kColorToolbarButtonIconHovered));
-    ConfigureButton(add_favorite, u"Add current page to rail favourites");
-    add_favorite_ = add_favorite;
-    auto* manage = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating(&FrameRailView::ManageFavorites,
-                            base::Unretained(this)),
-        kBookmarkManagerIcon, 18, kColorToolbarButtonIcon,
-        kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-    ConfigureButton(manage, u"Edit, reorder or remove rail favourites");
-    auto* archive = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating(&FrameRailView::OpenArchive,
-                            base::Unretained(this)),
-        kOpenInNewIcon, 18, kColorToolbarButtonIcon,
-        kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-    ConfigureButton(archive, u"View archived copies of current website");
-    archive_ = archive;
-
-    favorites_scroll_ = body_->AddChildView(std::make_unique<views::ScrollView>());
-    favorites_scroll_->ClipHeightTo(0, 180);
-    static_cast<views::BoxLayout*>(body_->GetLayoutManager())->SetFlexForView(
-        favorites_scroll_, 1);
-    favorites_ = favorites_scroll_->SetContents(std::make_unique<views::View>());
-    favorites_->SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kVertical, gfx::Insets(), 4));
-    model_ = BookmarkModelFactory::GetForBrowserContext(owner_->GetProfile());
-    if (model_) {
-      model_->AddObserver(this);
-      RebuildFavorites();
+  void Update(int index, int count) {
+    auto* model = owner_->browser()->GetTabStripModel();
+    auto* contents = tab_->GetContents();
+    active_ = index == model->active_index();
+    auto* lifecycle =
+        resource_coordinator::TabLifecycleUnitExternal::FromWebContents(
+            contents);
+    sleeping_ = lifecycle && lifecycle->GetTabState() ==
+                                 mojom::LifecycleUnitState::DISCARDED;
+    loading_ = contents->IsLoading();
+    audible_ = contents->IsCurrentlyAudible();
+    muted_ = contents->IsAudioMuted();
+    pinned_ = model->IsTabPinned(index);
+    std::u16string title = contents->GetTitle();
+    if (title.empty())
+      title = u"Untitled tab";
+    const auto& url = contents->GetVisibleURL();
+    std::u16string label =
+        title + u"\n" +
+        base::UTF8ToUTF16(url.has_host() ? url.host() : url.spec());
+    if (pinned_)
+      label += u"\nPinned";
+    if (loading_)
+      label += u"\nLoading";
+    if (audible_)
+      label += u"\nPlaying audio";
+    if (muted_)
+      label += u"\nMuted";
+    if (sleeping_)
+      label += u"\nSleeping; activate to wake";
+    if (auto group = tab_->GetGroup()) {
+      label +=
+          u"\nGroup: " +
+          model->group_model()->GetTabGroup(*group)->visual_data()->title();
     }
-    owner_->browser()->GetTabStripModel()->AddObserver(this);
-    UpdatePageActions();
-  }
-
-  ~FrameRailView() override {
-    owner_->browser()->GetTabStripModel()->RemoveObserver(this);
-    if (model_) {
-      model_->RemoveObserver(this);
+    SetTooltipText(label);
+    GetViewAccessibility().SetName(label);
+    GetViewAccessibility().SetIsSelected(active_);
+    GetViewAccessibility().SetPosInSet(index + 1);
+    GetViewAccessibility().SetSetSize(count);
+    ui::ImageModel icon =
+        ui::ImageModel::FromVectorIcon(kGlobeIcon, kColorToolbarButtonIcon, 18);
+    if (auto* driver = favicon::ContentFaviconDriver::FromWebContents(contents);
+        driver && !driver->GetFavicon().IsEmpty()) {
+      icon = ui::ImageModel::FromImageSkia(
+          gfx::ImageSkiaOperations::CreateResizedImage(
+              driver->GetFavicon().AsImageSkia(),
+              skia::ImageOperations::RESIZE_BEST, gfx::Size(18, 18)));
     }
+    SetImageModel(STATE_NORMAL, icon);
+    SchedulePaint();
   }
 
-  void AddedToWidget() override {
-    views::ScrollView::AddedToWidget();
-    if (auto* manager = GetFocusManager()) {
-      manager->AddFocusChangeListener(this);
-    }
+  void OnFocus() override {
+    views::ImageButton::OnFocus();
+    ScrollViewToVisible();
   }
 
-  void RemovedFromWidget() override {
-    if (auto* manager = GetFocusManager();
-        manager && manager->HasFocusChangeListener(this)) {
-      manager->RemoveFocusChangeListener(this);
-    }
-    views::ScrollView::RemovedFromWidget();
+  bool OnMousePressed(const ui::MouseEvent& event) override {
+    if (event.IsOnlyMiddleMouseButton())
+      return true;
+    return views::ImageButton::OnMousePressed(event);
   }
 
-  void OnDidChangeFocus(views::View*, views::View* focused_now) override {
-    // Views do not automatically reveal every newly focused control. Keep
-    // keyboard/accessibility traversal inside the visible short-window rail.
-    if (focused_now && Contains(focused_now)) {
-      focused_now->ScrollViewToVisible();
-    }
-  }
-
-  void BookmarkModelBeingDeleted() override {
-    model_->RemoveObserver(this);
-    model_ = nullptr;
-  }
-
-  void BookmarkModelChanged() override {
-    // Rebuild after the current action returns. Never delete a pressed button
-    // or keep a BookmarkNode pointer after removal. Coalesce native callbacks.
-    if (rebuild_pending_) {
+  void OnMouseReleased(const ui::MouseEvent& event) override {
+    if (event.IsOnlyMiddleMouseButton()) {
+      if (HitTestPoint(event.location()))
+        Close();
       return;
     }
-    rebuild_pending_ = true;
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&FrameRailView::RebuildFavorites,
-                                 weak_factory_.GetWeakPtr()));
+    views::ImageButton::OnMouseReleased(event);
   }
 
-  void OnTabStripModelChanged(TabStripModel*, const TabStripModelChange&,
-                             const TabStripSelectionChange&) override {
-    UpdatePageActions();
-  }
-
-  void OnTabChangedAt(tabs::TabInterface*, TabChangeType) override {
-    UpdatePageActions();
-  }
-
-  void OnThemeChanged() override {
-    views::ScrollView::OnThemeChanged();
-    SetBackgroundColor(kColorToolbar);
-    body_->SetBackground(views::CreateSolidBackground(kColorToolbar));
-  }
-
-   private:
-    void SleepBackgroundTabs() {
-      // EXTERNAL discard bypasses form, media, capture and visibility safety.
-      // Keep native Memory Saver exclusions and extension protections instead.
-      if (!performance_manager::PerformanceManager::IsAvailable()) {
-        return;
-      }
-      if (owner_->GetProfile()->GetDownloadManager()->InProgressCount()) {
-        sleep_->SetTooltipText(u"Tabs kept awake while downloads are active");
-        sleep_->GetViewAccessibility().SetName(u"Sleep eligible background tabs");
-        sleep_->GetViewAccessibility().AnnounceText(
-            u"Tabs kept awake while downloads are active");
-        return;
-      }
-      auto* graph = performance_manager::PerformanceManager::GetGraph();
-      auto* helper =
-          performance_manager::policies::PageDiscardingHelper::GetFromGraph(graph);
-      if (!helper) {
-        return;
-      }
-      std::vector<const performance_manager::PageNode*> candidates;
-      auto* tabs = owner_->browser()->GetTabStripModel();
-      for (int index = 0; index < tabs->count(); ++index) {
-        if (index == tabs->active_index() || tabs->IsTabPinned(index)) {
-          continue;
-        }
-        auto* contents = tabs->GetWebContentsAt(index);
-        if (contents->IsLoading() || contents->IsFullscreen() ||
-            contents->NeedToFireBeforeUnloadOrUnloadEvents() ||
-            !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
-          continue;
-        }
-        auto node = performance_manager::PerformanceManager::
-            GetPrimaryPageNodeForWebContents(contents);
-        if (node) {
-          candidates.push_back(node.get());
+  bool OnKeyPressed(const ui::KeyEvent& event) override {
+    // Arrow traversal moves focus without loading sleeping pages. Activation
+    // remains the native Button Space/Enter action.
+    if (!event.IsControlDown() && !event.IsAltDown()) {
+      const auto& entries = parent()->children();
+      auto current = std::ranges::find_if(
+          entries, [this](const auto& entry) { return entry.get() == this; });
+      if (current != entries.end()) {
+        const auto key = event.key_code();
+        if (key == ui::VKEY_HOME || key == ui::VKEY_END || key == ui::VKEY_UP ||
+            key == ui::VKEY_DOWN) {
+          int index = static_cast<int>(current - entries.begin());
+          if (key == ui::VKEY_HOME)
+            index = 0;
+          if (key == ui::VKEY_END)
+            index = entries.size() - 1;
+          if (key == ui::VKEY_UP)
+            index = std::max(0, index - 1);
+          if (key == ui::VKEY_DOWN)
+            index = std::min(static_cast<int>(entries.size()) - 1, index + 1);
+          entries[index]->RequestFocus();
+          entries[index]->ScrollViewToVisible();
+          return true;
         }
       }
-      const bool slept = helper->ImmediatelyDiscardMultiplePages(
-          candidates, mojom::LifecycleUnitDiscardReason::PROACTIVE,
-          /*ignore_recent_visibility=*/true);
-      const std::u16string message = slept
-          ? u"Eligible tabs slept. Active, edited, media and protected tabs kept awake."
-          : u"No eligible background tabs. Active, edited, media and protected tabs kept awake.";
-      sleep_->SetTooltipText(message);
-      sleep_->GetViewAccessibility().SetName(u"Sleep eligible background tabs");
-      sleep_->GetViewAccessibility().AnnounceText(message);
     }
-  void UpdatePageActions() {
-    auto* contents = owner_->browser()->GetTabStripModel()->GetActiveWebContents();
-    const bool website = contents && contents->GetVisibleURL().SchemeIsHTTPOrHTTPS();
-    archive_->SetEnabled(website);
-    add_favorite_->SetEnabled(website && model_ && model_->loaded() &&
-                             chrome::CanBookmarkCurrentTab(owner_->browser()) &&
-                             !owner_->GetProfile()->IsOffTheRecord());
+    return views::ImageButton::OnKeyPressed(event);
   }
-  const bookmarks::BookmarkNode* FavoriteFolder() const {
-    if (!model_ || !model_->loaded()) {
-      return nullptr;
+
+  void PaintButtonContents(gfx::Canvas* canvas) override {
+    views::ImageButton::PaintButtonContents(canvas);
+    cc::PaintFlags flags;
+    flags.setAntiAlias(true);
+    if (active_) {
+      flags.setColor(SkColorSetRGB(0xA3, 0x8B, 0xFA));
+      canvas->DrawCircle(gfx::PointF(width() - 4.f, height() - 8.f), 2.5f,
+                         flags);
     }
-    for (const auto& child : model_->other_node()->children()) {
-      std::string marker;
-      if (child->is_folder() && child->GetMetaInfo("frame.favorites", &marker) &&
-          marker == "1") {
-        return child.get();
+    // Separate status and selection marks: the purple dot always means active.
+    if (sleeping_ || loading_ || audible_ || muted_) {
+      flags.setColor(GetColorProvider()->GetColor(kColorToolbarButtonIcon));
+      if (audible_ || muted_) {
+        for (int i = 0; i < 3; ++i) {
+          const int x = 4 + i * 3;
+          const int y = height() - 7 - (i == 1 ? 2 : 0);
+          canvas->DrawLine(gfx::Point(x, y), gfx::Point(x, height() - 4),
+                           flags);
+        }
+        if (muted_)
+          canvas->DrawLine(gfx::Point(3, height() - 3),
+                           gfx::Point(12, height() - 11), flags);
+      } else {
+        flags.setStyle(cc::PaintFlags::kStroke_Style);
+        flags.setStrokeWidth(1.5f);
+        canvas->DrawCircle(gfx::PointF(7, height() - 7), 3.f, flags);
+        if (sleeping_)
+          canvas->DrawLine(gfx::Point(5, height() - 7),
+                           gfx::Point(9, height() - 7), flags);
       }
     }
-    return nullptr;
+    if (pinned_) {
+      flags.setStyle(cc::PaintFlags::kFill_Style);
+      flags.setColor(GetColorProvider()->GetColor(kColorToolbarButtonIcon));
+      canvas->DrawCircle(gfx::PointF(7, 5), 1.5f, flags);
+    }
   }
 
-  const bookmarks::BookmarkNode* EnsureFavoriteFolder() {
-    if (auto* folder = FavoriteFolder()) {
-      return folder;
-    }
-    if (!model_ || !model_->loaded() || owner_->GetProfile()->IsOffTheRecord() ||
-        !chrome::CanBookmarkCurrentTab(owner_->browser())) {
-      return nullptr;
-    }
-    const bookmarks::BookmarkNode::MetaInfoMap metadata = {
-        {"frame.favorites", "1"}};
-    return model_->AddFolder(model_->other_node(),
-        model_->other_node()->children().size(), u"Frame favourites", &metadata);
+ private:
+  int Index() const {
+    return tab_ ? owner_->browser()->GetTabStripModel()->GetIndexOfTab(
+                      tab_.get())
+                : -1;
   }
-
-  void AddCurrentFavorite(const ui::Event&) {
-    if (owner_->GetProfile()->IsOffTheRecord() ||
-        !chrome::CanBookmarkCurrentTab(owner_->browser())) {
+  void Activate() {
+    const int index = Index();
+    if (index >= 0)
+      owner_->browser()->GetTabStripModel()->ActivateTabAt(index);
+  }
+  void Close() {
+    const int index = Index();
+    if (index >= 0) {
+      owner_->browser()->GetTabStripModel()->CloseWebContentsAt(
+          index, TabCloseTypes::CLOSE_USER_GESTURE |
+                     TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
+    }
+  }
+  void ShowContextMenuForViewImpl(views::View*,
+                                  const gfx::Point& point,
+                                  ui::mojom::MenuSourceType source) override {
+    if (Index() < 0)
       return;
-    }
-    auto* contents = owner_->browser()->GetTabStripModel()->GetActiveWebContents();
-    if (!contents || !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
-      return;
-    }
-    auto* folder = EnsureFavoriteFolder();
-    if (!folder) {
-      return;
-    }
-    for (const auto& child : folder->children()) {
-      if (child->url() == contents->GetVisibleURL()) {
-        return;
-      }
-    }
-    model_->AddNewURL(folder, folder->children().size(),
-                     base::UTF8ToUTF16(contents->GetVisibleURL().host()),
-                     contents->GetVisibleURL());
-  }
-
-  void ManageFavorites(const ui::Event&) {
-    if (auto* folder = EnsureFavoriteFolder()) {
-      chrome::ShowBookmarkManagerForNode(owner_->browser(), folder->id());
-    } else {
-      chrome::ShowBookmarkManager(owner_->browser());
-    }
-  }
-
-  void OpenFavorite(const GURL& url, const ui::Event& event) {
-    auto* strip = owner_->browser()->GetTabStripModel();
-    // A normal activation reuses only an exact URL in this window. Queries,
-    // fragments, accounts and profiles are never conflated by a host match.
-    // Native activation also wakes discarded tabs without a duplicate.
-    if (!(event.flags() & (ui::EF_CONTROL_DOWN | ui::EF_MIDDLE_MOUSE_BUTTON))) {
-      for (int i = 0; i < strip->count(); ++i) {
-        if (strip->GetWebContentsAt(i)->GetVisibleURL() == url) {
-          strip->ActivateTabAt(i);
-          return;
-        }
-      }
-    }
-    NavigateParams params(owner_->browser(), url, ui::PAGE_TRANSITION_AUTO_BOOKMARK);
-    params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-    ::Navigate(&params);
-  }
-
-  void OpenArchive(const ui::Event&) {
-    auto* contents = owner_->browser()->GetTabStripModel()->GetActiveWebContents();
-    if (!contents || !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
-      return;
-    }
-    // No request before this explicit activation; keep the original page intact.
-    NavigateParams params(owner_->browser(),
-        GURL("https://web.archive.org/web/*/" + contents->GetVisibleURL().spec()),
-        ui::PAGE_TRANSITION_LINK);
-    params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-    ::Navigate(&params);
-  }
-
-  void RebuildFavorites() {
-    rebuild_pending_ = false;
-    favorites_->RemoveAllChildViews();
-    if (auto* folder = FavoriteFolder()) {
-      for (const auto& node : folder->children()) {
-        if (!node->is_url()) {
-          continue;
-        }
-        auto* button = favorites_->AddChildView(
-            views::CreateVectorImageButtonWithNativeTheme(
-                base::BindRepeating(&FrameRailView::OpenFavorite,
-                                   base::Unretained(this), node->url()),
-                kGlobeIcon, 18, kColorToolbarButtonIcon,
-                kColorToolbarButtonIconDisabled, kColorToolbarButtonIconHovered));
-        const auto& favicon = model_->GetFavicon(node.get());
-        if (!favicon.IsEmpty()) {
-          button->SetImageModel(views::Button::STATE_NORMAL,
-                               ui::ImageModel::FromImage(favicon));
-        }
-        ConfigureButton(button, node->GetTitle() + u"\n" +
-            base::UTF8ToUTF16(node->url().spec()) + u"\nCtrl-click to open a duplicate");
-      }
-    }
-    favorites_scroll_->SetVisible(!favorites_->children().empty());
-    InvalidateLayout();
-    UpdatePageActions();
-  }
-
-  void ConfigureButton(views::ImageButton* button,
-                       const std::u16string& name) {
-    button->SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
-    button->SetPreferredSize(gfx::Size(36, 36));
-    button->SetTooltipText(name);
-    button->GetViewAccessibility().SetName(name);
-  }
-  void AddCommand(const gfx::VectorIcon& icon, const std::u16string& name,
-                  int command) {
-    auto* button = body_->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
-        base::BindRepeating(
-            [](BrowserWindowInterface* browser, int id) {
-              chrome::ExecuteCommand(browser, id);
-            },
-            base::Unretained(owner_->browser()), command),
-        icon, 18, kColorToolbarButtonIcon, kColorToolbarButtonIconDisabled,
-        kColorToolbarButtonIconHovered));
-    ConfigureButton(button, name);
-  }
-  void AddSeparator() {
-    auto* separator = body_->AddChildView(std::make_unique<views::Separator>());
-    separator->SetPreferredSize(gfx::Size(28, 1));
-    separator->SetColorId(kColorSidePanelContentAreaSeparator);
+    // Keep Chromium's full menu (pin/group/move/split/restore, extensions and
+    // Frame sleep/protection), in both old and unified native tab-strip modes.
+    if (auto* anchor =
+            owner_->tab_strip_view()->GetTabAnchorView(tab_->GetHandle()))
+      anchor->ShowContextMenu(point, source);
   }
 
   raw_ptr<BrowserView> owner_;
-  raw_ptr<views::View> body_ = nullptr;
-  raw_ptr<views::ImageButton> tabs_button_ = nullptr;
-  raw_ptr<views::ImageButton> add_favorite_ = nullptr;
-    raw_ptr<views::ImageButton> archive_ = nullptr;
-    raw_ptr<views::ImageButton> sleep_ = nullptr;
-  raw_ptr<bookmarks::BookmarkModel> model_ = nullptr;
-  raw_ptr<views::ScrollView> favorites_scroll_ = nullptr;
-  raw_ptr<views::View> favorites_ = nullptr;
-  bool rebuild_pending_ = false;
-  base::WeakPtrFactory<FrameRailView> weak_factory_{this};
+  base::WeakPtr<tabs::TabInterface> tab_;
+  bool active_ = false;
+  bool sleeping_ = false;
+  bool loading_ = false;
+  bool audible_ = false;
+  bool muted_ = false;
+  bool pinned_ = false;
 };
 
+BEGIN_METADATA(FrameDockTabButton)
+END_METADATA
+
+class FrameTabDockView final : public views::AccessiblePaneView,
+                               public TabStripModelObserver {
+  METADATA_HEADER(FrameTabDockView, views::AccessiblePaneView)
+ public:
+  explicit FrameTabDockView(BrowserView* owner) : owner_(owner) {
+    GetViewAccessibility().SetRole(ax::mojom::Role::kTabList);
+    GetViewAccessibility().SetName(u"Open tabs");
+    scroll_ = AddChildView(std::make_unique<views::ScrollView>());
+    scroll_->ClipHeightTo(0, 600);
+    scroll_->SetHorizontalScrollBarMode(
+        views::ScrollView::ScrollBarMode::kDisabled);
+    scroll_->SetVerticalScrollBarMode(
+        views::ScrollView::ScrollBarMode::kHiddenButEnabled);
+    scroll_->SetDrawOverflowIndicator(false);
+    body_ = scroll_->SetContents(std::make_unique<views::View>());
+    body_->SetLayoutManager(std::make_unique<views::BoxLayout>(
+        views::BoxLayout::Orientation::kVertical));
+    new_tab_ = AddChildView(views::CreateVectorImageButtonWithNativeTheme(
+        base::BindRepeating(
+            [](BrowserWindowInterface* browser) {
+              chrome::ExecuteCommand(browser, IDC_NEW_TAB);
+            },
+            base::Unretained(owner->browser())),
+        kAddIcon, 18, kColorToolbarButtonIcon, kColorToolbarButtonIconDisabled,
+        kColorToolbarButtonIconHovered));
+    new_tab_->SetFocusBehavior(FocusBehavior::ALWAYS);
+    new_tab_->SetTooltipText(u"New tab (Ctrl+T)");
+    new_tab_->GetViewAccessibility().SetName(u"New tab (Ctrl+T)");
+    views::FocusRing::Install(new_tab_);
+    views::FocusRing::Get(new_tab_)->SetHaloInset(2);
+    owner_->browser()->GetTabStripModel()->AddObserver(this);
+    ScheduleSync(true);
+  }
+
+  ~FrameTabDockView() override {
+    owner_->browser()->GetTabStripModel()->RemoveObserver(this);
+  }
+
+  bool SetPaneFocusAndFocusDefault() override {
+    auto* active = owner_->browser()->GetTabStripModel()->GetActiveTab();
+    for (const auto& entry : entries_)
+      if (entry->tab() == active)
+        return SetPaneFocus(entry);
+    return SetPaneFocus(new_tab_);
+  }
+  void OnTabStripModelChanged(TabStripModel*,
+                              const TabStripModelChange&,
+                              const TabStripSelectionChange&) override {
+    ScheduleSync(true);
+  }
+  void OnTabChangedAt(tabs::TabInterface*, TabChangeType) override {
+    ScheduleSync(false);
+  }
+  void OnTabPinnedStateChanged(tabs::TabInterface*, int) override {
+    ScheduleSync(false);
+  }
+  void TabGroupedStateChanged(TabStripModel*,
+                              std::optional<tab_groups::TabGroupId>,
+                              std::optional<tab_groups::TabGroupId>,
+                              tabs::TabInterface*,
+                              int) override {
+    ScheduleSync(false);
+  }
+  void OnTabGroupChanged(const TabGroupChange&) override {
+    ScheduleSync(false);
+  }
+  void OnThemeChanged() override {
+    views::AccessiblePaneView::OnThemeChanged();
+    SetBackground(
+        views::CreateRoundedRectBackground(kColorLocationBarBackground, 14));
+    scroll_->SetBackgroundColor(kColorLocationBarBackground);
+  }
+  gfx::Size CalculatePreferredSize(const views::SizeBounds&) const override {
+    return gfx::Size(frame::kDockWidth,
+                     frame::DockPreferredHeight(
+                         owner_->browser()->GetTabStripModel()->count()));
+  }
+  void OnBoundsChanged(const gfx::Rect& old) override {
+    views::AccessiblePaneView::OnBoundsChanged(old);
+    if (old.size() != size())
+      reveal_active_ = true;
+  }
+  void Layout(PassKey) override {
+    const int footer = std::min(height(), frame::kDockFooterHeight);
+    scroll_->SetBounds(4, 4, std::max(0, width() - 8),
+                       std::max(0, height() - footer - 4));
+    new_tab_->SetBounds(4, std::max(0, height() - footer + 8),
+                        std::max(0, width() - 8), std::max(0, footer - 12));
+    LayoutSuperclass<views::AccessiblePaneView>(this);
+    if (reveal_active_) {
+      reveal_active_ = false;
+      auto* active = owner_->browser()->GetTabStripModel()->GetActiveTab();
+      for (const auto& entry : entries_)
+        if (entry->tab() == active)
+          entry->ScrollViewToVisible();
+    }
+  }
+  void OnPaint(gfx::Canvas* canvas) override {
+    views::AccessiblePaneView::OnPaint(canvas);
+    if (height() >= frame::kDockFooterHeight)
+      canvas->DrawLine(
+          gfx::Point(12, height() - 44),
+          gfx::Point(width() - 12, height() - 44),
+          GetColorProvider()->GetColor(kColorSidePanelContentAreaSeparator));
+  }
+
+ private:
+  void ScheduleSync(bool reveal) {
+    reveal_active_ |= reveal;
+    if (sync_pending_)
+      return;
+    sync_pending_ = true;
+    // Model notifications can occur inside a button/menu callback. Never
+    // destroy a pressed view or mutate the native model during notification.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&FrameTabDockView::Sync, weak_factory_.GetWeakPtr()));
+  }
+  void Sync() {
+    sync_pending_ = false;
+    auto* model = owner_->browser()->GetTabStripModel();
+    bool focus_removed = false;
+    std::vector<FrameDockTabButton*> removed;
+    for (const auto& entry : entries_)
+      if (!entry->tab() || model->GetIndexOfTab(entry->tab()) < 0)
+        removed.push_back(entry);
+    // Drop raw references before destroying the views they point at.
+    std::erase_if(entries_, [&removed](auto entry) {
+      return std::ranges::find(removed, entry.get()) != removed.end();
+    });
+    for (auto* entry : removed) {
+      focus_removed |= entry->HasFocus();
+      body_->RemoveChildViewT(entry);
+    }
+    std::vector<raw_ptr<FrameDockTabButton>> ordered;
+    for (int i = 0; i < model->count(); ++i) {
+      auto* tab = model->GetTabAtIndex(i);
+      auto found = std::ranges::find_if(
+          entries_, [tab](auto entry) { return entry->tab() == tab; });
+      auto* entry = found == entries_.end()
+                        ? body_->AddChildView(
+                              std::make_unique<FrameDockTabButton>(owner_, tab))
+                        : found->get();
+      body_->ReorderChildView(entry, i);
+      entry->Update(i, model->count());
+      ordered.push_back(entry);
+    }
+    entries_ = std::move(ordered);
+    if (focus_removed) {
+      const int active = model->active_index();
+      if (active >= 0)
+        entries_[active]->RequestFocus();
+      else
+        new_tab_->RequestFocus();
+    }
+    PreferredSizeChanged();
+    InvalidateLayout();
+  }
+
+  raw_ptr<BrowserView> owner_;
+  raw_ptr<views::ScrollView> scroll_ = nullptr;
+  raw_ptr<views::View> body_ = nullptr;
+  raw_ptr<views::ImageButton> new_tab_ = nullptr;
+  std::vector<raw_ptr<FrameDockTabButton>> entries_;
+  bool sync_pending_ = false;
+  bool reveal_active_ = true;
+  base::WeakPtrFactory<FrameTabDockView> weak_factory_{this};
+};
+
+BEGIN_METADATA(FrameTabDockView)
+END_METADATA
+
+// The bottom-left gear opens the existing Chromium application menu, including
+// its bookmark/history/download/extension submenus and Frame's More tools
+// items.
+class FrameSettingsButton final : public views::ImageButton {
+  METADATA_HEADER(FrameSettingsButton, views::ImageButton)
+ public:
+  explicit FrameSettingsButton(BrowserView* owner)
+      : views::ImageButton(base::BindRepeating(&FrameSettingsButton::Open,
+                                               base::Unretained(this))),
+        owner_(owner) {
+    SetImageModel(STATE_NORMAL,
+                  ui::ImageModel::FromVectorIcon(kSettingsIcon,
+                                                 kColorToolbarButtonIcon, 18));
+    SetTooltipText(u"Settings and browser menu");
+    GetViewAccessibility().SetName(u"Settings and browser menu");
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
+    SetFocusBehavior(FocusBehavior::ALWAYS);
+    views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
+  }
+
+ private:
+  void Open() {
+    if (menu_ && menu_->IsShowing())
+      return;
+    menu_.reset();
+    model_ = std::make_unique<AppMenuModel>(owner_, owner_->browser());
+    model_->Init();
+    menu_ = std::make_unique<AppMenu>(owner_->browser(), model_.get(),
+                                      views::MenuRunner::NO_FLAGS,
+                                      base::DoNothing());
+    menu_->RunMenu(GetWidget(), GetBoundsInScreen());
+  }
+  raw_ptr<BrowserView> owner_;
+  std::unique_ptr<AppMenuModel> model_;
+  std::unique_ptr<AppMenu> menu_;
+};
+
+BEGIN_METADATA(FrameSettingsButton)
+END_METADATA
+
+// Use the existing split command/menus without registering a second copy of
+// Chromium's toolbar element IDs or coupling the caption-side control to its
+// responsive toolbar overflow controller.
+class FrameSplitButton final : public views::ImageButton,
+                               public TabStripModelObserver {
+  METADATA_HEADER(FrameSplitButton, views::ImageButton)
+ public:
+  explicit FrameSplitButton(BrowserWindowInterface* browser)
+      : views::ImageButton(base::BindRepeating(&FrameSplitButton::Open,
+                                               base::Unretained(this))),
+        browser_(browser) {
+    SetImageModel(STATE_NORMAL,
+                  ui::ImageModel::FromVectorIcon(kSplitSceneIcon,
+                                                 kColorToolbarButtonIcon, 18));
+    SetImageHorizontalAlignment(ALIGN_CENTER);
+    SetImageVerticalAlignment(ALIGN_MIDDLE);
+    SetFocusBehavior(FocusBehavior::ALWAYS);
+    views::FocusRing::Install(this);
+    views::FocusRing::Get(this)->SetHaloInset(2);
+    browser_->GetTabStripModel()->AddObserver(this);
+    Update();
+  }
+  ~FrameSplitButton() override {
+    browser_->GetTabStripModel()->RemoveObserver(this);
+  }
+  void OnTabStripModelChanged(TabStripModel*,
+                              const TabStripModelChange&,
+                              const TabStripSelectionChange&) override {
+    Update();
+  }
+  void OnSplitTabChanged(const SplitTabChange&) override { Update(); }
+
+ private:
+  bool IsSplit() const {
+    auto* tab = browser_->GetTabStripModel()->GetActiveTab();
+    return tab && tab->IsSplit();
+  }
+  void Update() {
+    if (runner_)
+      runner_->Cancel();
+    const std::u16string name =
+        IsSplit() ? u"Manage split view" : u"Split current page with a new tab";
+    SetTooltipText(name);
+    GetViewAccessibility().SetName(name);
+  }
+  void Open() {
+    if (!IsSplit()) {
+      chrome::ExecuteCommand(browser_, IDC_NEW_SPLIT_TAB);
+      return;
+    }
+    if (runner_ && runner_->IsRunning()) {
+      runner_->Cancel();
+      return;
+    }
+    runner_.reset();
+    model_ = std::make_unique<SplitTabMenuModel>(
+        browser_->GetTabStripModel(),
+        SplitTabMenuModel::MenuSource::kToolbarButton);
+    runner_ = std::make_unique<views::MenuRunner>(
+        model_.get(), views::MenuRunner::HAS_MNEMONICS);
+    runner_->RunMenuAt(GetWidget(), nullptr, GetBoundsInScreen(),
+                       views::MenuAnchorPosition::kTopRight,
+                       ui::mojom::MenuSourceType::kNone);
+  }
+  raw_ptr<BrowserWindowInterface> browser_;
+  std::unique_ptr<SplitTabMenuModel> model_;
+  std::unique_ptr<views::MenuRunner> runner_;
+};
+BEGIN_METADATA(FrameSplitButton)
+END_METADATA
+
+std::unique_ptr<views::AccessiblePaneView> MakeFrameChromePane(
+    std::unique_ptr<views::View> control) {
+  auto pane = std::make_unique<views::AccessiblePaneView>();
+  pane->SetLayoutManager(std::make_unique<views::FillLayout>());
+  pane->SetPreferredSize(gfx::Size(36, 36));
+  pane->AddChildView(std::move(control));
+  return pane;
+}
+
+bool BrowserView::IsFrameMenuCommandEnabled(int command) const {
+  if (!IsFrameShellEnabled())
+    return false;
+  auto* model = browser()->GetTabStripModel();
+  auto* contents = model->GetActiveWebContents();
+  auto* bookmarks = BookmarkModelFactory::GetForBrowserContext(GetProfile());
+  switch (command) {
+    case kFrameRecentTabs:
+      return model->count() > 1;
+    case kFrameSleepTabs:
+      return model->count() > 1 && frame_tab_dock_;
+    case kFrameAddFavorite:
+      return contents && contents->GetVisibleURL().SchemeIsHTTPOrHTTPS() &&
+             bookmarks && bookmarks->loaded() &&
+             !GetProfile()->IsOffTheRecord() &&
+             chrome::CanBookmarkCurrentTab(browser_.get());
+    case kFrameManageFavorites:
+    case kFrameFavoritesMenu:
+      return bookmarks && bookmarks->loaded();
+    case kFrameArchive:
+      return contents && contents->GetVisibleURL().SchemeIsHTTPOrHTTPS();
+    case kFrameCopyLink:
+      return chrome::CanCopyUrl(browser_.get());
+    default:
+      return false;
+  }
+}
+
+void BrowserView::ExecuteFrameMenuCommand(int command) {
+  if (!IsFrameMenuCommandEnabled(command))
+    return;
+  switch (command) {
+    case kFrameRecentTabs:
+      FrameTabSwitcher::Show(this, false);
+      break;
+    case kFrameSleepTabs:
+      SleepFrameBackgroundTabs();
+      break;
+    case kFrameAddFavorite:
+      AddFrameFavorite();
+      break;
+    case kFrameManageFavorites:
+      ManageFrameFavorites();
+      break;
+    case kFrameArchive:
+      OpenFrameArchive();
+      break;
+    case kFrameCopyLink: {
+      auto* contents = browser()->GetTabStripModel()->GetActiveWebContents();
+      if (contents && contents->GetVisibleURL().is_valid()) {
+        ui::ScopedClipboardWriter clipboard(ui::ClipboardBuffer::kCopyPaste);
+        clipboard.WriteText(
+            base::UTF8ToUTF16(contents->GetVisibleURL().spec()));
+        frame_settings_->GetViewAccessibility().AnnounceText(u"Link copied");
+      }
+      break;
+    }
+  }
+}
+
+void BrowserView::SleepFrameBackgroundTabs() {
+  // EXTERNAL discard bypasses form, media, capture and visibility safety.
+  // Keep native Memory Saver exclusions and extension protections instead.
+  if (!performance_manager::PerformanceManager::IsAvailable()) {
+    return;
+  }
+  if (GetProfile()->GetDownloadManager()->InProgressCount()) {
+    frame_tab_dock_->SetTooltipText(
+        u"Tabs kept awake while downloads are active");
+    frame_tab_dock_->GetViewAccessibility().AnnounceText(
+        u"Tabs kept awake while downloads are active");
+    return;
+  }
+  auto* graph = performance_manager::PerformanceManager::GetGraph();
+  auto* helper =
+      performance_manager::policies::PageDiscardingHelper::GetFromGraph(graph);
+  if (!helper) {
+    return;
+  }
+  std::vector<const performance_manager::PageNode*> candidates;
+  auto* tabs = browser()->GetTabStripModel();
+  for (int index = 0; index < tabs->count(); ++index) {
+    if (index == tabs->active_index() || tabs->IsTabPinned(index)) {
+      continue;
+    }
+    auto* contents = tabs->GetWebContentsAt(index);
+    if (contents->IsLoading() || contents->IsFullscreen() ||
+        contents->NeedToFireBeforeUnloadOrUnloadEvents() ||
+        !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
+      continue;
+    }
+    auto node = performance_manager::PerformanceManager::
+        GetPrimaryPageNodeForWebContents(contents);
+    if (node) {
+      candidates.push_back(node.get());
+    }
+  }
+  const bool slept = helper->ImmediatelyDiscardMultiplePages(
+      candidates, mojom::LifecycleUnitDiscardReason::PROACTIVE,
+      /*ignore_recent_visibility=*/true);
+  const std::u16string message =
+      slept ? u"Eligible tabs slept. Active, edited, media and protected tabs "
+              u"kept awake."
+            : u"No eligible background tabs. Active, edited, media and "
+              u"protected tabs kept awake.";
+  frame_tab_dock_->SetTooltipText(message);
+  frame_tab_dock_->GetViewAccessibility().AnnounceText(message);
+}
+
+const bookmarks::BookmarkNode* BrowserView::FrameFavoriteFolder() const {
+  auto* model_ = BookmarkModelFactory::GetForBrowserContext(GetProfile());
+  if (!model_ || !model_->loaded()) {
+    return nullptr;
+  }
+  for (const auto& child : model_->other_node()->children()) {
+    std::string marker;
+    if (child->is_folder() && child->GetMetaInfo("frame.favorites", &marker) &&
+        marker == "1") {
+      return child.get();
+    }
+  }
+  return nullptr;
+}
+
+const bookmarks::BookmarkNode* BrowserView::EnsureFrameFavoriteFolder() {
+  auto* model_ = BookmarkModelFactory::GetForBrowserContext(GetProfile());
+  if (auto* folder = FrameFavoriteFolder()) {
+    return folder;
+  }
+  if (!model_ || !model_->loaded() || GetProfile()->IsOffTheRecord() ||
+      !chrome::CanBookmarkCurrentTab(browser())) {
+    return nullptr;
+  }
+  const bookmarks::BookmarkNode::MetaInfoMap metadata = {
+      {"frame.favorites", "1"}};
+  return model_->AddFolder(model_->other_node(),
+                           model_->other_node()->children().size(),
+                           u"Frame favourites", &metadata);
+}
+
+void BrowserView::AddFrameFavorite() {
+  auto* model_ = BookmarkModelFactory::GetForBrowserContext(GetProfile());
+  if (GetProfile()->IsOffTheRecord() ||
+      !chrome::CanBookmarkCurrentTab(browser())) {
+    return;
+  }
+  auto* contents = browser()->GetTabStripModel()->GetActiveWebContents();
+  if (!contents || !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
+    return;
+  }
+  auto* folder = EnsureFrameFavoriteFolder();
+  if (!folder) {
+    return;
+  }
+  for (const auto& child : folder->children()) {
+    if (child->url() == contents->GetVisibleURL()) {
+      return;
+    }
+  }
+  model_->AddNewURL(folder, folder->children().size(),
+                    base::UTF8ToUTF16(contents->GetVisibleURL().host()),
+                    contents->GetVisibleURL());
+}
+
+void BrowserView::ManageFrameFavorites() {
+  if (auto* folder = EnsureFrameFavoriteFolder()) {
+    chrome::ShowBookmarkManagerForNode(browser(), folder->id());
+  } else {
+    chrome::ShowBookmarkManager(browser());
+  }
+}
+
+void BrowserView::OpenFrameArchive() {
+  auto* contents = browser()->GetTabStripModel()->GetActiveWebContents();
+  if (!contents || !contents->GetVisibleURL().SchemeIsHTTPOrHTTPS()) {
+    return;
+  }
+  // No request before this explicit activation; keep the original page intact.
+  NavigateParams params(
+      browser(),
+      GURL("https://web.archive.org/web/*/" + contents->GetVisibleURL().spec()),
+      ui::PAGE_TRANSITION_LINK);
+  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  ::Navigate(&params);
+}
 BrowserView::BrowserView(BrowserWindowInterface* browser)
     : views::ClientView(nullptr, nullptr),
       exclusive_access_context_(
@@ -1571,13 +1900,6 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
 
   browser_->GetTabStripModel()->AddObserver(this);
 
-  if (GetIsNormalType()) {
-    frame_rail_ = AddChildView(std::unique_ptr<views::View>(
-        std::make_unique<FrameRailView>(this)));
-    frame_rail_->SetVisible(IsFrameShellEnabled() &&
-        GetProfile()->GetPrefs()->GetBoolean(frame::kRailVisiblePref));
-  }
-
   main_background_region_ =
       AddChildView(std::make_unique<MainBackgroundRegionView>(*this));
   main_background_region_->SetProperty(
@@ -1586,6 +1908,23 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
 
   top_container_ = AddChildView(std::make_unique<TopContainerView>(this));
   top_container_insertion_index_ = GetIndexOf(top_container_.get());
+
+  // Keep floating controls above the top container so its background cannot
+  // paint over the logo/split button or intercept their pointer targets.
+  if (GetIsNormalType()) {
+    auto* logo = AddChildView(std::make_unique<views::ImageView>());
+    logo->SetImage(ui::ImageModel::FromVectorIcon(frame::kFrameBrandIcon, 24));
+    logo->SetTooltipText(u"Frame");
+    logo->GetViewAccessibility().SetName(u"Frame");
+    frame_logo_ = logo;
+    frame_settings_ = AddChildView(MakeFrameChromePane(
+        std::make_unique<FrameSettingsButton>(this)));
+    frame_split_ = AddChildView(MakeFrameChromePane(
+        std::make_unique<FrameSplitButton>(browser)));
+    frame_tab_dock_ = AddChildView(std::unique_ptr<views::View>(
+        std::make_unique<FrameTabDockView>(this)));
+    frame_tab_dock_->SetVisible(IsFrameDockVisible());
+  }
 
   toolbar_ = top_container_->AddChildView(
       std::make_unique<ToolbarView>(browser_.get(), this));
@@ -1785,7 +2124,10 @@ BrowserView::~BrowserView() {
   // before `RemoveAllChildViews()` is called to avoid dangling.
   browser_widget_ = nullptr;
   main_background_region_ = nullptr;
-  frame_rail_ = nullptr;
+  frame_tab_dock_ = nullptr;
+  frame_logo_ = nullptr;
+  frame_settings_ = nullptr;
+  frame_split_ = nullptr;
   top_container_ = nullptr;
   web_app_frame_toolbar_ = nullptr;
   web_app_window_title_ = nullptr;
@@ -2019,33 +2361,16 @@ bool BrowserView::IsFrameShellEnabled() const {
 }
 
 bool BrowserView::IsFrameTabStripVisible() const {
-  return !IsFrameShellEnabled() || frame_tab_strip_open_ ||
-      GetProfile()->GetPrefs()->GetBoolean(frame::kAlwaysShowTabsPref);
+  return true;
 }
 
-bool BrowserView::IsFrameRailVisible() const {
-  return IsFrameShellEnabled() &&
-      GetProfile()->GetPrefs()->GetBoolean(frame::kRailVisiblePref);
-}
-
-void BrowserView::ToggleFrameTabStrip() {
-  if (!IsFrameShellEnabled() ||
-      GetProfile()->GetPrefs()->GetBoolean(frame::kAlwaysShowTabsPref)) {
-    chrome::ShowTabSearch(browser());
-    return;
-  }
-  frame_tab_strip_open_ = !frame_tab_strip_open_;
-  InvalidateLayout();
-  if (auto* frame_view = GetFrameView()) {
-    frame_view->InvalidateLayout();
-  }
+bool BrowserView::IsFrameDockVisible() const {
+  return false;
 }
 
 void BrowserView::OnFrameShellPrefsChanged() {
-  frame_tab_strip_open_ = false;
-  if (frame_rail_) {
-    frame_rail_->SetVisible(IsFrameShellEnabled() &&
-        GetProfile()->GetPrefs()->GetBoolean(frame::kRailVisiblePref));
+  if (frame_tab_dock_) {
+    frame_tab_dock_->SetVisible(IsFrameDockVisible());
   }
   InvalidateLayout();
   if (auto* frame_view = GetFrameView()) {
@@ -2150,6 +2475,7 @@ bool BrowserView::ShouldDrawTabStrip() const {
 }
 
 bool BrowserView::ShouldDrawVerticalTabStrip() const {
+  if (IsFrameShellEnabled()) return false;
   auto* controller = tabs::VerticalTabStripStateController::From(browser_);
   return ShouldDrawTabStrip() && controller &&
          controller->ShouldDisplayVerticalTabs() &&
@@ -5196,6 +5522,11 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
 
   panes->push_back(
       ToolbarButtonProvider::From(browser_)->GetAsAccessiblePaneView());
+  if (frame_tab_dock_ && IsFrameShellEnabled()) {
+    panes->push_back(frame_tab_dock_);
+    panes->push_back(frame_split_);
+    panes->push_back(frame_settings_);
+  }
   if (horizontal_tab_strip_region_view_) {
     panes->push_back(horizontal_tab_strip_region_view_);
   }
@@ -5790,7 +6121,10 @@ void BrowserView::AddedToWidget() {
       side_panel_content_transition_scrim_view_;
   layout_views.main_shadow_overlay = main_shadow_overlay_;
   layout_views.main_background_region = main_background_region_;
-  layout_views.frame_rail = frame_rail_;
+  layout_views.frame_tab_dock = frame_tab_dock_;
+  layout_views.frame_logo = frame_logo_;
+  layout_views.frame_settings = frame_settings_;
+  layout_views.frame_split = frame_split_;
   layout_views.top_container = top_container_;
   layout_views.web_app_frame_toolbar = web_app_frame_toolbar_;
   layout_views.web_app_window_title = web_app_window_title_;
@@ -5939,10 +6273,6 @@ const views::View* BrowserView::GetViewByElementId(
 // BrowserView, ui::AcceleratorTarget overrides:
 
 bool BrowserView::AcceleratorPressed(const ui::Accelerator& accelerator) {
-  if (frame_tab_strip_open_ && accelerator.key_code() == ui::VKEY_ESCAPE) {
-    ToggleFrameTabStrip();
-    return true;
-  }
   NativeWebKeyboardEvent native_event(accelerator.ToKeyEvent());
   if (ExclusiveAccessManager::From(browser_)->HandleUserKeyEvent(
           native_event)) {

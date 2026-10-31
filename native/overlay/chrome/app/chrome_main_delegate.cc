@@ -41,7 +41,6 @@
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #if BUILDFLAG(IS_WIN)
-#include "chrome/app/frame_typography_win.h"
 #endif
 #include "chrome/common/buildflags.h"
 #include "chrome/common/channel_info.h"
@@ -1552,13 +1551,6 @@ void ChromeMainDelegate::PreSandboxStartup() {
     // the browser process. This must happen before Crashpad initialization
     // since Crashpad inherits a handle to the shared memory.
     metrics::SystemProfileUserStream::Get().Initialize();
-  }
-#endif
-
-#if BUILDFLAG(IS_WIN)
-  // Browser only: websites, extensions and child processes retain their fonts.
-  if (process_type.empty()) {
-    frame::InitializeBrowserTypography();
   }
 #endif
 

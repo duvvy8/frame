@@ -63,7 +63,10 @@ struct BrowserViewLayoutViews {
   raw_ptr<views::View> window_scrim = nullptr;
   raw_ptr<views::View> side_panel_content_transition_scrim = nullptr;
   raw_ptr<views::View> main_background_region = nullptr;
-  raw_ptr<views::View> frame_rail = nullptr;
+  raw_ptr<views::View> frame_tab_dock = nullptr;
+  raw_ptr<views::View> frame_logo = nullptr;
+  raw_ptr<views::View> frame_settings = nullptr;
+  raw_ptr<views::View> frame_split = nullptr;
   raw_ptr<views::View> main_shadow_overlay = nullptr;
   raw_ptr<views::View> top_container = nullptr;
   raw_ptr<WebAppFrameToolbarView> web_app_frame_toolbar = nullptr;

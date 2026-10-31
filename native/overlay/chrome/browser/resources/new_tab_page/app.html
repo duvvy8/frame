@@ -1,6 +1,11 @@
 <!-- #html_wrapper_imports_start
 import {SubmitButtonIconType} from '//resources/cr_components/composebox/composebox.js';
 #html_wrapper_imports_end -->
+${this.frameBlueShell_ ? html`
+  <img id="frameBackground" src="images/frame_aurora.jpg" alt=""
+      aria-hidden="true" draggable="false" decoding="async"
+      ?hidden="${!this.theme_ || this.showBackgroundImage_}">
+` : ''}
 <div id="content"
   ?ntp-threads-rail-open="${this.showComposebox_ && this.enableThreadsRail_}">
   ${this.lazyRender_ && this.microsoftModuleEnabled_ ? html`
@@ -33,71 +38,92 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
   <ntp-logo id="logo" ?single-colored="${this.singleColoredLogo_}"
       .theme="${this.theme_}" ?hidden="${!this.logoEnabled_}">
   </ntp-logo>
-  <h1 id="frameHeading">frame</h1>
-  ${this.ntpRealboxNextEnabled_ ? html`
-    <div id="scrim"
-        @click="${this.onScrimClick_}"
-        ?hidden="${!this.showScrim_}"></div>
-  ` : ''}
-  <div id="searchboxContainer"
-      @focusin="${this.onSearchboxContainerFocusin_}"
-      @focusout="${this.onSearchboxContainerFocusout_}">
-    <ntp-searchbox id="searchbox" ?is-dark="${this.isThemeDark_()}"
-        placeholder-text="$i18n{searchBoxPlaceholder}"
-        ?color-source-is-baseline="${this.colorSourceIsBaseline}"
-        @open-composebox="${this.onOpenComposebox_}"
-        @open-lens-search="${this.onOpenLensSearch_}"
-        @open-voice-search="${this.onOpenVoiceSearch_}" ?shown="${this.realboxShown_}"
-        @context-menu-entrypoint-click="${this.onContextMenuEntrypointClick_}"
-        ?had-secondary-side="${this.realboxHadSecondarySide}"
-        @had-secondary-side-changed="${this.onRealboxHadSecondarySideChanged_}"
-        ?can-show-secondary-side="${this.realboxCanShowSecondarySide}"
-        ?compose-button-enabled="${this.composeButtonEnabled}"
-        ?composebox-enabled="${this.composeboxEnabled}"
-        .hasVoiceSearchError="${this.hasVoiceSearchError}"
-        searchbox-layout-mode="${this.ntpRealboxNextEnabled_ ? 'Compact' : ''}"
-        .inVoiceSearchMode="${this.showVoiceSearchOverlay_}"
-        ?ntp-realbox-next-enabled="${this.ntpRealboxNextEnabled_}"
-        ?cycling-placeholders="${this.searchboxCyclingPlaceholders_}"
-        context-menu-glif-animation-state="${this.contextMenuGlifAnimationState_}"
-        .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
-        .contextManagementInComposeboxEnabled="${this.contextManagementInComposeboxEnabled_}"
-        ?multi-line-enabled="${this.multiLineEnabled_}"
-        ?inert="${!this.realboxShown_}">
-    </ntp-searchbox>
-    <div id="dialogAnchor"></div>
-    ${this.showComposebox_ ? html`
-      <div id="composeboxDialog">
-        <ntp-composebox id="composebox"
-              searchbox-layout-mode="Compact"
-              searchbox-next-enabled
-              ?disable-caret-color-animation="${!this.caretAnimationsEnabled_}"
-              .state="${this.composeboxState_}"
-              .usePecApi="${this.usePecApi_}"
-              .showVoiceSearch="${true}"
-              .smartTabSharingVisible="${this.smartTabSharingVisible_}"
-              .contextManagementInComposeboxEnabled="${this.contextManagementInComposeboxEnabled_}"
-              @context-menu-opened="${this.onComposeboxContextMenuOpened_}"
-              @close-composebox="${this.onCloseComposebox_}"
-              @voice-search-action="${this.onComposeVoiceSearchAction_}"
-              .submitButtonIconType="${SubmitButtonIconType.FORWARD}"
-              .clearAllInputsWhenSubmittingQuery="${true}"
-              .closeOnEscape="${false}"
-              .energyEffectEnabled="${this.energyEffectEnabled_}"
-              .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
-              >
-          </ntp-composebox>
-        ${this.enableThreadsRail_ ? html`
-          <cr-threads-rail id="threadsRail">
-          </cr-threads-rail>
+  <div id="frameStart">
+    <div id="frameBrand">
+      <img id="frameMark" src="chrome://resources/images/chrome_logo_dark.svg"
+          alt="" width="56" height="56">
+      <h1 id="frameHeading">frame</h1>
+    </div>
+    <div id="frameActions">
+      ${this.ntpRealboxNextEnabled_ ? html`
+        <div id="scrim"
+            @click="${this.onScrimClick_}"
+            ?hidden="${!this.showScrim_}"></div>
+      ` : ''}
+      <div id="searchboxContainer"
+          @focusin="${this.onSearchboxContainerFocusin_}"
+          @focusout="${this.onSearchboxContainerFocusout_}">
+        <ntp-searchbox id="searchbox" ?is-dark="${this.isThemeDark_()}"
+            placeholder-text="$i18n{searchBoxPlaceholder}"
+            ?color-source-is-baseline="${this.colorSourceIsBaseline}"
+            @open-composebox="${this.onOpenComposebox_}"
+            @open-lens-search="${this.onOpenLensSearch_}"
+            @open-voice-search="${this.onOpenVoiceSearch_}" ?shown="${this.realboxShown_}"
+            @context-menu-entrypoint-click="${this.onContextMenuEntrypointClick_}"
+            ?had-secondary-side="${this.realboxHadSecondarySide}"
+            @had-secondary-side-changed="${this.onRealboxHadSecondarySideChanged_}"
+            ?can-show-secondary-side="${this.realboxCanShowSecondarySide}"
+            ?compose-button-enabled="${this.composeButtonEnabled}"
+            ?composebox-enabled="${this.composeboxEnabled}"
+            .hasVoiceSearchError="${this.hasVoiceSearchError}"
+            searchbox-layout-mode="${this.ntpRealboxNextEnabled_ ? 'Compact' : ''}"
+            .inVoiceSearchMode="${this.showVoiceSearchOverlay_}"
+            ?ntp-realbox-next-enabled="${this.ntpRealboxNextEnabled_}"
+            ?cycling-placeholders="${this.searchboxCyclingPlaceholders_}"
+            context-menu-glif-animation-state="${this.contextMenuGlifAnimationState_}"
+            .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
+            .contextManagementInComposeboxEnabled="${this.contextManagementInComposeboxEnabled_}"
+            ?multi-line-enabled="${this.multiLineEnabled_}"
+            ?inert="${!this.realboxShown_}">
+        </ntp-searchbox>
+        <div id="dialogAnchor"></div>
+        ${this.showComposebox_ ? html`
+          <div id="composeboxDialog">
+            <ntp-composebox id="composebox"
+                  searchbox-layout-mode="Compact"
+                  searchbox-next-enabled
+                  ?disable-caret-color-animation="${!this.caretAnimationsEnabled_}"
+                  .state="${this.composeboxState_}"
+                  .usePecApi="${this.usePecApi_}"
+                  .showVoiceSearch="${true}"
+                  .smartTabSharingVisible="${this.smartTabSharingVisible_}"
+                  .contextManagementInComposeboxEnabled="${this.contextManagementInComposeboxEnabled_}"
+                  @context-menu-opened="${this.onComposeboxContextMenuOpened_}"
+                  @close-composebox="${this.onCloseComposebox_}"
+                  @voice-search-action="${this.onComposeVoiceSearchAction_}"
+                  .submitButtonIconType="${SubmitButtonIconType.FORWARD}"
+                  .clearAllInputsWhenSubmittingQuery="${true}"
+                  .closeOnEscape="${false}"
+                  .energyEffectEnabled="${this.energyEffectEnabled_}"
+                  .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
+                  >
+              </ntp-composebox>
+            ${this.enableThreadsRail_ ? html`
+              <cr-threads-rail id="threadsRail">
+              </cr-threads-rail>
+            ` : ''}
+          </div>
+        ` : ''}
+        ${this.showLensUploadDialog_ ? html`
+          <ntp-lens-upload-dialog id="lensUploadDialog"
+              @close-lens-search="${this.onCloseLensSearch_}">
+          </ntp-lens-upload-dialog>
         ` : ''}
       </div>
-    ` : ''}
-    ${this.showLensUploadDialog_ ? html`
-      <ntp-lens-upload-dialog id="lensUploadDialog"
-          @close-lens-search="${this.onCloseLensSearch_}">
-      </ntp-lens-upload-dialog>
-    ` : ''}
+      ${this.lazyRender_ ? html`
+        ${this.shortcutsEnabled_ ? html`
+          <cr-most-visited hide-title id="mostVisited" .theme="${this.theme_?.mostVisited || null}"
+              single-row reflow-on-overflow
+              ?expandable-tiles-enabled="${this.ntpNextFeaturesEnabled_}"
+              max-tiles-in-collapsed-state="${this.maxTilesInCollapsedState_}"
+              max-shortcuts-in-expanded-state="${this.maxShortcutsInExpandedState_}"
+              max-most-visited-tiles-in-expanded-state="${this.maxMostVisitedTilesInExpandedState_}"
+              max-enterprise-shortcuts="${this.maxEnterpriseShortcuts_}"
+              @most-visited-auto-removed="${this.onMostVisitedAutoRemoved_}">
+          </cr-most-visited>
+        ` : ''}
+      ` : ''}
+    </div>
   </div>
   ${this.lazyRender_ && this.ntpNextFeaturesEnabled_
   && this.isActionChipsVisible_ && this.composeboxEnabled ? html`
@@ -117,17 +143,6 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
     </cr-toast>
   ` : ''}
   ${this.lazyRender_ ? html`
-    ${this.shortcutsEnabled_ ? html`
-      <cr-most-visited id="mostVisited" .theme="${this.theme_?.mostVisited || null}"
-          single-row reflow-on-overflow
-          ?expandable-tiles-enabled="${this.ntpNextFeaturesEnabled_}"
-          max-tiles-in-collapsed-state="${this.maxTilesInCollapsedState_}"
-          max-shortcuts-in-expanded-state="${this.maxShortcutsInExpandedState_}"
-          max-most-visited-tiles-in-expanded-state="${this.maxMostVisitedTilesInExpandedState_}"
-          max-enterprise-shortcuts="${this.maxEnterpriseShortcuts_}"
-          @most-visited-auto-removed="${this.onMostVisitedAutoRemoved_}">
-      </cr-most-visited>
-    ` : ''}
     ${this.modulesEnabled_ ? html`
       ${html`
         <ntp-modules id="modules"

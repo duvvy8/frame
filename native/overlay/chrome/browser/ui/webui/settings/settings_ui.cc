@@ -483,6 +483,17 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
 #endif
 
   AddLocalizedStrings(html_source, profile, web_ui->GetWebContents());
+  // Frame retains search/translation services, but not Google's AI controls.
+  for (const char* key : {"showAiPage", "showAiPageAiFeatureSection",
+                          "showGlicSettings", "showGeicSettings",
+                          "showAutofillAiControl", "enableAiModeSearchSetting",
+                          "showComposeControl", "showHistorySearchControl",
+                          "showPasswordChangeControl", "showAiSuggestionsControl",
+                          "showInlineCueMenuControl", "showSkillsSettingPage",
+                          "showIndigoControl", "showGoogleSearchAiModeWorkspaceControl"}) {
+    html_source->AddBoolean(key, false);
+  }
+  html_source->AddString("sidePanelAlignmentChromePanels", "Frame panels");
   AddSecurityData(html_source);
 
   ManagedUIHandler::Initialize(web_ui, html_source);

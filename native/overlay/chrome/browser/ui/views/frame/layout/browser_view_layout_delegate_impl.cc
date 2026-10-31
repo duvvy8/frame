@@ -58,6 +58,10 @@ BrowserViewLayoutDelegateImpl::GetTabStripType() const {
     return TabStripType::kNone;
   }
 
+  // Frame uses Chromium's real horizontal tabs for titles, drag-and-drop,
+  // grouping and the normal tab context menu.
+  if (browser_view_->IsFrameShellEnabled()) return TabStripType::kHorizontal;
+
   // Determine if there is a vertical tab strip.
   if (browser_view_->browser()->GetType() ==
       BrowserWindowInterface::Type::TYPE_NORMAL) {

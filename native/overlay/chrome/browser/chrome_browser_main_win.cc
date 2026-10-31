@@ -52,6 +52,7 @@
 #include "base/win/wrapped_window_proc.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/app/frame_typography_win.h"
 #include "chrome/browser/about_flags.h"
 #include "chrome/browser/active_use_util.h"
 #include "chrome/browser/browser_features.h"
@@ -562,6 +563,9 @@ ChromeBrowserMainPartsWin::ChromeBrowserMainPartsWin(bool is_integration_test,
 ChromeBrowserMainPartsWin::~ChromeBrowserMainPartsWin() = default;
 
 int ChromeBrowserMainPartsWin::PreEarlyInitialization() {
+  // BrowserMainRunner has initialized DirectWrite before creating main parts.
+  // Install Frame's bundled faces now, so DirectWrite cannot replace them.
+  frame::InitializeBrowserTypography();
   if (const int result = ChromeBrowserMainParts::PreEarlyInitialization();
       result != content::RESULT_CODE_NORMAL_EXIT) {
     return result;

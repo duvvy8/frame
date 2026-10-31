@@ -38,12 +38,6 @@ export function getHtml(this: SettingsSearchPageElement) {
         ${this.searchPageTitle_}
         <div class="secondary">
           $i18n{searchEngineChoiceEntryPointSubtitle}
-          <a href="$i18n{searchExplanationLearnMoreURL}"
-              aria-description="$i18n{opensInNewTab}"
-              aria-label="$i18n{searchExplanationLearnMoreA11yLabel}"
-              target="_blank">
-            $i18n{learnMore}
-          </a>
         </div>
         <div class="cr-row first">
           <settings-search-engine-icon .engine="${this.defaultSearchEngine_}">

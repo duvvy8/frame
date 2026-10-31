@@ -264,6 +264,7 @@ export class AppElement extends AppElementBase {
         type: Boolean,
       },
 
+      frameBlueShell_: {type: Boolean},
       backgroundImageAttribution1_: {type: String},
       backgroundImageAttribution2_: {type: String},
       backgroundImageAttributionUrl_: {type: String},
@@ -419,6 +420,9 @@ export class AppElement extends AppElementBase {
   protected accessor voiceManualSubmitIdleTimeoutMs_: number =
       VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS;
   protected accessor showBackgroundImage_: boolean = false;
+  protected accessor frameBlueShell_: boolean =
+      loadTimeData.valueExists('frameBlueShell') &&
+      loadTimeData.getBoolean('frameBlueShell');
   protected accessor backgroundImageAttribution1_: string = '';
   protected accessor backgroundImageAttribution2_: string = '';
   protected accessor backgroundImageAttributionUrl_: string = '';
@@ -522,6 +526,11 @@ export class AppElement extends AppElementBase {
   private setActionChipsVisibilityListenerId_: number|null = null;
   private footerVisibilityUpdatedListener_: number|null = null;
   private eventTracker_: EventTracker = new EventTracker();
+  private frameBackgroundMotionFrame_: number|null = null;
+  private frameBackgroundMotionQuery_: MediaQueryList =
+      window.matchMedia('(prefers-reduced-motion: reduce)');
+  private frameBackgroundPointerQuery_: MediaQueryList =
+      window.matchMedia('(hover: hover) and (pointer: fine)');
   private shouldPrintPerformance_: boolean = false;
   private backgroundImageLoadStartEpoch_: number = 0;
   private backgroundImageLoadStart_: number = 0;
@@ -663,6 +672,21 @@ export class AppElement extends AppElementBase {
     });
     this.eventTracker_.add(window, 'keydown', this.onWindowKeydown_.bind(this));
     this.eventTracker_.add(
+        window, 'pointermove', this.onFrameBackgroundPointerMove_.bind(this));
+    this.eventTracker_.add(
+        document, 'pointerleave', this.resetFrameBackgroundMotion_.bind(this));
+    this.eventTracker_.add(
+        document, 'visibilitychange',
+        this.resetFrameBackgroundMotion_.bind(this));
+    this.eventTracker_.add(
+        window, 'blur', this.resetFrameBackgroundMotion_.bind(this));
+    this.eventTracker_.add(
+        this.frameBackgroundMotionQuery_, 'change',
+        this.resetFrameBackgroundMotion_.bind(this));
+    this.eventTracker_.add(
+        this.frameBackgroundPointerQuery_, 'change',
+        this.resetFrameBackgroundMotion_.bind(this));
+    this.eventTracker_.add(
         window, 'click', this.onWindowClick_.bind(this), /*capture=*/ true);
     this.eventTracker_.add(document, 'scroll', () => {
       this.scrolledToTop_ = document.documentElement.scrollTop <= 0;
@@ -719,6 +743,40 @@ export class AppElement extends AppElementBase {
         this.setActionChipsVisibilityListenerId_!);
     this.callbackRouter_.removeListener(this.footerVisibilityUpdatedListener_!);
     this.eventTracker_.removeAll();
+    this.resetFrameBackgroundMotion_();
+  }
+
+  private resetFrameBackgroundMotion_() {
+    if (this.frameBackgroundMotionFrame_ !== null) {
+      window.cancelAnimationFrame(this.frameBackgroundMotionFrame_);
+      this.frameBackgroundMotionFrame_ = null;
+    }
+    this.shadowRoot.querySelector<HTMLElement>('#frameBackground')
+        ?.style.removeProperty('transform');
+  }
+
+  private onFrameBackgroundPointerMove_(event: PointerEvent) {
+    // No entrance animation, timers, idle loop, touch motion or moving controls.
+    if (event.pointerType !== 'mouse' || event.buttons !== 0 ||
+        document.hidden || !this.frameBlueShell_ || !this.theme_ ||
+        this.showBackgroundImage_ || this.frameBackgroundMotionQuery_.matches ||
+        !this.frameBackgroundPointerQuery_.matches ||
+        this.matches(':focus-within')) {
+      return;
+    }
+    if (this.frameBackgroundMotionFrame_ !== null) {
+      window.cancelAnimationFrame(this.frameBackgroundMotionFrame_);
+    }
+    const x = Math.max(-1, Math.min(1, event.clientX / innerWidth * 2 - 1)) * 6;
+    const y = Math.max(-1, Math.min(1, event.clientY / innerHeight * 2 - 1)) * 4;
+    this.frameBackgroundMotionFrame_ = window.requestAnimationFrame(() => {
+      this.frameBackgroundMotionFrame_ = null;
+      const image =
+          this.shadowRoot.querySelector<HTMLElement>('#frameBackground');
+      if (image && !image.hidden) {
+        image.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+    });
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
@@ -847,6 +905,7 @@ export class AppElement extends AppElementBase {
 
     if (changedPrivateProperties.has('showBackgroundImage_')) {
       this.onShowBackgroundImageChange_();
+      this.resetFrameBackgroundMotion_();
     }
 
     if (changedPrivateProperties.has('modulesLoaded_')) {

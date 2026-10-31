@@ -294,6 +294,7 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
   private pageHandler_: PageHandlerInterface;
   private autocompleteResultChangedListenerId_: number|null = null;
   private inputStateListenerId_: number|null = null;
+  private searchProviderIconListenerId_: number|null = null;
 
   constructor() {
     performance.mark('searchbox-creation-start');
@@ -305,6 +306,25 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
 
   override async connectedCallback() {
     super.connectedCallback();
+    if (getLoadTimeBoolean('frameBlueShell', false)) {
+      this.searchProviderIconListenerId_ =
+          this.callbackRouter_.setDefaultSearchProviderIcon.addListener(
+              (icon: string) => {
+                this.searchboxIcon_ = icon ||
+                    loadTimeData.getString('searchboxDefaultIcon');
+                if (!icon) {
+                  const input = this.shadowRoot
+                      ?.querySelector<SearchboxInputElement>('#input')
+                      ?.getInputValue();
+                  if (input) {
+                    // Preserve the draft, but replace suggestions and search
+                    // destinations belonging to the previous provider.
+                    this.clearAutocompleteMatches();
+                    this.queryAutocomplete(input, true, false);
+                  }
+                }
+              });
+    }
     this.autocompleteResultChangedListenerId_ =
         this.callbackRouter_.autocompleteResultChanged.addListener(
             this.onAutocompleteResultChanged.bind(this));
@@ -341,6 +361,10 @@ export class NtpSearchboxElement extends NtpSearchboxElementBase implements
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    if (this.searchProviderIconListenerId_ !== null) {
+      this.callbackRouter_.removeListener(this.searchProviderIconListenerId_);
+      this.searchProviderIconListenerId_ = null;
+    }
 
     if (this.autocompleteResultChangedListenerId_ !== null) {
       this.callbackRouter_.removeListener(

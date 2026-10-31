@@ -13,14 +13,7 @@ export function getHtml(this: SettingsAppearancePageElement) {
   <div route-path="default">
     <settings-toggle-button pref-key="frame.appearance.blue_shell"
         label="Frame midnight-blue shell"
-        sub-label="Use Frame colours and compact browser chrome">
-    </settings-toggle-button>
-    <settings-toggle-button pref-key="frame.appearance.always_show_tabs"
-        label="Always show the horizontal tab strip"
-        sub-label="Otherwise, use the Tabs button to manage tabs">
-    </settings-toggle-button>
-    <settings-toggle-button pref-key="frame.appearance.show_rail"
-        label="Show the utility rail">
+        sub-label="Use Frame colours, floating tabs and compact browser chrome">
     </settings-toggle-button>
     <settings-toggle-button pref-key="frame.tabs.visual_mru"
         label="Visual recent-tab switcher"

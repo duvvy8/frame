@@ -104,6 +104,10 @@ class TopControlsSlideControllerTest;
 class VerticalTabStripRegionView;
 class WebAppFrameToolbarView;
 
+namespace bookmarks {
+class BookmarkNode;
+}
+
 namespace gfx {
 class AnimationRunner;
 }  // namespace gfx
@@ -334,9 +338,21 @@ class BrowserView : public BrowserWindow,
   bool GetTabStripVisible() const;
   bool IsFrameShellEnabled() const;
   bool IsFrameTabStripVisible() const;
-  bool IsFrameRailVisible() const;
-  void ToggleFrameTabStrip();
+  bool IsFrameDockVisible() const;
   void OnFrameShellPrefsChanged();
+
+  // Local application-menu IDs, below the unbounded bookmark/recent-tab range.
+  enum FrameMenuCommand {
+    kFrameRecentTabs = 56010,
+    kFrameSleepTabs,
+    kFrameAddFavorite,
+    kFrameManageFavorites,
+    kFrameArchive,
+    kFrameCopyLink,
+    kFrameFavoritesMenu,
+  };
+  bool IsFrameMenuCommandEnabled(int command) const;
+  void ExecuteFrameMenuCommand(int command);
 
   // Returns true if the top UI should be drawn.
   // On macOS, it is possible that the top UI is drawn but hidden.
@@ -1068,6 +1084,12 @@ class BrowserView : public BrowserWindow,
 
   void PaintAsActiveChanged();
   void FrameColorsChanged();
+  void SleepFrameBackgroundTabs();
+  const bookmarks::BookmarkNode* FrameFavoriteFolder() const;
+  const bookmarks::BookmarkNode* EnsureFrameFavoriteFolder();
+  void AddFrameFavorite();
+  void ManageFrameFavorites();
+  void OpenFrameArchive();
 
   // Called by BrowserWindowThemeObserver when the theme changes.
   void UserChangedTheme(BrowserThemeChangeType theme_change_type);
@@ -1140,7 +1162,10 @@ class BrowserView : public BrowserWindow,
   // The view that draws the background the main_container and
   // side_panel are displayed on.
   raw_ptr<views::View> main_background_region_ = nullptr;
-  raw_ptr<views::View> frame_rail_ = nullptr;
+  raw_ptr<views::View> frame_tab_dock_ = nullptr;
+  raw_ptr<views::View> frame_logo_ = nullptr;
+  raw_ptr<views::View> frame_settings_ = nullptr;
+  raw_ptr<views::View> frame_split_ = nullptr;
 
   // The view that contains the primary UI (Toolbar, BookmarksBar, InfoBar,
   // WebContents, and Side panel).
@@ -1400,7 +1425,6 @@ class BrowserView : public BrowserWindow,
   base::CallbackListSubscription paint_as_active_subscription_;
 
   PrefChangeRegistrar registrar_;
-  bool frame_tab_strip_open_ = false;
 
   base::CallbackListSubscription vertical_tab_subscription_;
 

@@ -1,0 +1,25 @@
+version: 2.1
+# Bounded cloud capability probe. Staged continuation is added only after
+# validating the actual image/toolchain and checkpoint capacity.
+jobs:
+  inspect-free-windows:
+    machine:
+      image: windows-server-2025-gui:current
+    shell: powershell.exe -ExecutionPolicy Bypass
+    resource_class: windows.medium
+    steps:
+      - checkout
+      - run:
+          name: Inspect cloud build prerequisites without invoking a compiler
+          no_output_timeout: 5m
+          command: .\scripts\cloud\circleci-preflight.ps1
+      - store_artifacts:
+          path: C:\frame-diagnostics
+          destination: frame-preflight
+workflows:
+  frame-cloud-preflight:
+    jobs:
+      - inspect-free-windows:
+          filters:
+            branches:
+              only: cloud/widevine-staged-20261031

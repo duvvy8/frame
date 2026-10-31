@@ -21,6 +21,7 @@ build_webui("build") {
   ]
 
   static_files = [
+    "images/frame_aurora.jpg",
     "new_tab_page.html",
     "shared_vars.css",
   ]
